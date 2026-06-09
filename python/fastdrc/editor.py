@@ -25,7 +25,7 @@ import json
 import math
 import os
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, ttk, colorchooser
 
 CELL = 26
 COLORS = ["#3aa0ff", "#ff6b6b", "#5cd6a0", "#c792ea", "#ffd166", "#f78c6c"]
@@ -321,7 +321,7 @@ class Editor:
             out_s.append(rs[2]); out_v.append(list(Q))            # newB -> Q
         out_v += [list(p) for p in rv[4:]]
         out_s += [dict(s) for s in rs[3:]]
-        return {"id": snap["id"], "name": snap.get("name", ""),
+        return {"id": snap["id"], "name": snap.get("name", ""), "color": snap.get("color", ""),
                 "verts": out_v, "sides": out_s, "cut": snap.get("cut", False)}
 
     # ---- mouse (single direct-manipulation mode) ----
@@ -331,14 +331,22 @@ class Editor:
         for m in self.measures:                            # grab a measure label -> drag along its line
             box, axis = self._label_meta.get(m["id"], (None, None))
             if box and box[0] <= e.x <= box[2] and box[1] <= e.y <= box[3]:
+                g = self._measure_geom(m)
+                mid = (((g[0][0] + g[1][0]) / 2, (g[0][1] + g[1][1]) / 2)
+                       if g and g[0] and g[1] else (e.x, e.y))
                 self.sel = m["id"]
-                self.moving = {"kind": "label", "mid": m["id"], "axis": axis,
-                               "e0": (e.x, e.y), "o0": m.get("loff", 0)}
+                self.moving = {"kind": "label", "mid_id": m["id"], "axis": axis,
+                               "e0": (e.x, e.y), "o0a": m.get("loff", 0), "mid": mid}
                 self.redraw()
                 return
         vs, vi = self.hit_vertex(e.x, e.y)
-        if vs and self._collinear_vertex(vs, vi):          # click a split dot -> un-split
-            self.merge_vertex(vs, vi)
+        if vs:
+            if self._collinear_vertex(vs, vi):             # split dot -> un-split
+                self.merge_vertex(vs, vi)
+                self.redraw()
+                return
+            self.sel = vs["id"]                            # a real corner -> drag it (free angle)
+            self.moving = {"kind": "vertex", "sid": vs["id"], "vi": vi}
             self.redraw()
             return
         r = self.hit(e.x, e.y)
@@ -378,11 +386,19 @@ class Editor:
                 sh = self.find_shape(mv["id"])
                 if sh:
                     sh["verts"] = [[o[0] + ddx, o[1] + ddy] for o in mv["orig"]]
-            elif mv["kind"] == "label":                    # slide label along its axis only
-                m = self.find_measure(mv["mid"])
+            elif mv["kind"] == "vertex":                   # drag a corner -> free angle (snapped)
+                sh = self.find_shape(mv["sid"])
+                if sh:
+                    sh["verts"][mv["vi"]] = [g[0], g[1]]
+            elif mv["kind"] == "label":                    # free along the line; side flips across it
+                m = self.find_measure(mv["mid_id"])
                 if m:
-                    d = (e.x - mv["e0"][0]) if mv["axis"] == "x" else (e.y - mv["e0"][1])
-                    m["loff"] = mv["o0"] + d / CELL
+                    if mv["axis"] == "x":                  # horizontal line
+                        m["loff"] = mv["o0a"] + (e.x - mv["e0"][0]) / CELL
+                        m["lside"] = -1 if e.y < mv["mid"][1] else 1   # above / below
+                    else:                                  # vertical line
+                        m["loff"] = mv["o0a"] + (e.y - mv["e0"][1]) / CELL
+                        m["lside"] = -1 if e.x < mv["mid"][0] else 1   # left / right
             else:  # side
                 ddx = 0 if mv["horiz"] else g[0] - mv["g0"][0]
                 ddy = (g[1] - mv["g0"][1]) if mv["horiz"] else 0
@@ -460,9 +476,7 @@ class Editor:
         over_label = any(b and b[0] <= e.x <= b[2] and b[1] <= e.y <= b[3]
                          for b, _ in self._label_meta.values())
         vs, vi = self.hit_vertex(e.x, e.y)
-        if over_label:
-            cur = self.cur_move
-        elif vs and self._collinear_vertex(vs, vi):
+        if over_label or vs:                          # labels + corner vertices are draggable
             cur = self.cur_move
         else:
             r = self.hit(e.x, e.y)
@@ -532,7 +546,7 @@ class Editor:
         for idx, (s, vpx, cx, cy, outline) in enumerate(geo):
             if s.get("cut"):
                 continue
-            col = COLORS[idx % len(COLORS)]
+            col = s.get("color") or COLORS[idx % len(COLORS)]   # per-shape color, else auto
             holes = [o for (s2, _, _, _, o) in geo if s2.get("cut")]   # punch by the hole's outline
             self._hatch(c, [outline] + holes, col, HATCH_ANGLES[idx % len(HATCH_ANGLES)])
             if self.sel == s["id"]:
@@ -566,11 +580,17 @@ class Editor:
             c.create_line(*p1, *p2, fill=col, width=3 if sel else 2,
                           arrow=tk.BOTH, arrowshape=(9, 11, 4))
             mx, my = (p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2
-            axis = "x" if abs(p1[1] - p2[1]) < 0.5 else "y"   # label slides along the dim line
-            off = m.get("loff", 0) * CELL                     # user-set offset along that axis
-            lx = mx + 6 + (off if axis == "x" else 0)
-            ly = my - 8 + (off if axis == "y" else 0)
-            lab = c.create_text(lx, ly, text=m["var"], fill=col, anchor="sw",
+            axis = "x" if abs(p1[1] - p2[1]) < 0.5 else "y"   # dim-line direction
+            along = m.get("loff", 0) * CELL                   # free offset along the line
+            side = m.get("lside", -1)                         # which side, at a fixed gap
+            GAP = 6
+            if axis == "x":                                   # horizontal: slide x, side = above/below
+                lx = mx + along
+                anchor, ly = ("s", my - GAP) if side < 0 else ("n", my + GAP)
+            else:                                             # vertical: slide y, side = left/right
+                ly = my + along
+                anchor, lx = ("e", mx - GAP) if side < 0 else ("w", mx + GAP)
+            lab = c.create_text(lx, ly, text=m["var"], fill=col, anchor=anchor,
                                 font=("TkDefaultFont", 10, "bold"))
             self._label_meta[m["id"]] = (c.bbox(lab), axis)
 
@@ -602,8 +622,9 @@ class Editor:
             if self._collinear_vertex(s, i):     # a split point -> big, noticeable dot
                 c.create_oval(p[0] - 5, p[1] - 5, p[0] + 5, p[1] + 5,
                               fill=SPLITCOL, outline=INK, width=1.5)
-            else:                                 # a real corner -> small dot
-                c.create_oval(p[0] - 2, p[1] - 2, p[0] + 2, p[1] + 2, fill=INK, outline="")
+            else:                                 # a real corner -> grab handle (drag to reshape)
+                c.create_oval(p[0] - 3.5, p[1] - 3.5, p[0] + 3.5, p[1] + 3.5,
+                              fill=BG, outline=INK, width=1.5)
 
     def _hatch(self, c, loops, color, angle, spacing=7, width=1):
         """Fill the region bounded by `loops` (a list of point-loops; the outer loop
@@ -681,13 +702,14 @@ class Editor:
         cc = t.insert("", "end", "cat_constraints", text="Constraints", open=True)
         for i, c in enumerate(self.constraints):
             t.insert(cc, "end", f"con{i}", text=f"[{c['kind']}] {c['expr']}")
-        restored = [iid for iid in keep if t.exists(iid)]     # keep what was selected if it still exists
-        if restored:
-            t.selection_set(restored); t.see(restored[0])
+        # reflect self.sel; for @constraints keep the specific constraint node if one was
+        # selected (avoids the build-time-trace jump), else the group header.
+        if self.sel == "@constraints":
+            want = next((i for i in keep if i.startswith("con")), "cat_constraints")
         else:
-            want = "cat_constraints" if self.sel == "@constraints" else self.sel
-            if want and t.exists(want):
-                t.selection_set(want); t.see(want)
+            want = self.sel
+        if want and t.exists(want):
+            t.selection_set(want); t.see(want)
         self._suppress_tree = False
 
     def on_tree_select(self, e):
@@ -792,12 +814,34 @@ class Editor:
             name(1, "role")
             tk.Button(p, text="material" if not sh.get("cut") else "hole (cutout)",
                       command=self.toggle_hole).grid(row=1, column=1, sticky="w", pady=2)
+            nr = 2
+            if not sh.get("cut"):                              # color only matters for material
+                name(nr, "color")
+                self._color_swatch(p, sh).grid(row=nr, column=1, sticky="w", pady=2)
+                nr += 1
             st = sum(1 for k in sh["sides"] if k["kind"] == "straight")
-            name(2, "sides"); ro(2, f"{len(sh['sides'])}  ({st} straight)")
+            name(nr, "sides"); ro(nr, f"{len(sh['sides'])}  ({st} straight)")
             return
         tk.Label(p, text="nothing selected — pick a shape/edge/measure, or Constraints in the tree",
                  bg=PANEL, fg="#8b93a7", wraplength=260, justify="left").grid(
             row=0, column=0, columnspan=3, sticky="w")
+
+    def _color_swatch(self, p, sh):
+        """A color chip showing the shape's current color; click -> palette picker."""
+        def eff():
+            idx = self.shapes.index(sh) if sh in self.shapes else 0
+            return sh.get("color") or COLORS[idx % len(COLORS)]
+        cv = tk.Canvas(p, width=26, height=16, bd=0, highlightthickness=1,
+                       highlightbackground="#3a4150", bg=eff())
+
+        def pick(e=None):
+            chosen = colorchooser.askcolor(color=eff(), parent=self.root, title="Shape color")[1]
+            if chosen:
+                sh["color"] = chosen
+                cv.config(bg=chosen)
+                self.refresh()
+        cv.bind("<Button-1>", pick)
+        return cv
 
     def _kind_toggle(self, p, get, flip):
         """A square click-to-flip swatch: '?' = match (where it applies), '!' = check (the rule).
@@ -863,6 +907,8 @@ class Editor:
         for s in self.shapes:
             v, n = s["verts"], len(s["verts"])
             sh = {"name": s.get("name", "")}     # name only; layer/net go in constraints (A.layer, A.net)
+            if s.get("color"):
+                sh["color"] = s["color"]       # optional per-shape display color
             if s.get("cut"):
                 sh["cut"] = True               # a hole / cutout (subtracts material)
             sh["edges"] = [{"id": sd["id"], "start": list(v[ei]), "end": list(v[(ei + 1) % n]),
@@ -872,7 +918,9 @@ class Editor:
         for m in self.measures:
             md = {"name": m["var"], "from": m["from"], "to": m["to"]}
             if m.get("loff"):
-                md["label_offset"] = round(m["loff"], 3)   # label slide along its line (grid units)
+                md["label_offset"] = round(m["loff"], 3)    # label offset along its line (grid units)
+            if m.get("lside", -1) == 1:                     # default side is -1 (above/left)
+                md["label_side"] = 1                        # flipped to below/right
             measures.append(md)
         out = {"shapes": shapes, "measures": measures}
         if self.constraints:
@@ -893,11 +941,13 @@ class Editor:
                 sides.append({"id": e.get("id") or self.nid("e"),
                               "kind": "straight" if e.get("edge") else "wavy"})
             self.shapes.append({"id": self.nid("s"), "name": sh.get("name") or self.next_name(),
+                                "color": sh.get("color", ""),
                                 "verts": verts, "sides": sides, "cut": bool(sh.get("cut"))})
         for m in o.get("measures", []):
             self.measures.append({"id": self.nid("m"), "var": m.get("name", "X"),
                                   "from": m.get("from"), "to": m.get("to"),
-                                  "loff": m.get("label_offset", 0)})
+                                  "loff": m.get("label_offset", 0),
+                                  "lside": m.get("label_side", -1)})
         self.constraints = [c if isinstance(c, dict) else {"kind": "check", "expr": c}
                             for c in o.get("constraints", []) if c]
         for c in self.constraints:
