@@ -1,0 +1,75 @@
+{
+  "shapes": [
+    {
+      "name": "A",
+      "edges": [
+        {
+          "id": "e2",
+          "start": [
+            5,
+            3
+          ],
+          "end": [
+            20,
+            3
+          ],
+          "edge": false
+        },
+        {
+          "id": "e3",
+          "start": [
+            20,
+            3
+          ],
+          "end": [
+            20,
+            16
+          ],
+          "edge": true
+        },
+        {
+          "id": "e4",
+          "start": [
+            20,
+            16
+          ],
+          "end": [
+            5,
+            16
+          ],
+          "edge": false
+        },
+        {
+          "id": "e5",
+          "start": [
+            5,
+            16
+          ],
+          "end": [
+            5,
+            3
+          ],
+          "edge": true
+        }
+      ]
+    }
+  ],
+  "measures": [
+    {
+      "name": "X",
+      "from": "e3",
+      "to": "e5",
+      "label_offset": -5.115
+    }
+  ],
+  "constraints": [
+    {
+      "kind": "match",
+      "expr": "A.layer==met5"
+    },
+    {
+      "kind": "check",
+      "expr": "X>2"
+    }
+  ]
+}
