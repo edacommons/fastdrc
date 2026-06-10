@@ -74,20 +74,39 @@ class KLayoutBackend(Backend):
             covering |= {s for s in rule.covering(ms) if s not in measured}
         consumed = measured | covering
 
+        # A non-consumed shape whose layer is ALSO a check operand can't be a
+        # result scope (a scope on the operand drops everything -- the result
+        # touches it). It's a SELECTION on the subject: X.outside(Y) etc.
+        operand_layers = {rule.layer_of(sf), rule.layer_of(st)}
+        sels = []
+        for name in rule.shapes:
+            if name in consumed:
+                continue
+            ml = rule.layer_of(name)
+            if ml and ml in operand_layers:
+                rel = rule.relation(sf, name)
+                so = ("outside" if rel in ("outside", "disjoint")
+                      else "inside" if rel == "inside" else "interacting")
+                sels.append((so, self._layer_var(ml)))
+                consumed.add(name)
+        sel_suffix = "".join(f".{so}({l})" for so, l in sorted(set(sels)))
+
         def dl(shape):
             return self._derived(rule, shape, measured)
 
+        subj = dl(sf) + sel_suffix
         if sf == st:                                       # intra-shape -> width
-            core = f"{dl(sf)}.width({v}.um, {mt})"
+            core = f"{subj}.width({v}.um, {mt})"
         else:
             rel = rule.relation(sf, st)
-            if rel in ("inside", "contains"):              # nested -> enclosure
-                outer, inner = (st, sf) if rel == "inside" else (sf, st)
-                core = f"{dl(outer)}.enclosing({dl(inner)}, {v}.um, {mt})"
+            if rel == "inside":                            # sf inside st -> st encloses sf
+                core = f"{dl(st)}.enclosing({subj}, {v}.um, {mt})"
+            elif rel == "contains":                        # sf contains st
+                core = f"{subj}.enclosing({dl(st)}, {v}.um, {mt})"
             elif dl(sf) == dl(st):                          # same layer -> space
-                core = f"{dl(sf)}.space({v}.um, {mt})"
+                core = f"{subj}.space({v}.um, {mt})"
             else:                                          # diff layers -> separation
-                core = f"{dl(sf)}.separation({dl(st)}, {v}.um, {mt})"
+                core = f"{subj}.separation({dl(st)}, {v}.um, {mt})"
 
         suffix = "".join(f".{op}({mk})" for op, mk in self._scope(rule, consumed, sf))
         if self.scope_all:                                # deck-level / computed scope

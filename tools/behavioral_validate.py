@@ -86,6 +86,16 @@ def layout_for(r, lm):
         far = (*lm[mk], 90000, 90000, 91000, 91000)
         near = (*lm[mk], -2000, -2000, 8000, 8000)
         s.append(far if so == "not_interacting" else near)
+    if r.get("selection"):                              # X.inside/outside/interacting(Y)
+        sel_op, y = r["selection"]
+        box = {"inside": (-5000, -5000, 30000, 30000),    # S0 contains the violating X
+               "outside": (100000, 100000, 101000, 101000),  # S0 far (disjoint)
+               "interacting": (-3000, -3000, 5000, 5000)}[sel_op]  # S0 overlaps X
+        s.append((*lm[y], *box))
+        # NOTE: for separation, outside(Y) before separation(Y) is a behavioral
+        # no-op -- the only subject polys it drops are those area-overlapping Y, and
+        # plain separation never flags overlapping polys anyway (verified across
+        # touch/overlap/inside configs). We still emit it for op-text fidelity.
     return s
 
 

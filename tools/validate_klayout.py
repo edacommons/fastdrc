@@ -98,12 +98,18 @@ def parse_rules(text, lm):
         op = m.group(1)
         rhs = line.split("=", 1)[1]
         subject = rhs[:rhs.index("." + op + "(")].strip()
-        if _COMPLEX_SUBJ.search(subject) or ".holes" in subject or ".edges" in subject:
+        sel_m = re.match(r"^(\w+)\.(inside|outside|interacting)\((\w+)\)$", subject)
+        if sel_m:                       # single selection X.inside/outside/interacting(Y)
+            base, selection = sel_m.group(1), (sel_m.group(2), sel_m.group(3))
+            s_and, s_not, derived, behavioral_only = frozenset({base}), frozenset(), False, True
+        elif _COMPLEX_SUBJ.search(subject) or ".holes" in subject or ".edges" in subject:
             skip["complex_subj"] += 1
             continue
-        s_and, s_not = parse_subject(subject)
-        base = re.match(r"\s*(\w+)", subject).group(1)
-        derived = ".and(" in subject or ".not(" in subject
+        else:
+            s_and, s_not = parse_subject(subject)
+            base = re.match(r"\s*(\w+)", subject).group(1)
+            selection, behavioral_only = None, False
+            derived = ".and(" in subject or ".not(" in subject
         if derived and op not in ("width", "space", "with_area"):
             skip["derived_encsep"] += 1
             continue
@@ -133,7 +139,8 @@ def parse_rules(text, lm):
                     skip["derived_arg"] += 1
                     continue
                 arg_layers, value, mode = [parts[0]], parts[1].replace(".um", ""), parts[2]
-        if any(l not in lm for l in list(s_and | s_not) + arg_layers):
+        sel_layers = [selection[1]] if selection else []
+        if any(l not in lm for l in list(s_and | s_not) + arg_layers + sel_layers):
             skip["nonbase"] += 1
             continue
         after = tail.split(")", 1)[1] if ")" in tail else ""   # result chain after the op
@@ -151,7 +158,8 @@ def parse_rules(text, lm):
         rules.append({"id": rid, "desc": desc, "op": op, "base": base,
                       "covers": sorted(s_and - {base}), "holes": sorted(s_not),
                       "arg": arg_layers, "value": value, "mode": mode,
-                      "scope": scope, "line": line})
+                      "scope": scope, "line": line, "selection": selection,
+                      "behavioral_only": behavioral_only})
     return rules, skip
 
 
@@ -166,9 +174,11 @@ def _find_output(lines, i, var):
 # --- "as-drawn" IR (what the editor would produce) ---
 
 def _rect(name, x0, y0, x1, y1, p):
+    # edges default to WAVY (edge=False = arbitrary continuation); as_drawn marks
+    # the measured ones STRAIGHT (edge=True = a real, oriented edge).
     v = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
     e = [{"id": f"{p}{k}", "start": list(v[k]), "end": list(v[(k + 1) % 4]),
-          "edge": True} for k in range(4)]   # 0=bottom 1=right 2=top 3=left
+          "edge": False} for k in range(4)]   # 0=bottom 1=right 2=top 3=left
     return {"name": name, "edges": e}
 
 
@@ -187,46 +197,80 @@ def _holed(name, x0, y0, x1, y1, p, hole_layers):
 
 
 def _marker_pos(scope_op, i):
+    # checked geometry sits within ~[0,10]^2; lay markers AROUND it (right / top /
+    # left / bottom) with a gap so each is disjoint (-> not_interacting) yet close
+    # and visible. Extra markers move to an outer ring.
     if scope_op == "not_interacting":
-        return (100 + 20 * i, 100, 110 + 20 * i, 110)
+        d = 8 * (i // 4)
+        return {0: (13 + d, 3, 19 + d, 7),       # right
+                1: (3, 13 + d, 9, 19 + d),        # top
+                2: (-9 - d, 3, -3 - d, 7),        # left
+                3: (3, -9 - d, 9, -3 - d)}[i % 4]  # bottom
     if scope_op == "interacting":
-        return (-3, -3, 0, 0)
-    return (-2, -2, 5 + i, 5)
+        return (-3, -3, 0, 0)                    # touch at the origin corner
+    return (-2, -2, 5 + i, 5)                    # overlap near origin
 
 
 def as_drawn(r):
     op, v, base, holes = r["op"], r["value"], r["base"], r["holes"]
+    # `match` constraints identify WHICH geometry the rule is about (layers,
+    # markers); the single `check` is the assertion verified (a violation is a
+    # matched configuration where the check fails).
     if op == "with_area":
         shapes = [_holed("A", 0, 0, 10, 4, "a", holes)]
         meas = []
-        cons = [_c(f"A.layer == {base}"), _c(f"A.area >= {v}")]
+        cons = [_match(f"A.layer == {base}"), _check(f"A.area >= {v}")]
     elif op == "width":
         shapes = [_holed("A", 0, 0, 10, 4, "a", holes)]
         meas = [{"name": "W", "from": "a1", "to": "a3"}]
-        cons = [_c(f"A.layer == {base}"), _c(f"W >= {v}")]
+        cons = [_match(f"A.layer == {base}"), _check(f"W >= {v}")]
     elif op == "space":
         shapes = [_holed("A", 0, 0, 4, 10, "a", holes), _holed("B", 6, 0, 10, 10, "b", holes)]
         meas = [{"name": "S", "from": "a1", "to": "b3"}]
-        cons = [_c(f"A.layer == {base}"), _c(f"B.layer == {base}"), _c(f"S >= {v}")]
+        cons = [_match(f"A.layer == {base}"), _match(f"B.layer == {base}"), _check(f"S >= {v}")]
     elif op == "enclosing":
         shapes = [_rect("A", 0, 0, 10, 10, "a"), _rect("B", 3, 3, 7, 7, "b")]
         meas = [{"name": "E", "from": "a3", "to": "b3"}]
-        cons = [_c(f"A.layer == {base}"), _c(f"B.layer == {r['arg'][0]}"), _c(f"E >= {v}")]
+        cons = [_match(f"A.layer == {base}"), _match(f"B.layer == {r['arg'][0]}"), _check(f"E >= {v}")]
     else:  # separation
         shapes = [_rect("A", 0, 0, 4, 10, "a"), _rect("B", 6, 0, 10, 10, "b")]
         meas = [{"name": "S", "from": "a1", "to": "b3"}]
-        cons = [_c(f"A.layer == {base}"), _c(f"B.layer == {r['arg'][0]}"), _c(f"S >= {v}")]
+        cons = [_match(f"A.layer == {base}"), _match(f"B.layer == {r['arg'][0]}"), _check(f"S >= {v}")]
     for k, cl in enumerate(r["covers"]):
-        shapes.append(_rect(f"C{k}", -2 - k, -2 - k, 30, 30, f"c{k}"))
-        cons.append(_c(f"C{k}.layer == {cl}"))
+        shapes.append(_rect(f"C{k}", -1 - k, -1 - k, 11 + k, 11 + k, f"c{k}"))
+        cons.append(_match(f"C{k}.layer == {cl}"))
     for k, (so, mk) in enumerate(r["scope"]):
         shapes.append(_rect(f"M{k}", *_marker_pos(so, k), f"m{k}"))
-        cons.append(_c(f"M{k}.layer == {mk}"))
+        cons.append(_match(f"M{k}.layer == {mk}"))
+    if r.get("selection"):                          # X.inside/outside/interacting(Y)
+        # the selection CONTEXT: the subject is selected by how it relates to this
+        # shape (S0). Its layer may coincide with a check operand -- that is NOT a
+        # duplicate, it is the signal that distinguishes e.g. outside(Y).sep(Y)
+        # (exclude touching) from a plain separation. Named S0, not the operand.
+        sel_op, y = r["selection"]
+        box = {"inside": (-5, -5, 30, 30),          # S0 contains the primary
+               "outside": (14, 0, 20, 4),           # S0 beside it with a gap -> disjoint
+               "interacting": (-3, -3, 5, 5)}[sel_op]  # S0 partially overlaps
+        shapes.append(_rect("S0", *box, "s0"))
+        cons.append(_match(f"S0.layer == {y}"))
+    # only the MEASURED edges are straight (real, oriented); the rest stay wavy
+    # (arbitrary continuation). A min-area shape is a specific closed region, so
+    # all of its edges are real.
+    straight = {mz["from"] for mz in meas} | {mz["to"] for mz in meas}
+    if op == "with_area":
+        straight |= {e["id"] for e in shapes[0]["edges"]}
+    for s in shapes:
+        for e in s["edges"]:
+            e["edge"] = e["id"] in straight
     return {"name": r["id"], "desc": r["desc"], "shapes": shapes,
             "measures": meas, "constraints": cons}
 
 
-def _c(expr):
+def _match(expr):
+    return {"kind": "match", "expr": expr}
+
+
+def _check(expr):
     return {"kind": "check", "expr": expr}
 
 
@@ -244,6 +288,8 @@ def main():
 
     by, fails = {}, []
     for r in rules:
+        if r.get("behavioral_only"):     # op text diverges (selection); behavioral-only
+            continue
         drc = get("klayout", layermap=lm, metric=r["mode"]).compile(Rule(as_drawn(r)))
         ok = canon(our_line(drc)) == canon(r["line"])
         kind = ("derived" if r["covers"] or r["holes"]
@@ -255,7 +301,7 @@ def main():
         if not ok:
             fails.append((r["id"], canon(r["line"]), canon(our_line(drc))))
 
-    tot = len(rules)
+    tot = sum(v[1] for v in by.values())   # rules actually compared (behavioral-only skipped)
     ok = sum(v[0] for v in by.values())
     print(f"deck: {os.path.relpath(DECK)}   layers: {len(lm)}")
     print(f"rules compared: {tot}    MATCHED {ok}    MISMATCHED {tot - ok}")
