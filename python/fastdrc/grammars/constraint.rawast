@@ -1,0 +1,82 @@
+// FastDRC constraint-formula grammar (rawast).
+//
+// The surface syntax is a strict subset of Python expression syntax, so every
+// constraint is also valid Python and `ast.parse(expr, mode="eval")` can serve
+// as a differential oracle in tests.
+//
+// A constraint is a boolean combination of atomic scalar relations. It
+// expresses only what the drawing cannot show: layer/net assignment and
+// numeric/angular relations between an entity's scalar attributes and
+// declared measures. Spatial topology (inside, overlap, enclosure, abutment,
+// coincidence, touch) is DERIVED from the drawn geometry -- never typed here.
+//
+// A `qualified_identifier` resolves in the semantic layer to one of:
+//   - a declared measure variable        (X)
+//   - an entity attribute                 (A.layer, A.net, A.width, e2.angle)
+//   - a bare layer / enum literal         (metal5)
+//
+// Tiers, low -> high precedence (Python's):
+//   or  <  and  <  not  <  (cmp | in)  <  + -  <  * /  <  primary
+//
+// The grammar emits the FINAL {op, args[]} AST directly -- no post-parse
+// lowering. Every operator level is `choice { <MULTI/BIN/CMP>, <NEXT> }`: the
+// operator form is tried first and, on a missing operator, PEG's ordered choice
+// falls back to <NEXT>, so a single operand passes straight through with no
+// wrapper. Single-operator tiers (or/and) emit a flat n-ary node; cmp / +-/ */
+// emit binary; `not` emits unary -- all uniform `{op, args:[...]}`. Leaves are
+// {ref:str} / {num:int|float} / {set:[node,...]}.
+//
+// Requires rawast >= 0.1.1 (single-quote 'keyword' = strict word-bounded Key,
+// so 'not'/'and'/'or'/'in' don't bite identifier prefixes like `notch`).
+//
+// NOTES:
+//  - PEG can't left-fold, so a chain of 3+ math operands at one level needs
+//    parens: `a - b` is binary, but `a - b - c` is a syntax error -- write
+//    `(a - b) - c`. (Comparisons and boolean tiers are unaffected.)
+//  - The shared-first-token choices below are flagged by `rawast lint` as
+//    predictive-ambiguous; they are correct via PEG ordered-choice fallback.
+//    Set `backtrack: true` on those choices to silence the warning.
+
+use: std
+
+start: <OR>
+
+// or/and are single-operator levels: a `repeat+2 ... separator` list of operands
+// (≥2, so a lone operand fails the MULTI form and the choice falls through to
+// <NEXT> with no wrapper). The op is bound on the separator token. Flat n-ary.
+OR ignore whitespace line_comment block_comment: choice { <OR_MULTI>, <AND> }
+OR_MULTI: sequence dict { repeat+2 <AND>:args[]=@ separator 'or':op="or" }
+
+AND: choice { <AND_MULTI>, <NOT> }
+AND_MULTI: sequence dict { repeat+2 <NOT>:args[]=@ separator 'and':op="and" }
+
+NOT: choice { <NEG>, <REL> }
+NEG: sequence dict { 'not':op="not", <NOT>:args[]=@ }
+
+// One atomic relation: a comparison, or a bare arithmetic expression.
+REL: choice { <CMP>, <ADD> }
+CMP: sequence dict { <ADD>:args[]=@, <CMP_OP>:op=@, <CMP_RHS>:args[]=@ }
+// Longest-first so "<=" wins over "<" and ">=" over ">". 'in' is a strict keyword.
+CMP_OP: choice { "==":@, "!=":@, "<=":@, ">=":@, "<":@, ">":@, 'in':@ }
+CMP_RHS: choice { <SET>, <ADD> }
+
+// Arithmetic. Binary only (PEG can't left-fold); parenthesize 3+ chains.
+ADD: choice { <ADD_BIN>, <MUL> }
+ADD_BIN: sequence dict { <MUL>:args[]=@, <ADD_OP>:op=@, <MUL>:args[]=@ }
+ADD_OP: choice { "+":@, "-":@ }
+
+MUL: choice { <MUL_BIN>, <PRIMARY> }
+MUL_BIN: sequence dict { <PRIMARY>:args[]=@, <MUL_OP>:op=@, <PRIMARY>:args[]=@ }
+MUL_OP: choice { "*":@, "/":@ }
+
+PRIMARY: choice { <GROUP>, <NUMBER>, <REF> }
+GROUP: sequence { "(", <OR>, ")" }
+// `int`/`float` are signed parsers, so -45 parses natively as {num:-45}.
+// `float` precedes `int` (strict float fails on a bare integer, letting int win).
+NUMBER: sequence dict { <NUMLIT>:num=@ }
+NUMLIT: choice { float, int }
+REF: sequence dict { qualified_identifier:ref=@ }
+
+// Set literal -- valid only as the right-hand side of `in`.
+SET: sequence dict { "{", <SET_ELEMS>:set=@, "}" }
+SET_ELEMS: sequence array { repeat <REF> separator "," }
