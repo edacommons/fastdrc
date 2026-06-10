@@ -87,6 +87,11 @@ def _point_in_poly(pt, poly) -> str:
     return "in" if wn != 0 else "out"
 
 
+def contains(poly, pt) -> bool:
+    """True if pt is strictly inside the polygon."""
+    return _point_in_poly(pt, poly) == "in"
+
+
 def _edges(poly):
     n = len(poly)
     return [(poly[i], poly[(i + 1) % n]) for i in range(n)]
