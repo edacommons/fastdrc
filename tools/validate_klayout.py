@@ -49,6 +49,56 @@ def parse_layermap(text):
             re.findall(r"^(\w+)\s*=\s*polygons\(\s*(\d+)\s*,\s*(\d+)\s*\)", text, re.M)}
 
 
+_VARDEFS = {}   # derived-var name -> frozenset(base layers), set by parse_rules
+
+
+def parse_and_vars(text, lm):
+    """Resolve derived vars that are a PURE AND of base layers (KLayout infix
+    `var = A & B`, recursively: ncomp=comp&nplus, ngate=nplus&tgate) into
+    {var: frozenset(base layers)}. Anything with - | parens . or a selection is
+    left out (those rules stay deferred)."""
+    raw = {}
+    for m in re.finditer(r"^(\w+)\s*=\s*([^=].*)$", text, re.M):
+        var, expr = m.group(1), m.group(2).strip()
+        if var not in lm and ".output(" not in expr and ".forget" not in expr:
+            raw[var] = expr
+    out = {}
+
+    def resolve(var, seen):
+        if var in lm:
+            return frozenset({var})
+        if var in out:
+            return out[var]
+        if var not in raw or var in seen:
+            return None
+        e = raw[var]
+        if not re.fullmatch(r"[\w\s&]+", e):
+            return None
+        layers = set()
+        for name in re.findall(r"\w+", e):
+            r = resolve(name, seen | {var})
+            if r is None:
+                return None
+            layers |= r
+        out[var] = frozenset(layers)
+        return out[var]
+
+    for v in list(raw):
+        resolve(v, set())
+    return out
+
+
+def expand_base(s, vardefs):
+    """Expand ONLY the leading identifier of an expression if it's a derived var
+    (`ncomp.outside(x)` -> `comp.and(nplus).outside(x)`). Base position only, so a
+    derived var inside a selection's parens is left intact (and stays deferred)."""
+    m = re.match(r"\s*(\w+)", s)
+    if m and m.group(1) in vardefs:
+        ls = sorted(vardefs[m.group(1)])
+        return ls[0] + "".join(f".and({l})" for l in ls[1:]) + s[m.end():]
+    return s
+
+
 def parse_subject(s):
     """Split a layer expression into (AND-set, NOT-set): base + .and(X) -> AND,
     .not(Y) -> NOT."""
@@ -65,9 +115,12 @@ def canon(line):
     rhs = line.split("=", 1)[1] if "=" in line else line
     m = _OP.search(rhs)
     op = m.group(1)
-    s_and, s_not = parse_subject(rhs[:m.start()])
+    subj_str = expand_base(rhs[:m.start()], _VARDEFS)      # derived-var base -> AND chain
+    s_and, s_not = parse_subject(subj_str)
+    s_sel = parse_selections(subj_str)                    # inside/outside/interacting on subject
     tail = rhs[m.end():]
-    args_str = tail.split(")", 1)[0]
+    args_str = _balanced(tail)            # args up to the op's MATCHING close paren
+    a_sel = frozenset()
     if op == "with_area":
         val = re.search(r"([0-9.]+)\.um", args_str)
         a_and, a_not, value, mode = frozenset(), frozenset(), val.group(1) if val else "", ""
@@ -76,10 +129,55 @@ def canon(line):
         a_and, a_not, value, mode = frozenset(), frozenset(), parts[0].replace(".um", ""), _get(parts, 1)
     else:
         parts = [p.strip() for p in args_str.split(",")]
-        a_and, a_not = parse_subject(parts[0])
+        arg0 = expand_base(parts[0], _VARDEFS)            # derived-var arg base -> AND chain
+        a_and, a_not = parse_subject(arg0)
+        a_sel = parse_selections(arg0)                    # selections on a derived/selected arg
         value, mode = _get(parts, 1).replace(".um", ""), _get(parts, 2)
-    after = tail.split(")", 1)[1] if ")" in tail else ""   # result chain after the op
-    return (s_and, s_not, op, a_and, a_not, value, mode, frozenset(_SCOPE.findall(after)))
+    after = tail[len(args_str) + 1:]                       # result chain after the op
+    return (s_and, s_not, s_sel, op, a_and, a_not, a_sel, value, mode,
+            frozenset(_SCOPE.findall(after)))
+
+
+def parse_selections(s):
+    """Whole-polygon selections on a (sub)expression: inside/outside/interacting.
+    Empty for plain/AND/NOT subjects, so non-selection rules are unaffected."""
+    return frozenset(re.findall(r"\.(inside|outside|interacting)\((\w+)\)", s))
+
+
+def parse_complex_subject(subject):
+    """Parse a subject of ONLY ``base`` + a chain of
+    ``.and/.not/.inside/.outside/.interacting(layer)`` into
+    ``(base, ands, nots, selections)``. Returns None if it contains any other op
+    (or / holes / edges / not_inside / nested derived) or doesn't fully reduce --
+    those are deferred. Subsumes plain, AND/NOT-derived, and (multi-)selection
+    subjects in one parse."""
+    bm = re.match(r"\s*(\w+)", subject)
+    if not bm:
+        return None
+    base, rest = bm.group(1), subject[bm.end():].strip()
+    toks = re.findall(r"\.(and|not|inside|outside|interacting)\((\w+)\)", rest)
+    if "".join(f".{op}({l})" for op, l in toks) != rest:
+        return None                          # an unhandled op / nesting remains
+    ands = [l for op, l in toks if op == "and"]
+    nots = [l for op, l in toks if op == "not"]
+    sels = [(op, l) for op, l in toks if op in ("inside", "outside", "interacting")]
+    return base, ands, nots, sels
+
+
+def _balanced(s):
+    """Substring of s up to the close paren matching the op's open paren (s begins
+    just inside it). Unlike split(')'), this handles NESTED parens -- e.g. a
+    derived arg `contact.and(otp_mk), 0.03, euclidian`."""
+    depth, out = 1, []
+    for ch in s:
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                break
+        out.append(ch)
+    return "".join(out)
 
 
 def _get(seq, i):
@@ -87,6 +185,8 @@ def _get(seq, i):
 
 
 def parse_rules(text, lm):
+    global _VARDEFS
+    _VARDEFS = parse_and_vars(text, lm)         # derived-var (pure-AND) resolution
     lines = text.splitlines()
     rules = []
     skip = dict(complex_subj=0, derived_encsep=0, derived_arg=0, argshape=0,
@@ -97,24 +197,27 @@ def parse_rules(text, lm):
             continue
         op = m.group(1)
         rhs = line.split("=", 1)[1]
-        subject = rhs[:rhs.index("." + op + "(")].strip()
-        sel_m = re.match(r"^(\w+)\.(inside|outside|interacting)\((\w+)\)$", subject)
-        if sel_m:                       # single selection X.inside/outside/interacting(Y)
-            base, selection = sel_m.group(1), (sel_m.group(2), sel_m.group(3))
-            s_and, s_not, derived, behavioral_only = frozenset({base}), frozenset(), False, True
-        elif _COMPLEX_SUBJ.search(subject) or ".holes" in subject or ".edges" in subject:
+        subject = expand_base(rhs[:rhs.index("." + op + "(")].strip(), _VARDEFS)
+        # one parse for plain / AND-NOT-derived / (multi-)selection subjects; None
+        # if it has an unhandled op (or / holes / edges / not_inside) -> deferred.
+        parsed = parse_complex_subject(subject)
+        if parsed is None:
             skip["complex_subj"] += 1
             continue
-        else:
-            s_and, s_not = parse_subject(subject)
-            base = re.match(r"\s*(\w+)", subject).group(1)
-            selection, behavioral_only = None, False
-            derived = ".and(" in subject or ".not(" in subject
-        if derived and op not in ("width", "space", "with_area"):
+        base, ands, nots, selections = parsed
+        s_and = frozenset({base}) | frozenset(ands)
+        s_not = frozenset(nots)
+        derived = bool(ands or nots)
+        behavioral_only = False
+        # derived separation now round-trips (op-aware covering covers only the
+        # subject, + balanced-paren canon). Derived ENCLOSING stays deferred: its
+        # arg is INSIDE the subject, so any covering of the subject also covers it.
+        if derived and op not in ("width", "space", "with_area", "separation"):
             skip["derived_encsep"] += 1
             continue
         tail = rhs[rhs.index("." + op + "(") + len("." + op + "("):]
-        args = tail.split(")", 1)[0]
+        args = _balanced(tail)               # MATCHING close paren (derived args nest)
+        arg_selections = []
         if op == "with_area":
             # we handle MIN area only: with_area(nil, v). with_area(v, nil) is a
             # MAX-area rule (opposite direction) -- deferred.
@@ -135,11 +238,15 @@ def parse_rules(text, lm):
             if op in ("width", "space"):
                 arg_layers, value, mode = [], parts[0].replace(".um", ""), parts[1]
             else:
-                if _COMPLEX_SUBJ.search(parts[0]) or ".and(" in parts[0] or ".not(" in parts[0]:
+                # arg may be a SELECTED layer (e.g. nwell.outside(dnwell)); parse it
+                # like a subject. AND/NOT-derived args are still deferred.
+                argp = parse_complex_subject(expand_base(parts[0], _VARDEFS))
+                if argp is None or argp[1] or argp[2]:    # unparseable or has and/not
                     skip["derived_arg"] += 1
                     continue
-                arg_layers, value, mode = [parts[0]], parts[1].replace(".um", ""), parts[2]
-        sel_layers = [selection[1]] if selection else []
+                arg_layers, arg_selections = [argp[0]], argp[3]
+                value, mode = parts[1].replace(".um", ""), parts[2]
+        sel_layers = [y for _, y in selections] + [y for _, y in arg_selections]
         if any(l not in lm for l in list(s_and | s_not) + arg_layers + sel_layers):
             skip["nonbase"] += 1
             continue
@@ -158,8 +265,8 @@ def parse_rules(text, lm):
         rules.append({"id": rid, "desc": desc, "op": op, "base": base,
                       "covers": sorted(s_and - {base}), "holes": sorted(s_not),
                       "arg": arg_layers, "value": value, "mode": mode,
-                      "scope": scope, "line": line, "selection": selection,
-                      "behavioral_only": behavioral_only})
+                      "scope": scope, "line": line, "selections": selections,
+                      "arg_selections": arg_selections, "behavioral_only": behavioral_only})
     return rules, skip
 
 
@@ -233,29 +340,55 @@ def as_drawn(r):
         meas = [{"name": "E", "from": "a3", "to": "b3"}]
         cons = [_match(f"A.layer == {base}"), _match(f"B.layer == {r['arg'][0]}"), _check(f"E >= {v}")]
     else:  # separation
-        shapes = [_rect("A", 0, 0, 4, 10, "a"), _rect("B", 6, 0, 10, 10, "b")]
+        shapes = [_holed("A", 0, 0, 4, 10, "a", holes), _rect("B", 6, 0, 10, 10, "b")]
         meas = [{"name": "S", "from": "a1", "to": "b3"}]
         cons = [_match(f"A.layer == {base}"), _match(f"B.layer == {r['arg'][0]}"), _check(f"S >= {v}")]
+    sel_meas = []                       # wavy selection measures (A->S0), kept off straight
+    # covering rects (AND-derived layers) must cover only the SUBJECT shapes -- A,
+    # plus B for space (same layer) -- NOT a separation arg, else the arg becomes
+    # spuriously derived.
+    subj = shapes[:2] if op == "space" else shapes[:1]
+    bx0 = min(e["start"][0] for s in subj for e in s["edges"])
+    by0 = min(e["start"][1] for s in subj for e in s["edges"])
+    bx1 = max(e["start"][0] for s in subj for e in s["edges"])
+    by1 = max(e["start"][1] for s in subj for e in s["edges"])
     for k, cl in enumerate(r["covers"]):
-        shapes.append(_rect(f"C{k}", -1 - k, -1 - k, 11 + k, 11 + k, f"c{k}"))
+        shapes.append(_rect(f"C{k}", bx0 - 1 - k, by0 - 1 - k, bx1 + 1 + k, by1 + 1 + k, f"c{k}"))
         cons.append(_match(f"C{k}.layer == {cl}"))
     for k, (so, mk) in enumerate(r["scope"]):
         shapes.append(_rect(f"M{k}", *_marker_pos(so, k), f"m{k}"))
         cons.append(_match(f"M{k}.layer == {mk}"))
-    if r.get("selection"):                          # X.inside/outside/interacting(Y)
-        # the selection CONTEXT: the subject is selected by how it relates to this
-        # shape (S0). Its layer may coincide with a check operand -- that is NOT a
-        # duplicate, it is the signal that distinguishes e.g. outside(Y).sep(Y)
-        # (exclude touching) from a plain separation. Named S0, not the operand.
-        sel_op, y = r["selection"]
-        box = {"inside": (-5, -5, 30, 30),          # S0 contains the primary
-               "outside": (14, 0, 20, 4),           # S0 beside it with a gap -> disjoint
-               "interacting": (-3, -3, 5, 5)}[sel_op]  # S0 partially overlaps
-        shapes.append(_rect("S0", *box, "s0"))
-        cons.append(_match(f"S0.layer == {y}"))
-    # only the MEASURED edges are straight (real, oriented); the rest stay wavy
-    # (arbitrary continuation). A min-area shape is a specific closed region, so
-    # all of its edges are real.
+    # selection CONTEXTS S{k}: the subject is selected by how it relates to each
+    # (inside/outside/interacting). A WAVY measure subject->S{k} (>= 0) makes it a
+    # topological SELECTION, not a covering or scope marker -- so ours emits the
+    # deck's selection op. Applied to EACH subject shape (A, plus B for space, so
+    # both same-layer operands get the selection -> stays space, not separation).
+    # Layers may coincide with an operand -- that signal is meaningful, not a dup.
+    for k, (sel_op, y) in enumerate(r.get("selections", [])):
+        box = {"inside": (-5 - 3 * k, -5 - 3 * k, 30 + 3 * k, 30 + 3 * k),  # contains A
+               "outside": (14 + 8 * k, 0, 20 + 8 * k, 4),                  # beside, disjoint
+               "interacting": (-3 - 2 * k, -3 - 2 * k, 5, 5)}[sel_op]      # overlaps A
+        shapes.append(_rect(f"S{k}", *box, f"s{k}"))
+        cons.append(_match(f"S{k}.layer == {y}"))
+        for j, pfx in enumerate(["a", "b"] if op == "space" else ["a"]):
+            sel_meas.append({"name": f"GS{k}_{j}", "from": f"{pfx}0", "to": f"s{k}0"})
+            cons.append(_match(f"GS{k}_{j} >= 0"))
+    # arg selections (separation/enclosing): the ARG shape B is selected by how it
+    # relates to its context T{k} -> ours emits separation(arg.outside(Y)) etc.
+    # Contexts sit to the RIGHT/ABOVE B (6,0,10,10), clear of subject A (x in [0,4]).
+    for k, (sel_op, y) in enumerate(r.get("arg_selections", [])):
+        # boxes contain/avoid B in BOTH layouts (separation B=(6,0,10,10),
+        # enclosing B=(3,3,7,7)); B's selection is read via the wavy measure to T.
+        box = {"inside": (2 - 2 * k, -2 - 2 * k, 12 + 2 * k, 12 + 2 * k),  # contains B
+               "outside": (3, 14 + 8 * k, 10, 18 + 8 * k),                # above B, disjoint
+               "interacting": (4, 4, 12 + 2 * k, 12)}[sel_op]             # overlaps B
+        shapes.append(_rect(f"T{k}", *box, f"t{k}"))
+        cons.append(_match(f"T{k}.layer == {y}"))
+        sel_meas.append({"name": f"GT{k}", "from": "b2", "to": f"t{k}0"})
+        cons.append(_match(f"GT{k} >= 0"))
+    # only the MEASURED (dimensional) edges are straight (real, oriented); the rest
+    # stay wavy (arbitrary continuation / topological). A min-area shape is a
+    # specific closed region, so all of its edges are real.
     straight = {mz["from"] for mz in meas} | {mz["to"] for mz in meas}
     if op == "with_area":
         straight |= {e["id"] for e in shapes[0]["edges"]}
@@ -263,7 +396,7 @@ def as_drawn(r):
         for e in s["edges"]:
             e["edge"] = e["id"] in straight
     return {"name": r["id"], "desc": r["desc"], "shapes": shapes,
-            "measures": meas, "constraints": cons}
+            "measures": meas + sel_meas, "constraints": cons}
 
 
 def _match(expr):
@@ -279,6 +412,50 @@ def our_line(drc):
         if _OP.search(line):
             return line
     return ""
+
+
+def _angle_sig(s):
+    m = re.search(r"(\w+)\.with_angle\(\s*([\d.]+)\s*\.\.\s*([\d.]+)\s*\)", s)
+    return (m.group(1), float(m.group(2)), float(m.group(3))) if m else None
+
+
+def validate_angle_rules(text, lm):
+    """Round-trip the deck's `layer.with_angle(lo .. hi)` ACUTE rules: parse the
+    deck line, rebuild it as a drawn angle rule (a shape with an oriented edge +
+    `e.angle > lo and e.angle < hi`), recompile, and confirm the with_angle op
+    matches. Returns (matched, total, fails). Acute rules are inline one-liners
+    (`LAYER.with_angle(0 .. 45).output(...)`); the `.edges.with_angle(45)` single-
+    value sub-expressions don't match (need `..` and a real base layer)."""
+    lines = text.splitlines()
+    ok, tot, fails = 0, 0, []
+    for i, line in enumerate(lines):
+        m = re.search(r"(?:^|[=\s(])(\w+)\.with_angle\(\s*([\d.]+)\s*\.\.\s*([\d.]+)\s*\)", line)
+        if not m or m.group(1) not in lm:
+            continue
+        layer, lo, hi = m.group(1), float(m.group(2)), float(m.group(3))
+        mo = re.search(r'\.output\("([^"]+)",\s*"([^"]*)"\)', line)
+        if mo:
+            rid, desc = mo.group(1), mo.group(2)
+        else:
+            rid, desc = _find_output(lines, i, line.split("=", 1)[0].strip())
+        if rid is None:
+            continue
+        tot += 1
+        fl = lambda x: int(x) if float(x).is_integer() else x
+        tri = {"name": "A", "edges": [
+            {"id": "a0", "start": [0, 0], "end": [2000, 0], "edge": True},
+            {"id": "a1", "start": [2000, 0], "end": [2000, 1000], "edge": True},
+            {"id": "a2", "start": [2000, 1000], "end": [0, 0], "edge": True}]}
+        rule = {"name": rid, "desc": desc, "shapes": [tri], "measures": [],
+                "constraints": [_match(f"A.layer == {layer}"),
+                                _check(f"a2.angle > {fl(lo)} and a2.angle < {fl(hi)}")]}
+        drc = get("klayout", layermap=lm).compile(Rule(rule))
+        ours = next((ln for ln in drc.splitlines() if "with_angle" in ln), "")
+        if _angle_sig(ours) == _angle_sig(line):
+            ok += 1
+        else:
+            fails.append((rid, line.split("=", 1)[1].strip(), ours))
+    return ok, tot, fails
 
 
 def main():
@@ -312,7 +489,13 @@ def main():
     print(f"deferred (next frontiers): {skip}")
     for rid, off, ours in fails[:15]:
         print(f"  MISMATCH [{rid}]\n    official: {off}\n    ours    : {ours}")
-    return 0 if tot == ok else 1
+
+    # validation-scaling: round-trip the with_angle ACUTE rules (exact-match form)
+    a_ok, a_tot, a_fails = validate_angle_rules(text, lm)
+    print(f"\nwith_angle ACUTE rules: {a_ok}/{a_tot} round-trip MATCHED")
+    for rid, off, ours in a_fails[:10]:
+        print(f"  MISMATCH [{rid}] official={off!r} ours={ours!r}")
+    return 0 if (tot == ok and a_ok == a_tot) else 1
 
 
 if __name__ == "__main__":

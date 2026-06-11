@@ -247,12 +247,27 @@ class KLayoutBackend(Backend):
             self._emit(rule, union, 0, 1, rule.name or "or")
 
     def _emit_area(self, rule, shape, value, idx, total):
-        """Min-area check on a (possibly derived) layer -> with_area(nil, v)."""
+        """Min-area check on a (possibly derived/selected) layer -> with_area(nil, v)."""
         measured = {shape}
-        covering = {s for s in rule.covering(shape) if s not in measured}
-        consumed = measured | covering
+        # wavy-measure selections on the area shape (e.g. sab.outside(otp_mk))
+        sels, sel_consumed = [], set()
+        for sa, sb in rule.relation_selections():
+            other = sb if sa == shape else sa if sb == shape else None
+            if other is None or other in measured:
+                continue
+            ml = rule.layer_of(other)
+            if ml:
+                rel = rule.relation(shape, other)
+                so = ("inside" if rel == "inside"
+                      else "interacting" if rel == "overlap" else "outside")
+                sels.append((so, self._layer_var(ml)))
+                sel_consumed.add(other)
+        covering = {s for s in rule.covering(shape)
+                    if s not in measured and s not in sel_consumed}
+        consumed = measured | covering | sel_consumed
         v = self._fmt(value)
-        core = f"{self._derived(rule, shape, measured)}.with_area(nil, {v}.um)"
+        selsuf = "".join(f".{so}({l})" for so, l in sorted(set(sels)))
+        core = f"{self._derived(rule, shape, measured | sel_consumed)}{selsuf}.with_area(nil, {v}.um)"
         suffix = "".join(f".{op}({mk})" for op, mk in self._scope(rule, consumed, shape))
         if self.scope_all:
             sop, region = self.scope_all
