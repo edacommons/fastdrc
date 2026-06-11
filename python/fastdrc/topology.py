@@ -53,6 +53,14 @@ def edge_angle(edge) -> float:
     return 0.0 if abs(a) < EPS or abs(a - 180.0) < EPS else a
 
 
+def edge_length(edge) -> float:
+    """Euclidean length of an edge. The drawn value is an EXAMPLE; an edge-length
+    rule's threshold lives in the constraint (``<edge>.length <= 0.34``) and maps
+    to KLayout ``with_length``. Foundation for the edge-based rule family."""
+    (x0, y0), (x1, y1) = edge["start"], edge["end"]
+    return math.hypot(x1 - x0, y1 - y0)
+
+
 def corner_angle(prev_edge, edge) -> float:
     """Interior turn at the vertex where ``prev_edge`` meets ``edge`` (they share
     a vertex), in degrees: the signed change of direction (+ = left/convex on a

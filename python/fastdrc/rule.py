@@ -115,6 +115,40 @@ class Rule:
                 out.append((sa, sb))
         return out
 
+    def edge_length(self, edge_id):
+        """Drawn Euclidean length of an edge (native eval; informational -- the
+        rule threshold is symbolic, in the constraint)."""
+        name = self._edge_owner.get(edge_id)
+        if name is None:
+            return None
+        for e in self.shapes[name]["edges"]:
+            if e["id"] == edge_id:
+                return topology.edge_length(e)
+        return None
+
+    def length_bounds(self) -> list:
+        """Edge-LENGTH facts from ``<edge>.length <cmp> n``, as
+        ``(edge, kind, lo, hi)``: kind ``"with"`` -> ``with_length(lo, hi)``
+        (``<=`` gives lo=None=nil; ``==`` gives lo==hi exact); kind ``"without"``
+        from ``!=`` -> ``without_length(n)`` (edges NOT of that length)."""
+        out = []
+        spans = {}
+        for _, ast in self.constraints:
+            for edge, op, num in _attr_cmps(ast, ".length"):
+                if op == "!=":
+                    out.append((edge, "without", num, num))
+                    continue
+                lo, hi = spans.get(edge, [None, None])
+                if op in (">", ">="):
+                    lo = num
+                elif op in ("<", "<="):
+                    hi = num
+                elif op == "==":
+                    lo = hi = num
+                spans[edge] = [lo, hi]
+        out += [(e, "with", lo, hi) for e, (lo, hi) in spans.items()]
+        return out
+
     def corner_angle(self, edge_id):
         """The DRAWN interior turn at the vertex where this edge STARTS (between
         the previous edge and this one), via our topology -- what an engine
@@ -167,9 +201,10 @@ class Rule:
         out = []
         names = set(self.measures)
         for _, ast in self.constraints:
-            b = _bound(ast, names)
-            if b is not None:
-                out.append(b)
+            for leaf in _and_leaves(ast):       # a two-sided range is one `and`
+                b = _bound(leaf, names)
+                if b is not None:
+                    out.append(b)
         return out
 
     def area_bounds(self) -> list:
@@ -192,10 +227,12 @@ class Rule:
         ranges = {}
         for _, ast in self.constraints:
             for edge, op, num in _attr_cmps(ast, ".angle"):
+                if op not in ("<", "<=", ">", ">="):    # ranges only (not ==/!=)
+                    continue
                 lo, hi = ranges.get(edge, [0.0, 180.0])
                 if op in (">", ">="):
                     lo = num
-                elif op in ("<", "<="):
+                else:
                     hi = num
                 ranges[edge] = [lo, hi]
         return [(e, lo, hi) for e, (lo, hi) in ranges.items()]
@@ -239,7 +276,7 @@ def _attr_cmps(ast, suffix):
     if op in ("and", "or"):
         for a in ast["args"]:
             out += _attr_cmps(a, suffix)
-    elif op in _CMP or op == "==":
+    elif op in _CMP or op in ("==", "!="):
         a, b = ast["args"]
         ar = a.get("ref", "") if isinstance(a, dict) else ""
         br = b.get("ref", "") if isinstance(b, dict) else ""
@@ -248,6 +285,16 @@ def _attr_cmps(ast, suffix):
         elif br.endswith(suffix) and isinstance(a, dict) and "num" in a:
             out.append((br[:-len(suffix)], _FLIP.get(op, op), a["num"]))
     return out
+
+
+def _and_leaves(ast):
+    """Yield the conjuncts of an ``and`` (recursively), or the ast itself -- so a
+    two-sided range ``v1 <= W and W < v2`` surfaces both comparisons."""
+    if isinstance(ast, dict) and ast.get("op") == "and":
+        for a in ast["args"]:
+            yield from _and_leaves(a)
+    else:
+        yield ast
 
 
 def _bound(ast, varnames):

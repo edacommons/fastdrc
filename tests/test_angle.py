@@ -142,3 +142,53 @@ def test_corner_magnitude_is_winding_independent():
     ca = next(ln for ln in a.splitlines() if "corners" in ln).split("=", 1)[1].strip()
     cb = next(ln for ln in b.splitlines() if "corners" in ln).split("=", 1)[1].strip()
     assert ca == cb
+
+
+def test_edge_length_with_length():
+    import fastdrc.topology as _t
+    assert _t.edge_length(edge("h", 0, 0, 300, 0)) == 300.0
+    rule = {"name": "shortedge", "desc": "comp edges <= 0.34um",
+            "shapes": [{"name": "A", "edges": [
+                edge("a0", 0, 0, 300, 0), edge("a1", 300, 0, 300, 5000),
+                edge("a2", 300, 5000, 0, 5000), edge("a3", 0, 5000, 0, 0)]}],
+            "measures": [],
+            "constraints": [{"kind": "match", "expr": "A.layer == comp"},
+                            {"kind": "check", "expr": "a0.length <= 0.34"}]}
+    r = Rule(rule)
+    assert r.length_bounds() == [("a0", "with", None, 0.34)]
+    assert r.edge_length("a0") == 300.0
+    drc = get("klayout", layermap={"comp": (22, 0)}).compile(r)
+    line = next(ln for ln in drc.splitlines() if "with_length" in ln).split("=", 1)[1].strip()
+    assert line == "comp.edges.with_length(nil, 0.34.um)"
+
+
+def test_edge_length_exact_and_range():
+    base = {"name": "x", "desc": "x",
+            "shapes": [{"name": "A", "edges": [
+                edge("a0", 0, 0, 300, 0), edge("a1", 300, 0, 300, 500),
+                edge("a2", 300, 500, 0, 500), edge("a3", 0, 500, 0, 0)]}],
+            "measures": []}
+    # exact length (==) -> single arg
+    r = Rule({**base, "constraints": [{"kind": "match", "expr": "A.layer == comp"},
+                                      {"kind": "check", "expr": "a0.length == 0.22"}]})
+    drc = get("klayout", layermap={"comp": (22, 0)}).compile(r)
+    assert "edges.with_length(0.22.um)" in drc
+    # range (>= and <=) -> two args
+    r = Rule({**base, "constraints": [{"kind": "match", "expr": "A.layer == comp"},
+                                      {"kind": "check", "expr": "a0.length >= 0.1 and a0.length <= 0.5"}]})
+    drc = get("klayout", layermap={"comp": (22, 0)}).compile(r)
+    assert "edges.with_length(0.1.um, 0.5.um)" in drc
+
+
+def test_edge_without_length():
+    # `!= L` -> without_length(L): edges NOT of that length (CO.1 pattern).
+    r = Rule({"name": "x", "desc": "x",
+              "shapes": [{"name": "A", "edges": [
+                  edge("a0", 0, 0, 300, 0), edge("a1", 300, 0, 300, 500),
+                  edge("a2", 300, 500, 0, 500), edge("a3", 0, 500, 0, 0)]}],
+              "measures": [],
+              "constraints": [{"kind": "match", "expr": "A.layer == contact"},
+                              {"kind": "check", "expr": "a0.length != 0.22"}]})
+    assert r.length_bounds() == [("a0", "without", 0.22, 0.22)]
+    drc = get("klayout", layermap={"contact": (33, 0)}).compile(r)
+    assert "contact.edges.without_length(0.22.um)" in drc

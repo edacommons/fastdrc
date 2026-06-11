@@ -24,6 +24,10 @@ from __future__ import annotations
 from .backend import register, Backend
 from .rule import Rule
 
+# flip a comparison so the value can move to the left of a .drc() range predicate
+# (e.g. `S >= 0.04` -> `0.04 <= S`): used to build `lo <= pred < hi`.
+_FLIPOP = {">": "<", ">=": "<=", "<": ">", "<=": ">="}
+
 
 @register
 class KLayoutBackend(Backend):
@@ -48,17 +52,20 @@ class KLayoutBackend(Backend):
         if rule.data.get("or"):           # OR-of-variants: union alternative sub-rules
             self._emit_union(rule, rule.data["or"])
             return self._assemble()
-        # only STRAIGHT-edge measures are real dimensional checks; a wavy-edge
-        # measure is a topological selection (handled in _emit_check).
-        mins = [b for b in rule.bounds() if b.is_min and rule.measure_is_straight(b.var)]
+        # Straight-edge measures are dimensional, grouped per measure: a MIN bound
+        # -> violation check (width/space/sep/enclosing); a MAX bound (optionally
+        # WITH a min = a two-sided range) -> a .drc(...) narrow-gap / range
+        # SELECTOR. Wavy measures are topological selections (in _check_expr).
+        checks = self._group_bounds(rule)
         areas = [a for a in rule.area_bounds() if a[1] in (">", ">=")]
         angles = rule.angle_bounds()
         corners = rule.corner_bounds()
-        total = len(mins) + len(areas) + len(angles) + len(corners)
+        lengths = rule.length_bounds()
+        total = len(checks) + len(areas) + len(angles) + len(corners) + len(lengths)
         off = 0
-        for i, bnd in enumerate(mins):
-            self._emit_check(rule, bnd, i, total)
-        off += len(mins)
+        for i, (var, (lo, hi)) in enumerate(checks):
+            self._emit_check(rule, var, lo, hi, i, total)
+        off += len(checks)
         for j, (shape, _, value) in enumerate(areas):
             self._emit_area(rule, shape, value, off + j, total)
         off += len(areas)
@@ -67,6 +74,9 @@ class KLayoutBackend(Backend):
         off += len(angles)
         for k, (edge, angle) in enumerate(corners):
             self._emit_corner(rule, edge, angle, off + k, total)
+        off += len(corners)
+        for k, (edge, kind, lo, hi) in enumerate(lengths):
+            self._emit_length(rule, edge, kind, lo, hi, off + k, total)
         return self._assemble()
 
     def _assemble(self):
@@ -78,15 +88,16 @@ class KLayoutBackend(Backend):
         out += self._checks
         return "\n".join(out) + "\n"
 
-    def _check_expr(self, rule, bnd):
-        """Full KLayout check expression for one bound (derived layer + selections
-        + op + scope), WITHOUT output/forget -- so callers can union alternatives
-        with .or() (OR-of-variants rules)."""
-        m = rule.measures.get(bnd.var)
+    def _check_expr(self, rule, var, lo, hi):
+        """Full KLayout check expression for a measure's bounds (derived layer +
+        selections + op + scope), WITHOUT output/forget. A MIN bound -> violation
+        check (width/space/sep/enclosing); a MAX bound (optionally WITH a min) ->
+        a .drc(...) narrow-gap / range SELECTOR. None if unsupported."""
+        m = rule.measures.get(var)
         if m is None:
             return None
         sf, st = rule.shape_of_edge(m["from"]), rule.shape_of_edge(m["to"])
-        v, mt = self._fmt(bnd.value), self.metric
+        mt = self.metric
         measured = {sf, st}
 
         # Topological SELECTIONS (outside/inside/interacting) on the measured
@@ -148,31 +159,69 @@ class KLayoutBackend(Backend):
         def dl(shape):                          # derived layer, minus selected contexts
             return self._derived(rule, shape, measured | sel_consumed) + selsuf(shape)
 
-        subj = dl(sf)
-        if sf == st:                                       # intra-shape -> width
-            core = f"{subj}.width({v}.um, {mt})"
-        else:
-            rel = rule.relation(sf, st)
-            if rel == "inside":                            # sf inside st -> st encloses sf
-                core = f"{dl(st)}.enclosing({subj}, {v}.um, {mt})"
-            elif rel == "contains":                        # sf contains st
-                core = f"{subj}.enclosing({dl(st)}, {v}.um, {mt})"
-            elif dl(sf) == dl(st):                          # same layer -> space
-                core = f"{subj}.space({v}.um, {mt})"
-            else:                                          # diff layers -> separation
-                core = f"{subj}.separation({dl(st)}, {v}.um, {mt})"
+        if hi is None:                                     # MIN bound -> violation check
+            v = self._fmt(lo.value)
+            if sf == st:                                   # intra-shape -> width
+                core = f"{dl(sf)}.width({v}.um, {mt})"
+            else:
+                rel = rule.relation(sf, st)
+                if rel == "inside":                        # sf inside st -> st encloses sf
+                    core = f"{dl(st)}.enclosing({dl(sf)}, {v}.um, {mt})"
+                elif rel == "contains":                    # sf contains st
+                    core = f"{dl(sf)}.enclosing({dl(st)}, {v}.um, {mt})"
+                elif dl(sf) == dl(st):                     # same layer -> space
+                    core = f"{dl(sf)}.space({v}.um, {mt})"
+                else:                                      # diff layers -> separation
+                    core = f"{dl(sf)}.separation({dl(st)}, {v}.um, {mt})"
+            body, v_scope = f"{core}.polygons(0.001)", v
+        else:                                              # MAX present -> .drc() selector
+            subject, pred = self._drc_predicate(rule, sf, st, dl)
+            if subject is None:
+                return None
+            hv = self._fmt(hi.value)
+            if lo is None:                                 # one-sided: pred <op> hi
+                inner = f"{pred} {hi.op} {hv}.um"
+            else:                                          # range: lo <= pred < hi
+                inner = f"{self._fmt(lo.value)}.um {_FLIPOP[lo.op]} {pred} {hi.op} {hv}.um"
+            body, v_scope = f"{subject}.drc({inner})", hv
 
         suffix = "".join(f".{op}({mk})" for op, mk in self._scope(rule, consumed, sf))
         if self.scope_all:                                # deck-level / computed scope
             sop, region = self.scope_all
-            suffix += f".{sop}({region.format(value=v)})"
-        return f"{core}.polygons(0.001){suffix}"
+            suffix += f".{sop}({region.format(value=v_scope)})"
+        return f"{body}{suffix}"
 
-    def _emit_check(self, rule, bnd, idx, total):
-        expr = self._check_expr(rule, bnd)
+    def _drc_predicate(self, rule, sf, st, dl):
+        """(subject_expr, predicate) for a .drc() selector: width / space /
+        separation(other) / enclosed(outer). enclosed is on the INNER shape."""
+        if sf == st:
+            return dl(sf), "width"
+        rel = rule.relation(sf, st)
+        if rel == "inside":                                # sf enclosed by st
+            return dl(sf), f"enclosed({dl(st)})"
+        if rel == "contains":                              # st enclosed by sf
+            return dl(st), f"enclosed({dl(sf)})"
+        if dl(sf) == dl(st):
+            return dl(sf), "space"
+        return dl(sf), f"separation({dl(st)})"
+
+    def _emit_check(self, rule, var, lo, hi, idx, total):
+        expr = self._check_expr(rule, var, lo, hi)
         if expr is not None:
-            rid = rule.name or f"{bnd.var} {bnd.op} {self._fmt(bnd.value)}"
+            b = lo or hi
+            rid = rule.name or f"{var} {b.op} {self._fmt(b.value)}"
             self._emit(rule, expr, idx, total, rid)
+
+    @staticmethod
+    def _group_bounds(rule):
+        """Straight-edge measure -> [min_bound, max_bound] (either may be None).
+        A measure with both is a two-sided range (-> .drc range selector)."""
+        groups = {}
+        for b in rule.bounds():
+            if rule.measure_is_straight(b.var):
+                lh = groups.setdefault(b.var, [None, None])
+                lh[0 if b.is_min else 1] = b
+        return list(groups.items())
 
     def _emit(self, rule, expr, idx, total, rid):
         desc = rule.desc or rid
@@ -189,11 +238,10 @@ class KLayoutBackend(Backend):
         exprs = []
         for sub in alts:
             sr = Rule(sub)
-            for b in sr.bounds():
-                if b.is_min and sr.measure_is_straight(b.var):
-                    e = self._check_expr(sr, b)
-                    if e:
-                        exprs.append(e)
+            for var, (lo, hi) in self._group_bounds(sr):
+                e = self._check_expr(sr, var, lo, hi)
+                if e:
+                    exprs.append(e)
         if exprs:
             union = exprs[0] + "".join(f".or({e})" for e in exprs[1:])
             self._emit(rule, union, 0, 1, rule.name or "or")
@@ -227,6 +275,27 @@ class KLayoutBackend(Backend):
         core = f"{layer}.with_angle({self._fmt(lo)} .. {self._fmt(hi)})"
         suffix = "".join(f".{op}({mk})" for op, mk in self._scope(rule, {shape}, shape))
         rid = rule.name or f"{edge}.angle in ({lo}..{hi})"
+        desc = rule.desc or rid
+        var = self._result_var(rid, idx, total)
+        self._checks.append(f"{var} = {core}{suffix}")
+        self._checks.append(f'{var}.output("{rid}", "{desc}")')
+        self._checks.append(f"{var}.forget")
+
+    def _emit_length(self, rule, edge, kind, lo, hi, idx, total):
+        """Edge-length check. kind "with" -> layer.edges.with_length(min, max)
+        (nil = unbounded; single arg when exact); kind "without" -> edges NOT of
+        that length (without_length). Returns edges, so no .polygons."""
+        shape = rule.shape_of_edge(edge)
+        layer = self._layer_var(rule.layer_of(shape) or f"_{shape}")
+        nm = lambda x: "nil" if x is None else f"{self._fmt(x)}.um"
+        if kind == "without":
+            core = f"{layer}.edges.without_length({nm(lo)})"
+        elif lo is not None and lo == hi:
+            core = f"{layer}.edges.with_length({nm(lo)})"      # exact length
+        else:
+            core = f"{layer}.edges.with_length({nm(lo)}, {nm(hi)})"
+        suffix = "".join(f".{op}({mk})" for op, mk in self._scope(rule, {shape}, shape))
+        rid = rule.name or f"{edge}.length"
         desc = rule.desc or rid
         var = self._result_var(rid, idx, total)
         self._checks.append(f"{var} = {core}{suffix}")

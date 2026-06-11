@@ -199,3 +199,88 @@ def test_or_of_variants_unions_subrule_checks():
     expr = checks[0].split("=", 1)[1].strip()
     assert expr == ("comp.width(0.22.um, euclidian).polygons(0.001)"
                     ".or(poly2.width(0.22.um, euclidian).polygons(0.001))")
+
+
+def test_drc_width_selector_from_max_bound():
+    # A MAX-bound intra-shape width (W <= V) is a narrow-region SELECTOR ->
+    # layer.drc(width <= V), distinct from the W >= V violation check. Entry to
+    # KLayout's .drc() predicate DSL; composes with selections via _check_expr.
+    A = {"name": "A", "edges": _edges("a", 0, 0, 300, 5000, {1, 3})}
+    rule = {"name": "narrow", "desc": "narrow metal1",
+            "shapes": [A], "measures": [{"name": "W", "from": "a3", "to": "a1"}],
+            "constraints": [{"kind": "match", "expr": "A.layer == metal1"},
+                            {"kind": "check", "expr": "W <= 0.34"}]}
+    drc = get("klayout", layermap={"metal1": (34, 0)}).compile(Rule(rule))
+    line = next(ln for ln in drc.splitlines() if ".drc(" in ln).split("=", 1)[1].strip()
+    assert line == "metal1.drc(width <= 0.34.um)"
+    assert ".width(" not in line and ".polygons(" not in line   # drc returns a Region
+
+
+def test_min_width_still_a_violation_check():
+    # The MIN bound is unchanged: W >= V -> .width(V).polygons(0.001).
+    A = {"name": "A", "edges": _edges("a", 0, 0, 300, 5000, {1, 3})}
+    rule = {"name": "w", "desc": "w",
+            "shapes": [A], "measures": [{"name": "W", "from": "a3", "to": "a1"}],
+            "constraints": [{"kind": "match", "expr": "A.layer == metal1"},
+                            {"kind": "check", "expr": "W >= 0.34"}]}
+    drc = get("klayout", layermap={"metal1": (34, 0)}).compile(Rule(rule))
+    line = next(ln for ln in drc.splitlines() if ".width(" in ln)
+    assert ".width(0.34.um, euclidian).polygons(0.001)" in line and ".drc(" not in line
+
+
+def test_drc_space_and_separation_selectors():
+    # MAX bound between two shapes -> drc(space<=V) (same layer) or
+    # drc(separation(X)<=V) (different layers) -- narrow-gap selectors.
+    A = {"name": "A", "edges": _edges("a", 0, 0, 1000, 1000, {1})}
+    B = {"name": "B", "edges": _edges("b", 1200, 0, 2200, 1000, {3})}
+    sp = {"name": "x", "desc": "x", "shapes": [A, B],
+          "measures": [{"name": "S", "from": "a1", "to": "b3"}],
+          "constraints": [{"kind": "match", "expr": "A.layer == metal1"},
+                          {"kind": "match", "expr": "B.layer == metal1"},
+                          {"kind": "check", "expr": "S <= 0.3"}]}
+    line = next(ln for ln in get("klayout", layermap={"metal1": (34, 0)}).compile(Rule(sp)).splitlines()
+                if ".drc(" in ln).split("=", 1)[1].strip()
+    assert line == "metal1.drc(space <= 0.3.um)"
+
+    C = {"name": "C", "edges": _edges("c", 1200, 0, 2200, 1000, {3})}
+    sep = {"name": "x", "desc": "x", "shapes": [A, C],
+           "measures": [{"name": "S", "from": "a1", "to": "c3"}],
+           "constraints": [{"kind": "match", "expr": "A.layer == metal1"},
+                           {"kind": "match", "expr": "C.layer == comp"},
+                           {"kind": "check", "expr": "S <= 0.2"}]}
+    line = next(ln for ln in get("klayout", layermap={"metal1": (34, 0), "comp": (22, 0)}).compile(Rule(sep)).splitlines()
+                if ".drc(" in ln).split("=", 1)[1].strip()
+    assert line == "metal1.drc(separation(comp) <= 0.2.um)"
+
+
+def test_drc_enclosed_and_range_predicates():
+    # MAX bound across an inside relation -> drc(enclosed(outer) <op> V); a
+    # two-sided range (min and max on one measure) -> drc(lo <= pred < hi).
+    # This is the V1.3d via-enclosure pattern.
+    inner = {"name": "A", "edges": _edges("a", 100, 100, 400, 400, {0, 1, 2, 3})}
+    outer = {"name": "B", "edges": _edges("b", 0, 0, 500, 500, {0, 1, 2, 3})}
+    lm = {"via1": (35, 0), "metal1": (34, 0)}
+
+    def compile_(expr):
+        rule = {"name": "x", "desc": "x", "shapes": [inner, outer],
+                "measures": [{"name": "S", "from": "a0", "to": "b0"}],
+                "constraints": [{"kind": "match", "expr": "A.layer == via1"},
+                                {"kind": "match", "expr": "B.layer == metal1"},
+                                {"kind": "check", "expr": expr}]}
+        return next(ln for ln in get("klayout", layermap=lm).compile(Rule(rule)).splitlines()
+                    if ".drc(" in ln).split("=", 1)[1].strip()
+
+    assert compile_("S <= 0.06") == "via1.drc(enclosed(metal1) <= 0.06.um)"
+    assert compile_("S >= 0.04 and S < 0.06") == \
+        "via1.drc(0.04.um <= enclosed(metal1) < 0.06.um)"
+
+
+def test_drc_width_range():
+    A = {"name": "A", "edges": _edges("a", 0, 0, 300, 5000, {1, 3})}
+    rule = {"name": "x", "desc": "x", "shapes": [A],
+            "measures": [{"name": "W", "from": "a3", "to": "a1"}],
+            "constraints": [{"kind": "match", "expr": "A.layer == metal1"},
+                            {"kind": "check", "expr": "W >= 0.1 and W <= 0.5"}]}
+    line = next(ln for ln in get("klayout", layermap={"metal1": (34, 0)}).compile(Rule(rule)).splitlines()
+                if ".drc(" in ln).split("=", 1)[1].strip()
+    assert line == "metal1.drc(0.1.um <= width <= 0.5.um)"
