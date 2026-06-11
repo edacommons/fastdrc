@@ -81,6 +81,40 @@ class Rule:
                 return topology.edge_angle(e)
         return None
 
+    def _edge_straight(self, edge_id):
+        name = self._edge_owner.get(edge_id)
+        if name is None:
+            return False
+        for e in self.shapes[name]["edges"]:
+            if e["id"] == edge_id:
+                return bool(e.get("edge", False))
+        return False
+
+    def measure_is_straight(self, mname):
+        """True if both endpoints of the measure are STRAIGHT edges -- a real,
+        oriented distance (a dimensional check). A measure across WAVY edges is
+        not a distance but a topological assertion (see relation_selections)."""
+        m = self.measures.get(mname)
+        return bool(m and self._edge_straight(m["from"]) and self._edge_straight(m["to"]))
+
+    def relation_selections(self):
+        """A measure drawn across WAVY edges asserts a topological relation, not a
+        distance: a ``>=`` bound means the two shapes don't overlap but the gap
+        MAY be zero (they may touch) -> a SELECTION on the subject (KLayout
+        ``outside`` keeps touching polys), as opposed to a fully-separate
+        no-measure shape, which is a ``not_interacting`` scope MARKER (drops
+        touching). Returns [(shapeA, shapeB)] of such wavy-measure pairs; the
+        backend reads the relation from the subject's side."""
+        out = []
+        minvars = {b.var for b in self.bounds() if b.is_min}
+        for mname, m in self.measures.items():
+            if mname not in minvars or self.measure_is_straight(mname):
+                continue
+            sa, sb = self.shape_of_edge(m["from"]), self.shape_of_edge(m["to"])
+            if sa is not None and sb is not None and sa != sb:
+                out.append((sa, sb))
+        return out
+
     def corner_angle(self, edge_id):
         """The DRAWN interior turn at the vertex where this edge STARTS (between
         the previous edge and this one), via our topology -- what an engine
