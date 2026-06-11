@@ -31,12 +31,39 @@ sides (a shape that notionally extends past an edge) will need special handling.
 
 from __future__ import annotations
 
+import math
+
 EPS = 1e-9
 
 
 def shape_polygon(shape) -> list:
     """Vertex loop of a shape = the ordered edge start points."""
     return [(float(e["start"][0]), float(e["start"][1])) for e in shape["edges"]]
+
+
+def edge_angle(edge) -> float:
+    """Orientation of a (straight) edge as an UNDIRECTED line, in [0, 180)
+    degrees. A horizontal edge is 0, vertical is 90, a "/" diagonal 45, a "\\"
+    diagonal 135. This is the quantity KLayout's ``with_angle`` filters on, so an
+    acute (non-0/45/90/135) edge reads as a non-axis, non-45 orientation.
+    Only meaningful for ``edge: true`` (straight/real) edges -- a wavy edge is an
+    arbitrary continuation with no fixed orientation."""
+    (x0, y0), (x1, y1) = edge["start"], edge["end"]
+    a = math.degrees(math.atan2(y1 - y0, x1 - x0)) % 180.0
+    return 0.0 if abs(a) < EPS or abs(a - 180.0) < EPS else a
+
+
+def corner_angle(prev_edge, edge) -> float:
+    """Interior turn at the vertex where ``prev_edge`` meets ``edge`` (they share
+    a vertex), in degrees: the signed change of direction (+ = left/convex on a
+    CCW loop, - = right/concave), in (-180, 180]. A right-angle convex corner is
+    +90; a 135-degree chamfer corner is +45. Foundation for corner rules
+    (``corners(a)``); the sign mirrors a CCW traversal."""
+    (ax0, ay0), (ax1, ay1) = prev_edge["start"], prev_edge["end"]
+    (bx0, by0), (bx1, by1) = edge["start"], edge["end"]
+    d1 = math.atan2(ay1 - ay0, ax1 - ax0)
+    d2 = math.atan2(by1 - by0, bx1 - bx0)
+    return math.degrees((d2 - d1 + math.pi) % (2 * math.pi) - math.pi)
 
 
 def _orient(a, b, c) -> float:

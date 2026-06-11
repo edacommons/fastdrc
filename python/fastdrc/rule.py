@@ -70,6 +70,31 @@ class Rule:
     def shape_of_edge(self, edge_id):
         return self._edge_owner.get(edge_id)
 
+    def edge_angle(self, edge_id):
+        """The DRAWN orientation of a straight edge (undirected, [0,180)), via our
+        topology -- what our engine evaluates an angle rule against natively."""
+        name = self._edge_owner.get(edge_id)
+        if name is None:
+            return None
+        for e in self.shapes[name]["edges"]:
+            if e["id"] == edge_id:
+                return topology.edge_angle(e)
+        return None
+
+    def corner_angle(self, edge_id):
+        """The DRAWN interior turn at the vertex where this edge STARTS (between
+        the previous edge and this one), via our topology -- what an engine
+        evaluates a corner rule against. Sign depends on draw winding; rules use
+        the magnitude."""
+        name = self._edge_owner.get(edge_id)
+        if name is None:
+            return None
+        edges = self.shapes[name]["edges"]
+        for i, e in enumerate(edges):
+            if e["id"] == edge_id:
+                return topology.corner_angle(edges[(i - 1) % len(edges)], e)
+        return None
+
     def interior_point(self, shape):
         poly = self.polygon(shape)
         n = len(poly)
@@ -124,6 +149,36 @@ class Rule:
                     out.append((ref[:-len(".area")], ast["op"], b["num"]))
         return out
 
+    def angle_bounds(self) -> list:
+        """Forbidden edge-ORIENTATION ranges, from constraints on an edge's angle
+        (``<edge>.angle <cmp> n``, optionally and-combined): ``e.angle > 0 and
+        e.angle < 45`` -> ``(edge, 0, 45)``. The compiler maps each to
+        ``layer.with_angle(lo .. hi)`` (an acute / non-45 angle check). An open
+        side defaults to the full [0,180) range."""
+        ranges = {}
+        for _, ast in self.constraints:
+            for edge, op, num in _attr_cmps(ast, ".angle"):
+                lo, hi = ranges.get(edge, [0.0, 180.0])
+                if op in (">", ">="):
+                    lo = num
+                elif op in ("<", "<="):
+                    hi = num
+                ranges[edge] = [lo, hi]
+        return [(e, lo, hi) for e, (lo, hi) in ranges.items()]
+
+    def corner_bounds(self) -> list:
+        """Corner-angle facts: ``<edge>.corner == n`` -> (edge, |n|). The vertex
+        where the edge starts must turn by magnitude n. Maps to
+        ``corners(n).or(corners(-n))`` -- a |angle|=n corner rule (convex OR
+        concave), e.g. PL.6's ``corners(90).or(corners(-90))``. Magnitude is
+        winding-independent, so the drawn corner's sign is incidental."""
+        out = []
+        for _, ast in self.constraints:
+            for edge, op, num in _attr_cmps(ast, ".corner"):
+                if op == "==":
+                    out.append((edge, abs(num)))
+        return out
+
 
 # --- small AST queries over the {op, args[]} constraint form ---
 
@@ -137,6 +192,28 @@ def _eq_value(ast, target):
         if b.get("ref") == target:
             return a.get("ref", a.get("num"))
     return None
+
+
+def _attr_cmps(ast, suffix):
+    """Collect ``(ref, cmp, num)`` from every ``<ref><suffix> <cmp> num`` leaf
+    (e.g. suffix ``.angle`` or ``.corner``), recursing through ``and`` and ``or``
+    so a two-sided range or either branch yields its bounds."""
+    out = []
+    if not isinstance(ast, dict):
+        return out
+    op = ast.get("op")
+    if op in ("and", "or"):
+        for a in ast["args"]:
+            out += _attr_cmps(a, suffix)
+    elif op in _CMP or op == "==":
+        a, b = ast["args"]
+        ar = a.get("ref", "") if isinstance(a, dict) else ""
+        br = b.get("ref", "") if isinstance(b, dict) else ""
+        if ar.endswith(suffix) and isinstance(b, dict) and "num" in b:
+            out.append((ar[:-len(suffix)], op, b["num"]))
+        elif br.endswith(suffix) and isinstance(a, dict) and "num" in a:
+            out.append((br[:-len(suffix)], _FLIP.get(op, op), a["num"]))
+    return out
 
 
 def _bound(ast, varnames):
