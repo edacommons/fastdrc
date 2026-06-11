@@ -324,15 +324,15 @@ def as_drawn(r):
     # markers); the single `check` is the assertion verified (a violation is a
     # matched configuration where the check fails).
     if op == "with_area":
-        shapes = [_holed("A", 0, 0, 10, 4, "a", holes)]
+        shapes = [_rect("A", 0, 0, 10, 4, "a")]
         meas = []
         cons = [_match(f"A.layer == {base}"), _check(f"A.area >= {v}")]
     elif op == "width":
-        shapes = [_holed("A", 0, 0, 10, 4, "a", holes)]
+        shapes = [_rect("A", 0, 0, 10, 4, "a")]
         meas = [{"name": "W", "from": "a1", "to": "a3"}]
         cons = [_match(f"A.layer == {base}"), _check(f"W >= {v}")]
     elif op == "space":
-        shapes = [_holed("A", 0, 0, 4, 10, "a", holes), _holed("B", 6, 0, 10, 10, "b", holes)]
+        shapes = [_rect("A", 0, 0, 4, 10, "a"), _rect("B", 6, 0, 10, 10, "b")]
         meas = [{"name": "S", "from": "a1", "to": "b3"}]
         cons = [_match(f"A.layer == {base}"), _match(f"B.layer == {base}"), _check(f"S >= {v}")]
     elif op == "enclosing":
@@ -340,7 +340,7 @@ def as_drawn(r):
         meas = [{"name": "E", "from": "a3", "to": "b3"}]
         cons = [_match(f"A.layer == {base}"), _match(f"B.layer == {r['arg'][0]}"), _check(f"E >= {v}")]
     else:  # separation
-        shapes = [_holed("A", 0, 0, 4, 10, "a", holes), _rect("B", 6, 0, 10, 10, "b")]
+        shapes = [_rect("A", 0, 0, 4, 10, "a"), _rect("B", 6, 0, 10, 10, "b")]
         meas = [{"name": "S", "from": "a1", "to": "b3"}]
         cons = [_match(f"A.layer == {base}"), _match(f"B.layer == {r['arg'][0]}"), _check(f"S >= {v}")]
     sel_meas = []                       # wavy selection measures (A->S0), kept off straight
@@ -352,6 +352,21 @@ def as_drawn(r):
     by0 = min(e["start"][1] for s in subj for e in s["edges"])
     bx1 = max(e["start"][0] for s in subj for e in s["edges"])
     by1 = max(e["start"][1] for s in subj for e in s["edges"])
+    # REMOVED (subtracted) layers -> a real cutout shape INSIDE each subject shape,
+    # away from the device point, with a straight cutting edge (a device layer, not
+    # an all-wavy domain marker). The compiler derives comp.not(otp_mk) from where
+    # the cutout sits relative to the measurement. (Replaces the old tagged hole.)
+    cut_straight = set()
+    for k, hl in enumerate(holes):
+        for si, ss in enumerate(subj):
+            sx = min(e["start"][0] for e in ss["edges"])
+            sy = min(e["start"][1] for e in ss["edges"])
+            nm = f"X{k}{si}"
+            cut = _rect(nm, sx + 0.5 + k, sy + 0.5, sx + 1.5 + k, sy + 1.5, nm.lower())
+            cut["edges"][0]["edge"] = True          # the cutting boundary is real
+            cut_straight.add(cut["edges"][0]["id"])
+            shapes.append(cut)
+            cons.append(_match(f"{nm}.layer == {hl}"))
     for k, cl in enumerate(r["covers"]):
         shapes.append(_rect(f"C{k}", bx0 - 1 - k, by0 - 1 - k, bx1 + 1 + k, by1 + 1 + k, f"c{k}"))
         cons.append(_match(f"C{k}.layer == {cl}"))
@@ -386,12 +401,11 @@ def as_drawn(r):
         cons.append(_match(f"T{k}.layer == {y}"))
         sel_meas.append({"name": f"GT{k}", "from": "b2", "to": f"t{k}0"})
         cons.append(_match(f"GT{k} >= 0"))
-    # only the MEASURED (dimensional) edges are straight (real, oriented); the rest
-    # stay wavy (arbitrary continuation / topological). A min-area shape is a
-    # specific closed region, so all of its edges are real.
-    straight = {mz["from"] for mz in meas} | {mz["to"] for mz in meas}
-    if op == "with_area":
-        straight |= {e["id"] for e in shapes[0]["edges"]}
+    # only the MEASURED (dimensional) edges are straight (real, oriented); every
+    # other edge is wavy = a don't-care boundary the rule doesn't constrain. A min-
+    # area shape has NO measured edge (only the total area matters), so all its
+    # edges are wavy -- the rect stands for "any polygon", and area is still defined.
+    straight = {mz["from"] for mz in meas} | {mz["to"] for mz in meas} | cut_straight
     for s in shapes:
         for e in s["edges"]:
             e["edge"] = e["id"] in straight
@@ -443,8 +457,10 @@ def validate_angle_rules(text, lm):
         tot += 1
         fl = lambda x: int(x) if float(x).is_integer() else x
         tri = {"name": "A", "edges": [
-            {"id": "a0", "start": [0, 0], "end": [2000, 0], "edge": True},
-            {"id": "a1", "start": [2000, 0], "end": [2000, 1000], "edge": True},
+            # only a2 (the angle-constrained edge) is STRAIGHT/real -- it has a real
+            # orientation; a0/a1 just close the shape (don't-care boundary -> wavy).
+            {"id": "a0", "start": [0, 0], "end": [2000, 0], "edge": False},
+            {"id": "a1", "start": [2000, 0], "end": [2000, 1000], "edge": False},
             {"id": "a2", "start": [2000, 1000], "end": [0, 0], "edge": True}]}
         rule = {"name": rid, "desc": desc, "shapes": [tri], "measures": [],
                 "constraints": [_match(f"A.layer == {layer}"),

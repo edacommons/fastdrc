@@ -46,9 +46,9 @@ def test_corner_angle_right_and_chamfer():
 ACUTE_RULE = {
     "name": "comp_angle", "desc": "ACUTE : non 45 degree angle comp",
     "shapes": [{"name": "A", "edges": [
-        edge("a0", 0, 0, 2000, 0),         # 0 deg
-        edge("a1", 2000, 0, 2000, 1000),   # 90 deg
-        edge("a2", 2000, 1000, 0, 0),      # acute hypotenuse (~26.57)
+        edge("a0", 0, 0, 2000, 0, straight=False),       # don't-care boundary
+        edge("a1", 2000, 0, 2000, 1000, straight=False),  # don't-care boundary
+        edge("a2", 2000, 1000, 0, 0),      # acute hypotenuse (~26.57) -- the angle edge
     ]}],
     "measures": [],
     "constraints": [
@@ -83,8 +83,10 @@ def test_integer_angle_formatting():
 def _square(name, layer, o=0):
     pts = [(o, 0), (o + 1000, 0), (o + 1000, 1000), (o, 1000)]
     n = len(pts)
+    # a1.corner uses edges a0 and a1 (they form the corner at a1's start vertex) ->
+    # those are real/straight; a2,a3 just close the shape (don't-care -> wavy).
     edges = [{"id": f"a{i}", "start": list(pts[i]), "end": list(pts[(i + 1) % n]),
-              "edge": True} for i in range(n)]
+              "edge": i in (0, 1)} for i in range(n)]
     return {"name": "comp_corner", "desc": "flag 90-degree comp corners",
             "shapes": [{"name": name, "edges": edges}], "measures": [],
             "constraints": [{"kind": "match", "expr": f"{name}.layer == {layer}"},
@@ -109,18 +111,18 @@ def test_complete_pl6_corner_with_scope_wrap():
     # PL.6: poly2 90-deg corners, excluding ymtp_mk, inside comp.not(ymtp_mk).
     # The .not(ymtp_mk).inside(comp.not(ymtp_mk)) wrap is derived from a comp
     # context shape (with a ymtp_mk hole) that CONTAINS the poly2 subject.
-    def sq(name, x0, y0, x1, y1, holes=None):
+    def sq(name, x0, y0, x1, y1, holes=None, straight=()):
         pts = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
         n = len(pts)
         e = [{"id": f"{name.lower()}{i}", "start": list(pts[i]),
-              "end": list(pts[(i + 1) % n]), "edge": True} for i in range(n)]
+              "end": list(pts[(i + 1) % n]), "edge": i in straight} for i in range(n)]
         s = {"name": name, "edges": e}
         if holes:
             s["holes"] = holes
         return s
     rule = {"name": "PL.6", "desc": "PL.6",
-            "shapes": [sq("A", 1000, 1000, 2000, 2000),
-                       sq("C", 0, 0, 5000, 5000, holes=[{"layer": "ymtp_mk"}])],
+            "shapes": [sq("A", 1000, 1000, 2000, 2000, straight=(0, 1)),  # the corner edges
+                       sq("C", 0, 0, 5000, 5000, holes=[{"layer": "ymtp_mk"}])],  # context: wavy
             "measures": [],
             "constraints": [{"kind": "match", "expr": "A.layer == poly2"},
                             {"kind": "match", "expr": "C.layer == comp"},
@@ -149,8 +151,10 @@ def test_edge_length_with_length():
     assert _t.edge_length(edge("h", 0, 0, 300, 0)) == 300.0
     rule = {"name": "shortedge", "desc": "comp edges <= 0.34um",
             "shapes": [{"name": "A", "edges": [
-                edge("a0", 0, 0, 300, 0), edge("a1", 300, 0, 300, 5000),
-                edge("a2", 300, 5000, 0, 5000), edge("a3", 0, 5000, 0, 0)]}],
+                edge("a0", 0, 0, 300, 0),    # the length-constrained edge -> straight
+                edge("a1", 300, 0, 300, 5000, straight=False),
+                edge("a2", 300, 5000, 0, 5000, straight=False),
+                edge("a3", 0, 5000, 0, 0, straight=False)]}],
             "measures": [],
             "constraints": [{"kind": "match", "expr": "A.layer == comp"},
                             {"kind": "check", "expr": "a0.length <= 0.34"}]}
@@ -165,8 +169,10 @@ def test_edge_length_with_length():
 def test_edge_length_exact_and_range():
     base = {"name": "x", "desc": "x",
             "shapes": [{"name": "A", "edges": [
-                edge("a0", 0, 0, 300, 0), edge("a1", 300, 0, 300, 500),
-                edge("a2", 300, 500, 0, 500), edge("a3", 0, 500, 0, 0)]}],
+                edge("a0", 0, 0, 300, 0),    # length-constrained -> straight; rest wavy
+                edge("a1", 300, 0, 300, 500, straight=False),
+                edge("a2", 300, 500, 0, 500, straight=False),
+                edge("a3", 0, 500, 0, 0, straight=False)]}],
             "measures": []}
     # exact length (==) -> single arg
     r = Rule({**base, "constraints": [{"kind": "match", "expr": "A.layer == comp"},
@@ -184,8 +190,10 @@ def test_edge_without_length():
     # `!= L` -> without_length(L): edges NOT of that length (CO.1 pattern).
     r = Rule({"name": "x", "desc": "x",
               "shapes": [{"name": "A", "edges": [
-                  edge("a0", 0, 0, 300, 0), edge("a1", 300, 0, 300, 500),
-                  edge("a2", 300, 500, 0, 500), edge("a3", 0, 500, 0, 0)]}],
+                  edge("a0", 0, 0, 300, 0),    # length-constrained -> straight; rest wavy
+                  edge("a1", 300, 0, 300, 500, straight=False),
+                  edge("a2", 300, 500, 0, 500, straight=False),
+                  edge("a3", 0, 500, 0, 0, straight=False)]}],
               "measures": [],
               "constraints": [{"kind": "match", "expr": "A.layer == contact"},
                               {"kind": "check", "expr": "a0.length != 0.22"}]})

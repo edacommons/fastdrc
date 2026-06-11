@@ -39,6 +39,10 @@ def run_exprs(exprs, gds, lm):
     rep = gds + ".lyrdb"
     body = [f'source("{gds}")', f'report("d", "{rep}")']
     body += [f"{n} = polygons({l}, {d})" for n, (l, d) in lm.items()]
+    # define pure-AND derived vars (ncomp = comp & nplus ...) so OFFICIAL ops that
+    # reference them by name run; each resolves to base layers, so order is free.
+    import validate_klayout as _vk
+    body += [f"{v} = " + " & ".join(sorted(ls)) for v, ls in _vk._VARDEFS.items()]
     for i, (rid, expr) in enumerate(exprs):
         body.append(f"x{i} = {expr}")
         body.append(f'x{i}.output("{rid}", "{rid}")')
@@ -95,6 +99,13 @@ def layout_for(r, lm):
         # no-op -- the only subject polys it drops are those area-overlapping Y, and
         # plain separation never flags overlapping polys anyway (verified across
         # touch/overlap/inside configs). We still emit it for op-text fidelity.
+    for sel_op, y in r.get("arg_selections", []):       # arg = via2.interacting(metal2) etc.
+        # the context must NOT empty the arg: inside/interacting -> a big box that
+        # contains/overlaps the arg geometry; outside -> far (arg stays selected).
+        box = {"inside": (-5000, -5000, 30000, 30000),
+               "interacting": (-5000, -5000, 30000, 30000),
+               "outside": (200000, 200000, 201000, 201000)}[sel_op]
+        s.append((*lm[y], *box))
     return s
 
 

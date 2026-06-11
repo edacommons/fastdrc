@@ -168,16 +168,53 @@ class Rule:
         n = len(poly)
         return (sum(p[0] for p in poly) / n, sum(p[1] for p in poly) / n)
 
+    def _edge_mid(self, edge_id):
+        name = self._edge_owner.get(edge_id)
+        for e in self.shapes[name]["edges"]:
+            if e["id"] == edge_id:
+                return ((e["start"][0] + e["end"][0]) / 2, (e["start"][1] + e["end"][1]) / 2)
+        return None
+
+    def device_point(self, shape):
+        """The point that represents WHERE this shape is checked: the midpoint of an
+        intra-shape (width) measure, else the centroid. Whether another layer
+        covers THIS point is what decides combine (.and) vs remove (.not) -- you
+        position the measurement in the overlap or in the layer-free part."""
+        for m in self.measures.values():
+            if self.shape_of_edge(m["from"]) == shape == self.shape_of_edge(m["to"]):
+                fm, tm = self._edge_mid(m["from"]), self._edge_mid(m["to"])
+                return ((fm[0] + tm[0]) / 2, (fm[1] + tm[1]) / 2)
+        return self.interior_point(shape)
+
     def covering(self, shape):
-        """Other shapes whose polygon contains this shape's interior point --
-        i.e. layers that AND into this shape's (derived) layer."""
-        pt = self.interior_point(shape)
+        """Other shapes whose polygon contains this shape's DEVICE point -- the
+        measured region sits inside them, so they COMBINE into its layer (.and)."""
+        pt = self.device_point(shape)
         return [s for s in self.shapes
                 if s != shape and topology.contains(self.polygon(s), pt)]
 
+    def _has_straight_edge(self, shape):
+        return any(e.get("edge") for e in self.shapes[shape]["edges"])
+
+    def removed(self, shape):
+        """Other shapes that sit INSIDE this shape (cutouts) but do NOT cover its
+        device point, AND are a real DEVICE layer (>=1 straight edge -- its boundary
+        cuts the result). The measured region is in the layer-free part, so they are
+        SUBTRACTED (.not). A real cutout shape, not a tagged hole. An all-wavy inside
+        shape is a domain marker (a filter), NOT a removal."""
+        pt = self.device_point(shape)
+        out = []
+        for s in self.shapes:
+            if s == shape or topology.contains(self.polygon(s), pt):
+                continue                         # that's a combine, not a remove
+            if self.relation(shape, s) == "contains" and self._has_straight_edge(s):
+                out.append(s)
+        return out
+
     def hole_layers(self, shape):
         """Layers tagged on this shape's holes -- each is SUBTRACTED from the
-        shape's (derived) layer (a hole = NOT that layer)."""
+        shape's (derived) layer (a hole = NOT that layer). Legacy encoding; the
+        natural form is a real cutout shape (see `removed`)."""
         return [h["layer"] for h in self.shapes[shape].get("holes", []) if h.get("layer")]
 
     # --- constraint facts (mined from the parsed ASTs) ---

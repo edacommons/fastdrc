@@ -134,13 +134,13 @@ class KLayoutBackend(Backend):
                     _add_sel(subj, other)
                     break
 
-        # shapes covering a measured shape's interior are AND-ed into its derived
-        # layer -- EXCEPT those already claimed as inside-selections.
-        covering = set()
+        # shapes that combine (cover the device point) or remove (cutout) into a
+        # measured shape's derived layer -- EXCEPT those already inside-selections.
+        derived = set()
         for ms in measured:
-            covering |= {s for s in rule.covering(ms)
-                         if s not in measured and s not in sel_consumed}
-        consumed = measured | covering | sel_consumed
+            derived |= {s for s in (rule.covering(ms) + rule.removed(ms))
+                        if s not in measured and s not in sel_consumed}
+        consumed = measured | derived | sel_consumed
 
         # A leftover marker whose layer is ALSO a check operand can't be a result
         # scope (it would drop everything); it's a selection on the subject.
@@ -262,9 +262,9 @@ class KLayoutBackend(Backend):
                       else "interacting" if rel == "overlap" else "outside")
                 sels.append((so, self._layer_var(ml)))
                 sel_consumed.add(other)
-        covering = {s for s in rule.covering(shape)
-                    if s not in measured and s not in sel_consumed}
-        consumed = measured | covering | sel_consumed
+        derived = {s for s in (rule.covering(shape) + rule.removed(shape))
+                   if s not in measured and s not in sel_consumed}
+        consumed = measured | derived | sel_consumed
         v = self._fmt(value)
         selsuf = "".join(f".{so}({l})" for so, l in sorted(set(sels)))
         core = f"{self._derived(rule, shape, measured | sel_consumed)}{selsuf}.with_area(nil, {v}.um)"
@@ -363,7 +363,11 @@ class KLayoutBackend(Backend):
             layers.append(rule.layer_of(s) or f"_{s}")
         vs = sorted({self._layer_var(l) for l in layers})
         expr = vs[0] if len(vs) == 1 else vs[0] + "".join(f".and({v})" for v in vs[1:])
-        for hl in sorted({self._layer_var(h) for h in rule.hole_layers(shape)}):
+        # NOT each removed (cutout) layer; + any legacy tagged-hole layers
+        nots = {self._layer_var(rule.layer_of(s) or f"_{s}") for s in rule.removed(shape)
+                if s not in measured}
+        nots |= {self._layer_var(h) for h in rule.hole_layers(shape)}
+        for hl in sorted(nots):
             expr += f".not({hl})"
         return expr
 
