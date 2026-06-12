@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "python"))
 import fastdrc.backend_klayout  # noqa: E402,F401  (registers "klayout")
 from fastdrc.backend import get  # noqa: E402
 from fastdrc.rule import Rule    # noqa: E402
-from validate_klayout import as_drawn, our_line  # noqa: E402
+from validate_klayout import as_drawn, our_line, _decompose_sel, parse_subject  # noqa: E402
 
 LM = {"poly2": (30, 0), "comp": (22, 0),
       **{f"m{i}": (100 + i, 0) for i in range(1, 9)}}
@@ -45,3 +45,24 @@ def test_many_subtractions_dont_leak_to_scope():
         assert op == f"poly2{nots}.separation(comp{nots}, 0.1.um, euclidian).polygons(0.001)", \
             f"n={n}: {op}"
         assert ".interacting(" not in op and ".overlapping(" not in op  # no scope leak
+
+
+def test_inside_and_marker_decomposes():
+    # inside(A&B&C) == inside(A).inside(B).inside(C) -- containment is intersective.
+    assert sorted(_decompose_sel("inside", "dnwell.and(dualgate).and(ldmos_xtor)")) == \
+        [("inside", "dnwell"), ("inside", "dualgate"), ("inside", "ldmos_xtor")]
+    # other ops DON'T decompose (outside(A&B) != outside(A).outside(B)); single stays.
+    assert _decompose_sel("outside", "a.and(b)") == [("outside", "a.and(b)")]
+    assert _decompose_sel("inside", "dnwell") == [("inside", "dnwell")]
+
+
+def test_parse_subject_ignores_nested_marker_ands():
+    # a .and()/.not() buried in a selection marker's parens must NOT be pulled into
+    # the subject's AND/NOT set (the MDP.9a / PL.9 latent canon bug).
+    ands, nots = parse_subject("poly2.inside(dnwell.and(dualgate).and(ldmos_xtor))")
+    assert ands == frozenset({"poly2"}) and nots == frozenset()
+    ands, nots = parse_subject("poly2.interacting(poly2.not(v5_xtor).not(dualgate))")
+    assert ands == frozenset({"poly2"}) and nots == frozenset()
+    # top-level AND/NOT still captured
+    ands, nots = parse_subject("comp.and(nplus).not(otp_mk)")
+    assert ands == frozenset({"comp", "nplus"}) and nots == frozenset({"otp_mk"})

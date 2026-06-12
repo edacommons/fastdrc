@@ -177,6 +177,22 @@ is inside `Y`, but the measure is what tells them apart. Apply the wavy measure 
 (`X.inside(A).inside(B)`). The separation **argument** can be selected the same
 way: a wavy measure from `B` to its context → `X.separation(Y.outside(Z))`.
 
+### A selected marker (the context has its own selection)
+The context shape itself can be a *selected* thing —
+`via1.interacting(metal2.interacting(fusetop))` = "a via1 touching a **metal2 that
+itself touches fusetop**". You draw it by giving the **context its own context**:
+draw the marker `metal2` in its relation to the subject (a wavy `>= 0`), then draw
+`fusetop` in its relation to the *marker* with **another wavy `>= 0` from the marker
+to it**. The compiler reads the inner relation back onto the marker, producing the
+nested `metal2.interacting(fusetop)`. The marker can also be a **device** — give it
+a wholly-covering doping layer and the marker becomes `comp.and(pplus)` (a P+
+diffusion), so `pcomp.inside(nwell)` is "draw a comp, dope it pplus, put it in a
+well." A marker can also carry a **cutout** (`poly2.not(v5_xtor)`) — draw a hole of
+that layer inside the marker, same as a NOT on the subject. And `inside(A&B&C)` is
+the same as `inside(A).inside(B).inside(C)` (a polygon inside the intersection is
+inside each operand), so a multi-layer `inside` context is just **several `inside`
+selections** — draw a containing context per layer.
+
 ### Negated selections (`not_inside`): label several instances
 The positive selections above are each a *single* relation — one picture. A
 **negation** like `not_inside(Y)` ("keep the X polygons **not** wholly inside Y")

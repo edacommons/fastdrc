@@ -135,12 +135,23 @@ def expand_base(s, vardefs):
 
 def parse_subject(s):
     """Split a layer expression into (AND-set, NOT-set): base + .and(X) -> AND,
-    .not(Y) -> NOT."""
-    base = re.match(r"\s*(\w+)", s)
-    ands = {base.group(1)} if base else set()
-    nots = set()
-    for op, l in re.findall(r"\.(and|not)\((\w+)\)", s):
-        (ands if op == "and" else nots).add(l)
+    .not(Y) -> NOT. Walks TOP-LEVEL ops only (balanced args) so a `.and()`/`.not()`
+    buried inside a selection marker's parens isn't pulled into the subject set."""
+    bm = re.match(r"\s*(\w+)", s)
+    if not bm:
+        return frozenset(), frozenset()
+    ands, nots = {bm.group(1)}, set()
+    rest, i = s[bm.end():], 0
+    while i < len(rest):
+        m = re.match(r"\.(\w+)\(", rest[i:])
+        if not m:
+            break
+        op, arg = m.group(1), _balanced(rest[i + m.end():])
+        if op == "and":
+            ands.add(arg)
+        elif op == "not":
+            nots.add(arg)
+        i += m.end() + len(arg) + 1
     return frozenset(ands), frozenset(nots)
 
 
@@ -148,6 +159,13 @@ def canon(line):
     """Canonical, order-insensitive signature of a KLayout check line."""
     rhs = line.split("=", 1)[1] if "=" in line else line
     m = _OP.search(rhs)
+    if m is None:                          # no dimensional op -> a PRESENCE region (the
+        # region itself is the violation). Signature = subject layers + selections.
+        region = expand_base(re.split(r"\.(?:output|forget)\(", rhs)[0].strip(), _VARDEFS)
+        s_and, s_not = parse_subject(region)
+        s_sel = parse_selections(region)
+        return (s_and, s_not, s_sel, "presence",
+                frozenset(), frozenset(), frozenset(), "", "", frozenset())
     op = m.group(1)
     subj_str = expand_base(rhs[:m.start()], _VARDEFS)      # derived-var base -> AND chain
     s_and, s_not = parse_subject(subj_str)
@@ -173,29 +191,58 @@ def canon(line):
             frozenset(_SCOPE.findall(after)))
 
 
+_SELOPS = ("inside", "outside", "interacting", "overlapping", "not_outside", "not_interacting")
+
+
 def _norm_marker(arg):
     """Canonical key for a selection's marker: a derived var (tgate) or an .and
     chain (poly2.and(comp)) or a single layer -> the sorted base-layer SET, so
-    `not_interacting(tgate)` matches `not_interacting(poly2.and(comp))`."""
-    bm = re.match(r"\s*(\w+)", arg)
-    if not bm:
-        return arg
-    name = bm.group(1)
-    layers = set(_VARDEFS[name][0]) if name in _VARDEFS else {name}
-    layers |= set(re.findall(r"\.and\((\w+)\)", arg))
-    return ".".join(sorted(layers))
+    `not_interacting(tgate)` matches `not_interacting(poly2.and(comp))`. A NESTED
+    marker (metal2.interacting(fusetop)) recurses: base SET + each nested selection,
+    so a selected marker keeps its own context in the signature."""
+    p = parse_complex_subject(arg)
+    if p is None:                                        # not a clean base+chain: fall back
+        bm = re.match(r"\s*(\w+)", arg)
+        if not bm:
+            return arg
+        name = bm.group(1)
+        layers = set(_VARDEFS[name][0]) if name in _VARDEFS else {name}
+        layers |= set(re.findall(r"\.and\((\w+)\)", arg))
+        return ".".join(sorted(layers))
+    base, ands, nots, sels = p
+    layers = set(_VARDEFS[base][0]) if base in _VARDEFS else {base}
+    for a in ands:
+        layers |= set(_VARDEFS[a][0]) if a in _VARDEFS else {a}
+    sig = ".".join(sorted(layers))
+    for op, m in sorted(("overlapping" if o == "not_outside" else o, _norm_marker(mm))
+                        for o, mm in sels):
+        sig += f".{op}({m})"
+    for n in sorted(nots):
+        sig += f".not({n})"
+    return sig
 
 
 def parse_selections(s):
     """Whole-polygon selections on a (sub)expression: inside/outside/interacting/
-    overlapping/not_outside/not_interacting. The marker is normalized to its base-
-    layer SET (so `not_interacting(tgate)` == `not_interacting(poly2.and(comp))`),
-    and `not_outside` -> `overlapping` (same op). Empty for plain/AND/NOT subjects."""
+    overlapping/not_outside/not_interacting. The marker is normalized (see
+    _norm_marker), and `not_outside` -> `overlapping` (same op). Walks TOP-LEVEL ops
+    only (balanced args) so a NESTED selection inside a marker isn't mistaken for a
+    selection on the subject. Empty for plain/AND/NOT subjects."""
     out = set()
-    for m in re.finditer(r"\.(inside|outside|interacting|overlapping|not_outside|not_interacting)\(", s):
-        op = m.group(1)
-        marker = _norm_marker(_balanced(s[m.end():]))
-        out.add(("overlapping" if op == "not_outside" else op, marker))
+    bm = re.match(r"\s*\w+", s)
+    if not bm:
+        return frozenset(out)
+    rest, i = s[bm.end():], 0
+    while i < len(rest):
+        m = re.match(r"\.(\w+)\(", rest[i:])
+        if not m:
+            break
+        op, arg = m.group(1), _balanced(rest[i + m.end():])
+        if op in _SELOPS:
+            o = "overlapping" if op == "not_outside" else op
+            for oo, mm in _decompose_sel(o, arg):     # inside(A&B) -> inside(A).inside(B)
+                out.add((oo, _norm_marker(mm)))
+        i += m.end() + len(arg) + 1
     return frozenset(out)
 
 
@@ -210,14 +257,75 @@ def parse_complex_subject(subject):
     if not bm:
         return None
     base, rest = bm.group(1), subject[bm.end():].strip()
-    toks = re.findall(r"\.(and|not|inside|outside|interacting|overlapping|not_outside|not_interacting)\((\w+)\)", rest)
-    if "".join(f".{op}({l})" for op, l in toks) != rest:
-        return None                          # an unhandled op / nesting remains
-    ands = [l for op, l in toks if op == "and"]
-    nots = [l for op, l in toks if op == "not"]
     _SELOPS = ("inside", "outside", "interacting", "overlapping", "not_outside", "not_interacting")
-    sels = [(op, l) for op, l in toks if op in _SELOPS]
+    toks, i = [], 0                          # (op, arg) with BALANCED args -> markers may NEST
+    while i < len(rest):
+        m = re.match(r"\.(\w+)\(", rest[i:])
+        if not m:
+            return None
+        op, arg = m.group(1), _balanced(rest[i + m.end():])
+        toks.append((op, arg))
+        i += m.end() + len(arg) + 1          # past `.op(arg)`
+    if i != len(rest) or any(op not in ("and", "not") + _SELOPS for op, _ in toks):
+        return None                          # unhandled op (or / holes / edges / ...)
+    if any(op in ("and", "not") and not re.fullmatch(r"\w+", a) for op, a in toks):
+        return None                          # AND/NOT args must be a single layer
+    ands = [a for op, a in toks if op == "and"]
+    nots = [a for op, a in toks if op == "not"]
+    sels = [(op, a) for op, a in toks if op in _SELOPS]   # `a` may be a NESTED marker
     return base, ands, nots, sels
+
+
+def _marker_deep_layers(y):
+    """All base layers a (possibly NESTED) selection marker resolves to -- the
+    marker's own base/AND/NOT layers plus, recursively, those of any nested
+    selection context. Used to confirm a nested marker is drawable (all in lm)."""
+    p = parse_complex_subject(y)
+    if p is None:
+        return list(_VARDEFS[y][0]) if y in _VARDEFS else [y]
+    b, a, n, sl = p
+    out = (list(_VARDEFS[b][0]) if b in _VARDEFS else [b]) + a + n
+    for _, m in sl:
+        out += _marker_deep_layers(m)
+    return out
+
+
+def _drawable_marker(op, y):
+    """Whether a (possibly NESTED) selection marker is one we can currently draw as
+    a device. A regular-selection marker must be a base + nested single-layer
+    SELECTIONS only: an AND inside the marker (its doping) overlaps the subject for
+    `inside` contexts, and marker NOTs (cutouts) aren't drawn yet -- both deferred.
+    A `not_interacting` marker goes through the derived-marker (sni) path, which
+    already resolves ANDs to overlapping shapes, so it's always drawable."""
+    if op == "not_interacting":
+        return True
+    p = parse_complex_subject(y)
+    if p is None:                              # plain layer or var -- the original path
+        return True
+    _b, ands, nots, sl = p
+    if ands and op == "inside":
+        return False              # doping on a CONTAINING box also covers the subject;
+        #   pure inside(A&B) is split by _decompose_sel before we get here, so a
+        #   leftover inside-AND is a non-decomposable mix -- defer it
+    return all(_drawable_marker(so, m) for so, m in sl)
+
+
+def _decompose_sel(op, marker):
+    """`inside(A.and(B).and(C))` == `inside(A).inside(B).inside(C)` -- a polygon is
+    inside the intersection iff inside each operand (containment is intersective).
+    So a pure base+AND marker under `inside` splits into one selection per layer.
+    Other ops DON'T decompose (outside(A&B) != outside(A).outside(B) -- that's A|B;
+    interacting/overlapping likewise). A single layer / var / nested marker is left
+    as-is."""
+    if op != "inside":
+        return [(op, marker)]
+    p = parse_complex_subject(marker)
+    if p is None:
+        return [(op, marker)]
+    b, ands, nots, sl = p
+    if nots or sl or not ands:          # only a pure base+AND of >=2 base layers
+        return [(op, marker)]
+    return [(op, b)] + [(op, a) for a in ands]
 
 
 def _balanced(s):
@@ -261,6 +369,7 @@ def parse_rules(text, lm):
             skip["complex_subj"] += 1
             continue
         base, ands, nots, selections = parsed
+        selections = [d for o, y in selections for d in _decompose_sel(o, y)]
         s_and = frozenset({base}) | frozenset(ands)
         s_not = frozenset(nots)
         derived = bool(ands or nots)
@@ -301,6 +410,7 @@ def parse_rules(text, lm):
                     skip["derived_arg"] += 1
                     continue
                 arg_base, arg_ands, arg_nots, arg_selections = argp
+                arg_selections = [d for o, y in arg_selections for d in _decompose_sel(o, y)]
                 # AND/NOT-derived arg now works for enclosing too: drawn match-first
                 # (the inner device near the subject's EDGE), the doping covers only
                 # the device, not the subject's interior -- no entanglement.
@@ -319,9 +429,12 @@ def parse_rules(text, lm):
                 value, mode = parts[1].replace(".um", ""), parts[2]
         # a selection marker may be a DERIVED var (not_interacting(tgate)); expand it
         # to its base layers for the in-layermap check.
+        if any(not _drawable_marker(o, y) for o, y in selections + arg_selections):
+            skip["complex_subj"] += 1            # AND/NOT inside a regular-selection marker
+            continue
         sel_layers = []
         for _, y in selections + arg_selections:
-            sel_layers += list(_VARDEFS[y][0]) if y in _VARDEFS else [y]
+            sel_layers += _marker_deep_layers(y)
         if any(l not in lm for l in list(s_and | s_not) + arg_layers + sel_layers):
             skip["nonbase"] += 1
             continue
@@ -344,6 +457,47 @@ def parse_rules(text, lm):
                       "arg_selections": arg_selections, "arg_covers": arg_covers,
                       "arg_holes": arg_holes, "area_op": area_op,
                       "behavioral_only": behavioral_only})
+    # PRESENCE rules: `var = <region with NO dimensional op>; var.output(...)`. The
+    # region itself is the violation (a cross). Subject base + AND/NOT + selections.
+    done = {r["id"] for r in rules}
+    skip["presence"] = 0
+    for i, line in enumerate(lines):
+        mo = re.match(r'\s*(\w+)\.output\("([^"]*)",\s*"([^"]*)"\)', line)
+        if not mo:
+            continue
+        var, rid, desc = mo.group(1), mo.group(2), mo.group(3)
+        if rid in done:
+            continue
+        defn = defline = None
+        for j in range(i - 1, -1, -1):                  # nearest assignment above
+            dm = re.match(rf"\s*{re.escape(var)}\s*=\s*([^=].*)", lines[j])
+            if dm:
+                defn, defline = dm.group(1).strip(), lines[j]
+                break
+        if defn is None or _OP.search(defn) or ".drc(" in defn:
+            continue                                    # dimensional -> handled above
+        region = expand_base(re.split(r"\.(?:output|forget|polygons)\(", defn)[0].strip(), _VARDEFS)
+        p = parse_complex_subject(region)
+        if p is None:
+            skip["complex_subj"] += 1
+            continue
+        pbase, pands, pnots, psels = p
+        psels = [d for o, y in psels for d in _decompose_sel(o, y)]
+        if any(not _drawable_marker(o, y) for o, y in psels):
+            skip["complex_subj"] += 1
+            continue
+        sl = []
+        for _, y in psels:
+            sl += _marker_deep_layers(y)
+        if any(l not in lm for l in [pbase] + pands + pnots + sl):
+            skip["nonbase"] += 1
+            continue
+        done.add(rid)
+        rules.append({"id": rid, "desc": desc, "op": "presence", "base": pbase,
+                      "covers": sorted(pands), "holes": sorted(pnots), "arg": [],
+                      "value": "", "mode": "", "scope": [], "line": defline,
+                      "selections": psels, "arg_selections": [], "arg_covers": [],
+                      "arg_holes": [], "area_op": ">=", "behavioral_only": False})
     return rules, skip
 
 
@@ -416,7 +570,14 @@ def as_drawn(r):
     # `match` constraints identify WHICH geometry the rule is about (layers,
     # markers); the single `check` is the assertion verified (a violation is a
     # matched configuration where the check fails).
-    if op == "with_area":
+    if op == "presence":
+        # the region IS the violation (a cross). Subject A + an intra-A CROSSED
+        # measure -> the rule outputs dl(A) (A plus its selections/cutouts). The
+        # selection/cover/hole loops below draw the contexts as usual.
+        shapes = [_rect("A", 0, 0, 10, 4, "a")]
+        meas = [{"name": "X", "from": "a0", "to": "a1", "crossed": True}]
+        cons = [_match(f"A.layer == {base}")]
+    elif op == "with_area":
         shapes = [_rect("A", 0, 0, 10, 4, "a")]
         meas = []
         cons = [_match(f"A.layer == {base}"), _check(f"A.area {r.get('area_op', '>=')} {v}")]
@@ -490,20 +651,79 @@ def as_drawn(r):
     # deck's selection op. Applied to EACH subject shape (A, plus B for space, so
     # both same-layer operands get the selection -> stays space, not separation).
     # Layers may coincide with an operand -- that signal is meaningful, not a dup.
-    for k, (sel_op, y) in enumerate(r.get("selections", [])):
+    sreg = [(o, y) for o, y in r.get("selections", []) if o != "not_interacting"]
+    sni = [(o, y) for o, y in r.get("selections", []) if o == "not_interacting"]
+    for k, (sel_op, y) in enumerate(sreg):
         # the EXACT drawn relation picks the op: touch (coinciding edge at A's right
         # edge bx1) -> interacting; overlap -> overlapping (== not_outside); contains
         # -> inside; beside/disjoint -> outside.
+        # interacting markers TOUCH a different edge of A per k (right/top/left/bottom)
+        # so several SAME-LAYER interacting markers don't merge into one polygon.
+        touch = [(bx1, by0, bx1 + 6, by1), (bx0, by1, bx1, by1 + 6),
+                 (bx0 - 6, by0, bx0, by1), (bx0, by0 - 6, bx1, by0)][k % 4]
         box = {"inside": (-5 - 3 * k, -5 - 3 * k, 30 + 3 * k, 30 + 3 * k),  # contains A
                "outside": (14 + 8 * k, 0, 20 + 8 * k, 4),                  # beside, disjoint
-               "interacting": (bx1, by0, bx1 + 6 + 2 * k, by1),            # touch: left edge = A's right
+               "interacting": touch,                                       # touch a perimeter edge
                "overlapping": (-3 - 2 * k, -3 - 2 * k, 5, 5),              # overlaps A
                "not_outside": (-3 - 2 * k, -3 - 2 * k, 5, 5)}[sel_op]      # == overlapping
-        shapes.append(_rect(f"S{k}", *box, f"s{k}"))
-        cons.append(_match(f"S{k}.layer == {y}"))
+        skshape = _rect(f"S{k}", *box, f"s{k}")
+        shapes.append(skshape)
+        # a NESTED marker (metal2.interacting(fusetop)) is drawn as its own device:
+        # base layer S{k}, with its OWN doping (wholly-covering AND layers), OWN
+        # cutouts (NOT layers), and OWN selection contexts FS{k}_j (wavy measure
+        # S{k}->FS{k}_j). The backend reads `mbase.and(dope).not(cut).subop(ctx)`.
+        mp = parse_complex_subject(y)
+        mbase, mands, mnots, msels = mp if mp else (y, [], [], [])
+        cons.append(_match(f"S{k}.layer == {mbase}"))
         for j, pfx in enumerate(["a", "b"] if op == "space" else ["a"]):
             sel_meas.append({"name": f"GS{k}_{j}", "from": f"{pfx}0", "to": f"s{k}0"})
             cons.append(_match(f"GS{k}_{j} >= 0"))
+        sx0, sy0, sx1, sy1 = box
+        for j, cl in enumerate(mands):                   # marker's OWN doping wholly covers S{k}
+            shapes.append(_rect(f"SD{k}_{j}", sx0 - 1 - j, sy0 - 1 - j, sx1 + 1 + j, sy1 + 1 + j, f"sd{k}_{j}"))
+            cons.append(_match(f"SD{k}_{j}.layer == {cl}"))
+        for j, nl in enumerate(mnots):                   # marker's OWN cutout -> .not(layer)
+            cut = _rect(f"SX{k}_{j}", *_cut_box(skshape["edges"], j, len(mnots)), f"sx{k}_{j}")
+            cut["edges"][0]["edge"] = True
+            cut_straight.add(cut["edges"][0]["id"])
+            shapes.append(cut)
+            cons.append(_match(f"SX{k}_{j}.layer == {nl}"))
+        for j, (subop, subm) in enumerate(msels):        # marker's OWN selection context FS{k}_{j}
+            cbox = {"inside": (sx0 - 2 - j, sy0 - 2 - j, sx1 + 2 + j, sy1 + 2 + j),  # contains S{k}
+                    "outside": (sx1 + 6 + 5 * j, sy0, sx1 + 10 + 5 * j, sy1),       # beside S{k}
+                    "interacting": (sx1, sy0, sx1 + 4 + 2 * j, sy1),                # touch S{k}'s right
+                    "overlapping": (sx0 + 1, sy0 + 1, sx1 + 2 + j, sy1 + 2 + j),    # overlaps S{k}
+                    "not_outside": (sx0 + 1, sy0 + 1, sx1 + 2 + j, sy1 + 2 + j)}[subop]
+            sp = parse_complex_subject(subm)
+            cons.append(_match(f"FS{k}_{j}.layer == {sp[0] if sp else subm}"))
+            shapes.append(_rect(f"FS{k}_{j}", *cbox, f"fs{k}_{j}"))
+            sel_meas.append({"name": f"GF{k}_{j}", "from": f"s{k}0", "to": f"fs{k}_{j}0"})
+            cons.append(_match(f"GF{k}_{j} >= 0"))
+    # subject NOT_INTERACTING: two arrangements of the subject vs a marker, FAR away
+    # (clear of the subject's regular contexts) -- measured A disjoint (flagged), a
+    # CONTRAST (same layer + doping) TOUCHING the marker (not flagged). Derived marker
+    # drawn as overlapping shapes. Mirrors the arg not_interacting path.
+    sbjlayers = {base} | set(r.get("covers", []))
+    for gi, (o, marker) in enumerate(sni):
+        gx, gy = 60, 40 + gi * 14
+        ml = _marker_deep_layers(marker)   # base layers of a (derived/var) marker
+        ctx = next((m for m in ml if m not in sbjlayers), ml[0])
+        helpers = [m for m in ml if m != ctx]
+        shapes.append(_rect(f"SP{gi}", gx, gy + 3, gx + 4, gy + 7, f"sp{gi}"))
+        cons.append(_match(f"SP{gi}.layer == {ctx}"))
+        for j, h in enumerate(helpers):
+            shapes.append(_rect(f"SH{gi}{j}", gx + 1, gy, gx + 3, gy + 10, f"sh{gi}{j}"))
+            cons.append(_match(f"SH{gi}{j}.layer == {h}"))
+        bc = _rect(f"SB{gi}", gx + 4, gy + 3, gx + 8, gy + 7, f"sbn{gi}")
+        bc["flagged"] = False
+        shapes.append(bc); cons.append(_match(f"SB{gi}.layer == {base}"))
+        for j, cl in enumerate(r.get("covers", [])):
+            shapes.append(_rect(f"SC{gi}{j}", gx + 4, gy + 2, gx + 9, gy + 8, f"scn{gi}{j}"))
+            cons.append(_match(f"SC{gi}{j}.layer == {cl}"))
+        sel_meas.append({"name": f"SNa{gi}", "from": "a0", "to": f"sp{gi}0"})
+        cons.append(_match(f"SNa{gi} >= 0"))
+        sel_meas.append({"name": f"SNb{gi}", "from": f"sbn{gi}0", "to": f"sp{gi}1"})
+        cons.append(_match(f"SNb{gi} >= 0"))
     # arg selections (separation/enclosing): the ARG shape B is selected by how it
     # relates to its context T{k} -> ours emits separation(arg.outside(Y)) etc.
     # Contexts sit to the RIGHT/ABOVE B (6,0,10,10), clear of subject A (x in [0,4]).
@@ -537,7 +757,7 @@ def as_drawn(r):
     for gi, (o, marker) in enumerate(ni):
         gx, gy = 60, gi * 14                             # FAR right: clear of the subject's
         #   inside-context boxes (which reach ~30+3k) so they don't merge into the marker
-        ml = list(_VARDEFS[marker][0]) if marker in _VARDEFS else [marker]
+        ml = _marker_deep_layers(marker)   # base layers of a (derived/var) marker
         ctx = next((m for m in ml if m not in arglayers), ml[0])
         helpers = [m for m in ml if m != ctx]
         shapes.append(_rect(f"GP{gi}", gx, gy + 3, gx + 4, gy + 7, f"gp{gi}"))   # context (poly2)
@@ -576,10 +796,14 @@ def _check(expr):
 
 
 def our_line(drc):
-    for line in drc.splitlines():
+    lines = drc.splitlines()
+    for line in lines:
         if _OP.search(line):
             return line
-    return ""
+    # PRESENCE rule: no dimensional op -> the result-var assignment that's output
+    out = next((l for l in lines if ".output(" in l), "")
+    var = out.split(".output")[0].strip()
+    return next((l for l in lines if re.match(rf"\s*{re.escape(var)}\s*=", l)), "")
 
 
 def _angle_sig(s):

@@ -317,6 +317,112 @@ def test_df4b_full_derived_arg_and_derived_marker():
                     "0.62.um, euclidian).polygons(0.001)")
 
 
+def _cross_line(shapes, measures, lm):
+    rule = {"name": "x", "desc": "d", "shapes": shapes, "measures": measures,
+            "constraints": [{"kind": "match", "expr": "A.layer == lvpwell"},
+                            {"kind": "match", "expr": "B.layer == nwell"}]}
+    return next(ln for ln in get("klayout", layermap=lm).compile(Rule(rule)).splitlines()
+                if "lvpwell" in ln and "polygons(" not in ln).split("=", 1)[1].strip()
+
+
+def test_selected_marker():
+    # DF.3b-class: a selection whose MARKER is itself a derived+selected device --
+    # not_outside(pcomp.inside(nwell)) = "overlaps a P+ diffusion that's in the well".
+    # The marker P (comp) is doped by CP (pplus) -> pcomp, and sits inside well W.
+    # Doping = a different-layer shape WHOLLY containing the marker that isn't a
+    # measure endpoint; the marker's own context (the shared well) adds .inside(nwell).
+    lm = {"comp": (22, 0), "nplus": (32, 0), "pplus": (31, 0), "nwell": (21, 0)}
+    A = {"name": "A", "edges": _edges("a", 2, 2, 8, 6, set())}              # N+ subject
+    CA = {"name": "CA", "edges": _edges("ca", 1, 1, 9, 7, set())}           # nplus -> ncomp
+    P = {"name": "P", "edges": _edges("p", 6, 2, 12, 6, set())}             # P+ marker (overlaps A)
+    CP = {"name": "CP", "edges": _edges("cp", 5, 1, 13, 7, set())}          # pplus -> pcomp
+    W = {"name": "W", "edges": _edges("w", 0, 0, 16, 8, set())}             # nwell (contains both)
+    rule = {"name": "DF.3b", "desc": "d", "shapes": [A, CA, P, CP, W],
+            "measures": [{"name": "GAW", "from": "a3", "to": "w0"},          # A inside W
+                         {"name": "GPW", "from": "p1", "to": "w2"},          # P inside W
+                         {"name": "GAP", "from": "a1", "to": "p3"},          # A overlaps P
+                         {"name": "X", "from": "a0", "to": "a2", "crossed": True}],
+            "constraints": [{"kind": "match", "expr": "A.layer == comp"},
+                            {"kind": "match", "expr": "CA.layer == nplus"},
+                            {"kind": "match", "expr": "P.layer == comp"},
+                            {"kind": "match", "expr": "CP.layer == pplus"},
+                            {"kind": "match", "expr": "W.layer == nwell"},
+                            {"kind": "match", "expr": "GAW >= 0"},
+                            {"kind": "match", "expr": "GPW >= 0"},
+                            {"kind": "match", "expr": "GAP >= 0"}]}
+    line = next(ln for ln in get("klayout", layermap=lm).compile(Rule(rule)).splitlines()
+                if "comp" in ln and "polygons(" not in ln.split("=")[1][:14]).split("=", 1)[1].strip()
+    # subject ncomp.inside(nwell); marker is the SELECTED device pcomp.inside(nwell)
+    assert "comp.and(nplus).inside(nwell)" in line
+    assert "comp.and(pplus).inside(nwell)" in line   # the selected marker
+
+
+def test_nested_selection_marker():
+    # MIM.10-class: a SELECTION whose marker carries its OWN selection --
+    # via1.interacting(metal2.interacting(fusetop)) = "a via1 touching a metal2 that
+    # itself touches fusetop". The marker S (metal2) gets its own context F (fusetop)
+    # via a wavy measure S->F; the backend reads the nested op back onto the marker.
+    lm = {"via1": (51, 0), "metal2": (36, 0), "fusetop": (75, 0)}
+    A = {"name": "A", "edges": _edges("a", 0, 0, 10, 4, set())}             # via1 subject
+    S = {"name": "S", "edges": _edges("s", 10, 0, 16, 4, set())}            # metal2 marker (touches A)
+    F = {"name": "F", "edges": _edges("f", 16, 0, 20, 4, set())}            # fusetop (touches S)
+    rule = {"name": "MIM.10", "desc": "d", "shapes": [A, S, F],
+            "measures": [{"name": "GAS", "from": "a0", "to": "s0"},          # A interacting S
+                         {"name": "GSF", "from": "s0", "to": "f0"},          # S interacting F
+                         {"name": "X", "from": "a0", "to": "a1", "crossed": True}],
+            "constraints": [{"kind": "match", "expr": "A.layer == via1"},
+                            {"kind": "match", "expr": "S.layer == metal2"},
+                            {"kind": "match", "expr": "F.layer == fusetop"},
+                            {"kind": "match", "expr": "GAS >= 0"},
+                            {"kind": "match", "expr": "GSF >= 0"}]}
+    line = next(ln for ln in get("klayout", layermap=lm).compile(Rule(rule)).splitlines()
+                if "via1" in ln and "polygons(" not in ln.split("=")[1][:14]).split("=", 1)[1].strip()
+    assert "via1.interacting(metal2.interacting(fusetop))" in line
+
+
+def test_cross_presence_violation():
+    # A CROSS = a measure whose bound is "never": the derived REGION is itself the
+    # violation (presence), output raw -- no dimensional op. It's a selection whose
+    # selected set is OUTPUT, so the crossed config's RELATION picks the op, exactly
+    # like a normal selection.
+    lm = {"lvpwell": (204, 0), "nwell": (21, 0)}
+    A = {"name": "A", "edges": _edges("a", 0, 0, 6, 6, set())}
+
+    # "LVPWELL cannot overlap Nwell" (LPW.12): cross an OVERLAP -> overlapping
+    # (== deck's not_outside). Flag the lvpwell that overlaps.
+    Bover = {"name": "B", "edges": _edges("b", 3, 3, 9, 9, set())}          # overlaps A
+    line = _cross_line([A, Bover], [{"name": "X", "from": "a1", "to": "b3", "crossed": True}], lm)
+    assert line == "lvpwell.overlapping(nwell)"
+
+    # "every A must overlap B": cross a DISJOINT config -> outside. Flag the lvpwell
+    # that fails to overlap. The relation you draw on the cross is the whole signal.
+    Bfar = {"name": "B", "edges": _edges("b", 20, 20, 26, 26, set())}       # disjoint from A
+    line = _cross_line([A, Bfar], [{"name": "X", "from": "a1", "to": "b3", "crossed": True}], lm)
+    assert line == "lvpwell.outside(nwell)"
+
+
+def test_or_of_crossed_variants():
+    # OR-of-variants where each variant is a CROSSED (presence) case: a rule with
+    # several forbidden configurations (e.g. DF.3b butted comp = overlap OR touch),
+    # each a cross, unioned. _emit_union must gather crossed measures, not just bounds.
+    lm = {"comp": (22, 0), "nplus": (32, 0), "pplus": (31, 0)}
+
+    def crossed(layer2, box, pfx):
+        A = {"name": pfx + "A", "edges": _edges(pfx + "a", 0, 0, 6, 6, set())}
+        B = {"name": pfx + "B", "edges": _edges(pfx + "b", *box, set())}
+        return {"shapes": [A, B],
+                "measures": [{"name": "GS", "from": pfx + "a2", "to": pfx + "b0"},
+                             {"name": "X", "from": pfx + "a0", "to": pfx + "a1", "crossed": True}],
+                "constraints": [{"kind": "match", "expr": f"{pfx}A.layer == comp"},
+                                {"kind": "match", "expr": f"{pfx}B.layer == {layer2}"},
+                                {"kind": "match", "expr": "GS >= 0"}]}
+    rule = {"name": "DF.3b", "desc": "d",
+            "or": [crossed("pplus", (3, 3, 9, 9), "u"), crossed("nplus", (6, 0, 12, 6), "v")]}
+    line = next(ln for ln in get("klayout", layermap=lm).compile(Rule(rule)).splitlines()
+                if ".or(" in ln).split("=", 1)[1].strip()
+    assert line == "comp.overlapping(pplus).or(comp.interacting(nplus))"
+
+
 def test_or_of_variants_unions_subrule_checks():
     # An OR rule has alternative sub-rules; their check expressions are unioned
     # into one output (`expr1.or(expr2)`). Matches the deck's varA.or(varB) form.

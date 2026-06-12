@@ -26,7 +26,7 @@ import tempfile
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "python"))
 sys.path.insert(0, os.path.dirname(__file__))
 
-from validate_klayout import parse_layermap, parse_rules, as_drawn, _OP  # noqa: E402
+from validate_klayout import parse_layermap, parse_rules, as_drawn, _OP, our_line  # noqa: E402
 from behavioral_diff import gen_layout, KLAYOUT                           # noqa: E402
 from fastdrc.backend import get                                          # noqa: E402
 from fastdrc.rule import Rule                                            # noqa: E402
@@ -65,10 +65,12 @@ def layout_for(r, lm):
     covering/hole/scope geometry positioned so the rule fires on it."""
     op, base = r["op"], r["base"]
     bl = lm[base]
-    v = float(r["value"])
+    v = float(r["value"]) if r["value"] else 0.0
     vnm = int(round(v * 1000))
     s = []
-    if op == "width":                                   # too-narrow rect
+    if op == "presence":                                # the subject region IS the
+        s.append((*bl, 0, 0, 1000, 1000))               # violation; place it, contexts below
+    elif op == "width":                                 # too-narrow rect
         s.append((*bl, 0, 0, max(1, vnm // 2), 3000))
     elif op == "space":                                 # too-close pair
         g = max(1, vnm // 2)
@@ -141,7 +143,7 @@ def main():
             gen_layout(layout_for(r, lm), gds)
             official = r["line"].split("=", 1)[1].strip()
             drc = get("klayout", layermap=lm, metric=r["mode"] or "euclidian").compile(Rule(as_drawn(r)))
-            ours = next(ln for ln in drc.splitlines() if _OP.search(ln)).split("=", 1)[1].strip()
+            ours = our_line(drc).split("=", 1)[1].strip()   # _OP line, or presence assignment
             c = run_exprs([("OFF", official), ("OUR", ours)], gds, lm)
             off, our = c.get("OFF", 0), c.get("OUR", 0)
             fired += off > 0 and our > 0

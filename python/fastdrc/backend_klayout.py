@@ -95,7 +95,8 @@ class KLayoutBackend(Backend):
         angles = rule.angle_bounds()
         corners = rule.corner_bounds()
         lengths = rule.length_bounds()
-        total = len(checks) + len(areas) + len(angles) + len(corners) + len(lengths)
+        crosses = [v for v, mm in rule.measures.items() if mm.get("crossed")]  # presence
+        total = len(checks) + len(areas) + len(angles) + len(corners) + len(lengths) + len(crosses)
         off = 0
         for i, (var, (lo, hi)) in enumerate(checks):
             self._emit_check(rule, var, lo, hi, i, total)
@@ -111,6 +112,9 @@ class KLayoutBackend(Backend):
         off += len(corners)
         for k, (edge, kind, lo, hi) in enumerate(lengths):
             self._emit_length(rule, edge, kind, lo, hi, off + k, total)
+        off += len(lengths)
+        for k, var in enumerate(crosses):                # CROSS -> presence violation
+            self._emit_check(rule, var, None, None, off + k, total)
         return self._assemble()
 
     def _assemble(self):
@@ -170,6 +174,41 @@ class KLayoutBackend(Backend):
                                         and rule.relation(other, s) in ("overlap", "inside", "contains"))
             else:
                 so = _rel_to_sel(rule.relation(subj, other))
+            # SELECTED marker: the marker may be its own device (pcomp = comp + pplus
+            # doping) with its own selection (inside nwell). DOPING = different-layer
+            # shapes covering the marker's device point that are PURE doping -- never a
+            # measure endpoint (so not a subject/arg/context), not a subject cover, and
+            # not the marker's CONTAINER (a well contains its diffusions, isn't doped).
+            measure_pts = set()
+            for mm in rule.measures.values():
+                measure_pts.add(rule.shape_of_edge(mm["from"]))
+                measure_pts.add(rule.shape_of_edge(mm["to"]))
+            subj_covers = {c for ms in measured for c in rule.covering(ms)}
+            subj_removed = {c for ms in measured for c in rule.removed(ms)}
+            own_ctx = {c for sa, sb in rule.relation_selections()
+                       for c in (sb if sa == other else sa if sb == other else None,) if c}
+            for d in rule.covering(other):
+                dl_ = rule.layer_of(d)
+                if (d not in measure_pts and d not in subj_covers and d != other
+                        and d not in sel_consumed and dl_ and dl_ != ml
+                        and rule.relation(other, d) == "inside"):   # doping WHOLLY covers the
+                    #   marker (implant over active); a scope marker only partially overlaps
+                    mvar += f".and({self._layer_var(dl_)})"
+                    sel_consumed.add(d)
+            for d in rule.removed(other):                 # marker's OWN cutout -> .not(layer)
+                dl_ = rule.layer_of(d)
+                if (dl_ and dl_ != ml and d not in measure_pts and d not in sel_consumed
+                        and d not in subj_removed):        # NOT the subject's cutout sitting
+                    #   inside an inside-context box (that's the subject's own .not)
+                    mvar += f".not({self._layer_var(dl_)})"
+                    sel_consumed.add(d)
+            for c in sorted(own_ctx - measured - {s for s, _ in insts}):  # marker's OWN selection
+                # (exclude labeled instances/contrasts, but NOT a shared context like a
+                # well used by both the subject's and the marker's inside-selection)
+                if rule.relation(other, c) not in ("contains", "equal"):
+                    mvar += f".{_rel_to_sel(rule.relation(other, c))}({self._layer_var(rule.layer_of(c))})"
+                    sel_consumed.add(c)        # the marker's own context isn't a subject
+                    #   scope marker; a shared well still re-emits via its own _add_sel(subj, well)
             sel_for[subj].append((so, mvar))
             sel_consumed.add(other)
             return True
@@ -211,7 +250,19 @@ class KLayoutBackend(Backend):
         def dl(shape):                          # derived layer, minus selected contexts
             return self._derived(rule, shape, measured | sel_consumed) + selsuf(shape)
 
-        if hi is None:                                     # MIN bound -> violation check
+        if m.get("crossed"):                               # a CROSS: the derived REGION is
+            # itself the violation (presence) -- output it, no measure/threshold. The
+            # crossed config's RELATION picks the op, exactly like a selection (a cross
+            # is a selection whose selected set is output, not measured): overlap ->
+            # overlapping ("must not overlap"), disjoint -> outside ("must overlap"),
+            # inside -> inside, touch -> interacting. sf==st -> the subject's own
+            # derived region (its selections already encode the relation).
+            if sf == st:
+                core = dl(sf)
+            else:
+                core = f"{dl(sf)}.{_rel_to_sel(rule.relation(sf, st))}({dl(st)})"
+            body, v_scope = core, "0"
+        elif hi is None:                                   # MIN bound -> violation check
             v = self._fmt(lo.value)
             if sf == st:                                   # intra-shape -> width
                 core = f"{dl(sf)}.width({v}.um, {mt})"
@@ -261,7 +312,7 @@ class KLayoutBackend(Backend):
         expr = self._check_expr(rule, var, lo, hi)
         if expr is not None:
             b = lo or hi
-            rid = rule.name or f"{var} {b.op} {self._fmt(b.value)}"
+            rid = rule.name or (f"{var} {b.op} {self._fmt(b.value)}" if b else f"cross {var}")
             self._emit(rule, expr, idx, total, rid)
 
     @staticmethod
@@ -292,6 +343,10 @@ class KLayoutBackend(Backend):
             sr = Rule(sub)
             for var, (lo, hi) in self._group_bounds(sr):
                 e = self._check_expr(sr, var, lo, hi)
+                if e:
+                    exprs.append(e)
+            for var in [v for v, mm in sr.measures.items() if mm.get("crossed")]:
+                e = self._check_expr(sr, var, None, None)   # a CROSSED (presence) variant
                 if e:
                     exprs.append(e)
         if exprs:
