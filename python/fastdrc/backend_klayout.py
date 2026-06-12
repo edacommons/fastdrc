@@ -29,6 +29,40 @@ from .rule import Rule
 _FLIPOP = {">": "<", ">=": "<=", "<": ">", "<=": ">="}
 
 
+def _rel_to_sel(rel):
+    """Map a drawn relation to the whole-polygon SELECTION op. The drawn relation
+    IS the signal: TOUCH (coinciding edges, gap 0) -> `interacting` (touch counts);
+    genuine area OVERLAP -> `overlapping` (== `not_outside`, touch excluded);
+    containment -> `inside`; else (disjoint, gap may be 0) -> `outside`."""
+    return ("inside" if rel == "inside"
+            else "interacting" if rel == "touch"
+            else "overlapping" if rel == "overlap"
+            else "outside")
+
+
+# truth table: each selection op -> the set of subject/context RELATIONS it keeps
+# (flags). Every row is distinct, so labeled example instances (some flagged, some
+# not) identify the op uniquely -- and a NEGATION (not_inside) is just a row whose
+# excluded set is a single relation.
+_SEL_ROWS = {
+    "inside":          frozenset({"inside"}),
+    "not_interacting": frozenset({"disjoint"}),
+    "outside":         frozenset({"disjoint", "touch"}),
+    "overlapping":     frozenset({"inside", "overlap"}),
+    "interacting":     frozenset({"inside", "touch", "overlap"}),
+    "not_inside":      frozenset({"disjoint", "touch", "overlap"}),
+}
+
+
+def _lookup_sel(kept, dropped):
+    """The selection op whose truth-table row keeps every `kept` relation and none
+    of the `dropped` ones. Among consistent ops prefer the MOST permissive (the
+    negation the counter-examples were drawn to express). None if nothing fits."""
+    cands = [op for op, keep in _SEL_ROWS.items()
+             if kept <= keep and not (dropped & keep)]
+    return max(cands, key=lambda op: len(_SEL_ROWS[op])) if cands else None
+
+
 @register
 class KLayoutBackend(Backend):
     name = "klayout"
@@ -57,7 +91,7 @@ class KLayoutBackend(Backend):
         # WITH a min = a two-sided range) -> a .drc(...) narrow-gap / range
         # SELECTOR. Wavy measures are topological selections (in _check_expr).
         checks = self._group_bounds(rule)
-        areas = [a for a in rule.area_bounds() if a[1] in (">", ">=")]
+        areas = rule.area_bounds()                       # both min (>=) and max (<=)
         angles = rule.angle_bounds()
         corners = rule.corner_bounds()
         lengths = rule.length_bounds()
@@ -66,8 +100,8 @@ class KLayoutBackend(Backend):
         for i, (var, (lo, hi)) in enumerate(checks):
             self._emit_check(rule, var, lo, hi, i, total)
         off += len(checks)
-        for j, (shape, _, value) in enumerate(areas):
-            self._emit_area(rule, shape, value, off + j, total)
+        for j, (shape, op, value) in enumerate(areas):
+            self._emit_area(rule, shape, op, value, off + j, total)
         off += len(areas)
         for k, (edge, lo, hi) in enumerate(angles):
             self._emit_angle(rule, edge, lo, hi, off + k, total)
@@ -97,7 +131,7 @@ class KLayoutBackend(Backend):
         if m is None:
             return None
         sf, st = rule.shape_of_edge(m["from"]), rule.shape_of_edge(m["to"])
-        mt = self.metric
+        mt = m.get("metric") or self.metric   # the metric is a property of the measure
         measured = {sf, st}
 
         # Topological SELECTIONS (outside/inside/interacting) on the measured
@@ -111,14 +145,32 @@ class KLayoutBackend(Backend):
             ml = rule.layer_of(other)
             if not ml:
                 return False
-            rel = rule.relation(subj, other)
-            # a wavy-measure / operand selection asserts NON-overlap: the shapes
-            # may be drawn apart (disjoint) or just touching (gap example = 0) --
-            # both mean `outside`. Genuine area overlap -> `interacting`;
-            # containment -> `inside`.
-            so = ("inside" if rel == "inside"
-                  else "interacting" if rel == "overlap" else "outside")
-            sel_for[subj].append((so, self._layer_var(ml)))
+            # labeled same-layer instances relating to `other` (the measured subj
+            # plus any counter-examples). With counter-examples, read the op off the
+            # truth table; otherwise the single drawn relation (back-compatible).
+            insts = rule.instances_relating_to(rule.layer_of(subj), other)
+            dropped = {rule.relation(s, other) for s, f in insts if not f}
+            mvar = self._layer_var(ml)
+            if dropped:
+                kept = {rule.relation(s, other) for s, f in insts if f}
+                so = _lookup_sel(kept, dropped) or _rel_to_sel(rule.relation(subj, other))
+                sel_consumed.update(s for s, _ in insts)   # consume the label instances
+                for s, f in insts:                         # ...and the CONTRAST's doping/covers
+                    if not f:                              # (not the measured arg's -- it needs them)
+                        sel_consumed.update(rule.covering(s))
+                # ONLY when counter-examples are present (a negation drawing) do we
+                # read a DERIVED marker: shapes overlapping `other` (a gate = poly2
+                # over comp) AND into the marker -> not_interacting(poly2.and(comp))
+                # = tgate. Gating on `dropped` keeps simple selections untouched
+                # (their incidental layout overlaps aren't derived markers).
+                helpers = rule.overlapping_markers(other, measured | {s for s, _ in insts})
+                mvar += "".join(f".and({self._layer_var(h)})" for h in helpers)
+                for h in helpers:
+                    sel_consumed.update(s for s in rule.shapes if rule.layer_of(s) == h
+                                        and rule.relation(other, s) in ("overlap", "inside", "contains"))
+            else:
+                so = _rel_to_sel(rule.relation(subj, other))
+            sel_for[subj].append((so, mvar))
             sel_consumed.add(other)
             return True
 
@@ -246,8 +298,10 @@ class KLayoutBackend(Backend):
             union = exprs[0] + "".join(f".or({e})" for e in exprs[1:])
             self._emit(rule, union, 0, 1, rule.name or "or")
 
-    def _emit_area(self, rule, shape, value, idx, total):
-        """Min-area check on a (possibly derived/selected) layer -> with_area(nil, v)."""
+    def _emit_area(self, rule, shape, op, value, idx, total):
+        """Area check on a (possibly derived/selected) layer. MIN (`area >= v`) ->
+        with_area(nil, v) (flags the too-small polys); MAX (`area <= v`) ->
+        with_area(v, nil) (flags the too-large polys)."""
         measured = {shape}
         # wavy-measure selections on the area shape (e.g. sab.outside(otp_mk))
         sels, sel_consumed = [], set()
@@ -258,8 +312,7 @@ class KLayoutBackend(Backend):
             ml = rule.layer_of(other)
             if ml:
                 rel = rule.relation(shape, other)
-                so = ("inside" if rel == "inside"
-                      else "interacting" if rel == "overlap" else "outside")
+                so = _rel_to_sel(rel)
                 sels.append((so, self._layer_var(ml)))
                 sel_consumed.add(other)
         derived = {s for s in (rule.covering(shape) + rule.removed(shape))
@@ -267,7 +320,8 @@ class KLayoutBackend(Backend):
         consumed = measured | derived | sel_consumed
         v = self._fmt(value)
         selsuf = "".join(f".{so}({l})" for so, l in sorted(set(sels)))
-        core = f"{self._derived(rule, shape, measured | sel_consumed)}{selsuf}.with_area(nil, {v}.um)"
+        args = f"nil, {v}.um" if op in (">", ">=") else f"{v}.um, nil"   # min vs max area
+        core = f"{self._derived(rule, shape, measured | sel_consumed)}{selsuf}.with_area({args})"
         suffix = "".join(f".{op}({mk})" for op, mk in self._scope(rule, consumed, shape))
         if self.scope_all:
             sop, region = self.scope_all

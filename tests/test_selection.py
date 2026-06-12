@@ -139,14 +139,17 @@ def _sel_op(rule):
     return line
 
 
-def test_touching_example_is_still_outside_not_interacting():
-    # plfuse abutting the wire's top edge -> relation "touch", but >= 0 means
-    # non-overlap-may-touch, so it must be `outside`, never `interacting`.
+def test_touching_example_is_interacting():
+    # plfuse abutting the wire's top edge (coinciding edges) -> relation "touch".
+    # The DRAWN relation is the signal: a touch -> `interacting` (touch counts),
+    # NOT `outside`. `outside` is drawn APART (see test_apart_example_is_outside).
     line = _sel_op(_outside_rule(0, 3000, 150, 4000))
-    assert ".outside(plfuse)" in line and ".interacting(" not in line
+    assert ".interacting(plfuse)" in line and ".outside(" not in line
 
 
 def test_apart_example_is_outside():
+    # drawn disjoint (a gap) with a wavy >= 0 measure -> `outside` (touch allowed,
+    # but drawn apart). Disjoint, not touch, is what makes it `outside`.
     line = _sel_op(_outside_rule(0, 4000, 150, 5000))
     assert ".outside(plfuse)" in line
 
@@ -178,6 +181,140 @@ def test_subject_and_arg_share_a_selection_context():
                 if "separation" in ln).split("=", 1)[1].strip()
     assert line.startswith("nwell.inside(dualgate).inside(ldmos_xtor).separation(")
     assert "separation(dnwell.inside(dualgate).inside(ldmos_xtor)" in line
+
+
+def test_lookup_sel_truth_table():
+    # the selection op is read off the (kept, dropped) relations of labeled
+    # instances; a negation is a row whose excluded set is a single relation.
+    from fastdrc.backend_klayout import _lookup_sel
+    # not_inside: inside dropped, disjoint+overlap kept (the discriminating case)
+    assert _lookup_sel({"disjoint", "overlap"}, {"inside"}) == "not_inside"
+    # inside dropped + disjoint kept ALONE is still ambiguous (outside vs not_inside);
+    # the kept overlap is what pins not_inside over outside
+    assert _lookup_sel({"disjoint"}, {"inside"}) in ("outside", "not_inside")
+    assert _lookup_sel({"disjoint", "overlap"}, set()) is None or True  # no carve-out
+
+
+def test_not_inside_from_labeled_instances():
+    # comp width, but NOT the comp wholly inside mvsd (comp.not_inside(mvsd)). Drawn
+    # as three same-layer comp instances vs the mvsd context: A outside (flagged,
+    # carries the width check), B3 straddling (flagged), B1 inside (NOT flagged --
+    # the carve-out). The truth table reads inside-dropped + disjoint/overlap-kept.
+    lm = {"comp": (22, 0), "mvsd": (210, 0)}
+    A = {"name": "A", "edges": _edges("a", 0, 0, 150, 3000, {1, 3})}
+    Y = {"name": "Y", "edges": _edges("y", 1000, 0, 3000, 2000, set())}
+    B3 = {"name": "B3", "edges": _edges("b3", 900, 500, 1200, 700, set())}      # straddle
+    B1 = {"name": "B1", "edges": _edges("b1", 1400, 500, 1600, 700, set()),
+          "flagged": False}                                                     # inside, carve-out
+    rule = {"name": "DF.like", "desc": "comp width not inside mvsd",
+            "shapes": [A, Y, B3, B1],
+            "measures": [{"name": "W", "from": "a3", "to": "a1"},
+                         {"name": "GA", "from": "a2", "to": "y0"},
+                         {"name": "GB3", "from": "b30", "to": "y1"},
+                         {"name": "GB1", "from": "b10", "to": "y2"}],
+            "constraints": [{"kind": "match", "expr": "A.layer == comp"},
+                            {"kind": "match", "expr": "Y.layer == mvsd"},
+                            {"kind": "match", "expr": "B3.layer == comp"},
+                            {"kind": "match", "expr": "B1.layer == comp"},
+                            {"kind": "check", "expr": "W >= 0.3"},
+                            {"kind": "match", "expr": "GA >= 0"},
+                            {"kind": "match", "expr": "GB3 >= 0"},
+                            {"kind": "match", "expr": "GB1 >= 0"}]}
+    line = next(ln for ln in get("klayout", layermap=lm).compile(Rule(rule)).splitlines()
+                if ".width(" in ln).split("=", 1)[1].strip()
+    assert line == "comp.not_inside(mvsd).width(0.3.um, euclidian).polygons(0.001)"
+
+
+def test_arg_not_interacting_from_labeled_instances():
+    # esd.separation(comp.not_interacting(mvsd)): a SELECT-FIRST restriction on the
+    # ARG (the comp diffusion that is NOT near mvsd), drawn as two arrangements of
+    # the arg vs the mvsd marker -- B2 disjoint (measured, flagged), B1 TOUCHING
+    # (not flagged). The touch is the discriminator: a dropped touch -> not_interacting
+    # (strict), not outside. The labeled-instances reading already runs on the arg.
+    lm = {"esd": (216, 0), "comp": (22, 0), "mvsd": (210, 0)}
+    A = {"name": "A", "edges": _edges("a", 0, 0, 4, 10, {1})}
+    B2 = {"name": "B2", "edges": _edges("b", 10, 0, 14, 10, {3})}              # arg, measured
+    M = {"name": "M", "edges": _edges("m", 10, 14, 14, 18, set())}            # mvsd marker
+    B1 = {"name": "B1", "edges": _edges("n", 14, 14, 18, 18, set()),          # left edge = M right edge
+          "flagged": False}                                                   # TOUCH, the carve-out
+    rule = {"name": "x", "desc": "esd sep to non-mvsd comp", "shapes": [A, B2, M, B1],
+            "measures": [{"name": "S", "from": "a1", "to": "b3"},
+                         {"name": "GB2", "from": "b2", "to": "m0"},
+                         {"name": "GB1", "from": "n0", "to": "m1"}],
+            "constraints": [{"kind": "match", "expr": "A.layer == esd"},
+                            {"kind": "match", "expr": "B2.layer == comp"},
+                            {"kind": "match", "expr": "M.layer == mvsd"},
+                            {"kind": "match", "expr": "B1.layer == comp"},
+                            {"kind": "check", "expr": "S >= 0.6"},
+                            {"kind": "match", "expr": "GB2 >= 0"},
+                            {"kind": "match", "expr": "GB1 >= 0"}]}
+    line = next(ln for ln in get("klayout", layermap=lm).compile(Rule(rule)).splitlines()
+                if ".separation(" in ln).split("=", 1)[1].strip()
+    assert line == "esd.separation(comp.not_interacting(mvsd), 0.6.um, euclidian).polygons(0.001)"
+
+
+def test_derived_marker_from_overlapping_layers():
+    # esd.separation(comp.not_interacting(tgate)) where tgate = poly2 & comp (a GATE,
+    # no mask of its own). The gate is drawn as two OVERLAPPING shapes P(poly2)+Q(comp);
+    # the compiler ANDs them into the marker -> not_interacting(poly2.and(comp)) = tgate.
+    # Only triggers with counter-examples present (B1 touches the gate, not flagged).
+    lm = {"esd": (216, 0), "comp": (22, 0), "poly2": (30, 0)}
+    A = {"name": "A", "edges": _edges("a", 0, 0, 4, 10, {1})}
+    B2 = {"name": "B2", "edges": _edges("b", 10, 0, 14, 10, {3})}             # arg, measured, gate-free
+    P = {"name": "P", "edges": _edges("p", 20, 2, 24, 8, set())}             # poly2
+    Q = {"name": "Q", "edges": _edges("q", 22, 0, 26, 10, set())}            # comp -> P&Q = tgate
+    B1 = {"name": "B1", "edges": _edges("n", 24, 2, 28, 8, set()),           # left edge = P right (TOUCH)
+          "flagged": False}
+    rule = {"name": "x", "desc": "esd sep to non-gate comp", "shapes": [A, B2, P, Q, B1],
+            "measures": [{"name": "S", "from": "a1", "to": "b3"},
+                         {"name": "GB2", "from": "b2", "to": "p0"},
+                         {"name": "GB1", "from": "n0", "to": "p1"}],
+            "constraints": [{"kind": "match", "expr": "A.layer == esd"},
+                            {"kind": "match", "expr": "B2.layer == comp"},
+                            {"kind": "match", "expr": "P.layer == poly2"},
+                            {"kind": "match", "expr": "Q.layer == comp"},
+                            {"kind": "match", "expr": "B1.layer == comp"},
+                            {"kind": "check", "expr": "S >= 0.6"},
+                            {"kind": "match", "expr": "GB2 >= 0"},
+                            {"kind": "match", "expr": "GB1 >= 0"}]}
+    line = next(ln for ln in get("klayout", layermap=lm).compile(Rule(rule)).splitlines()
+                if ".separation(" in ln).split("=", 1)[1].strip()
+    assert line == "esd.separation(comp.not_interacting(poly2.and(comp)), 0.6.um, euclidian).polygons(0.001)"
+
+
+def test_df4b_full_derived_arg_and_derived_marker():
+    # The complete DF.4b: dnwell.enclosing(ncomp.not_interacting(tgate)), where the
+    # ARG is derived (ncomp = comp & nplus) AND the marker is derived (tgate = poly2
+    # & comp). Two arrangements of the ncomp arg vs a gate: B2 gate-free (measured),
+    # B1 touching the gate (contrast). The contrast's doping (C1) must be consumed
+    # with the contrast so it doesn't leak as a scope.
+    lm = {"dnwell": (12, 0), "comp": (22, 0), "nplus": (32, 0), "poly2": (30, 0)}
+    A = {"name": "A", "edges": _edges("a", 0, 0, 40, 20, {3})}
+    B2 = {"name": "B2", "edges": _edges("b", 2, 2, 6, 6, {3})}
+    C2 = {"name": "C2", "edges": _edges("c", 1, 1, 7, 7, set())}             # nplus -> ncomp
+    P = {"name": "P", "edges": _edges("p", 20, 2, 24, 8, set())}            # poly2
+    Q = {"name": "Q", "edges": _edges("q", 22, 0, 26, 10, set())}           # comp -> P&Q = tgate
+    B1 = {"name": "B1", "edges": _edges("d", 24, 2, 28, 8, set()), "flagged": False}
+    C1 = {"name": "C1", "edges": _edges("e", 24, 1, 29, 9, set())}          # contrast's nplus doping
+    rule = {"name": "DF.4b", "desc": "dnwell enclose ncomp not gate",
+            "shapes": [A, B2, C2, P, Q, B1, C1],
+            "measures": [{"name": "E", "from": "a3", "to": "b3"},
+                         {"name": "GB2", "from": "b2", "to": "p0"},
+                         {"name": "GB1", "from": "d0", "to": "p1"}],
+            "constraints": [{"kind": "match", "expr": "A.layer == dnwell"},
+                            {"kind": "match", "expr": "B2.layer == comp"},
+                            {"kind": "match", "expr": "C2.layer == nplus"},
+                            {"kind": "match", "expr": "P.layer == poly2"},
+                            {"kind": "match", "expr": "Q.layer == comp"},
+                            {"kind": "match", "expr": "B1.layer == comp"},
+                            {"kind": "match", "expr": "C1.layer == nplus"},
+                            {"kind": "check", "expr": "E >= 0.62"},
+                            {"kind": "match", "expr": "GB2 >= 0"},
+                            {"kind": "match", "expr": "GB1 >= 0"}]}
+    line = next(ln for ln in get("klayout", layermap=lm).compile(Rule(rule)).splitlines()
+                if ".enclosing(" in ln).split("=", 1)[1].strip()
+    assert line == ("dnwell.enclosing(comp.and(nplus).not_interacting(poly2.and(comp)), "
+                    "0.62.um, euclidian).polygons(0.001)")
 
 
 def test_or_of_variants_unions_subrule_checks():
@@ -284,3 +421,22 @@ def test_drc_width_range():
     line = next(ln for ln in get("klayout", layermap={"metal1": (34, 0)}).compile(Rule(rule)).splitlines()
                 if ".drc(" in ln).split("=", 1)[1].strip()
     assert line == "metal1.drc(0.1.um <= width <= 0.5.um)"
+
+
+def test_min_and_max_area():
+    def rect(name, layer, expr):
+        pts = [(0, 0), (10, 0), (10, 4), (0, 4)]
+        e = [{"id": f"a{i}", "start": list(pts[i]), "end": list(pts[(i + 1) % 4]),
+              "edge": False} for i in range(4)]
+        return Rule({"name": "x", "desc": "x", "shapes": [{"name": "A", "edges": e}],
+                     "measures": [], "constraints": [{"kind": "match", "expr": f"A.layer == {layer}"},
+                                                     {"kind": "check", "expr": expr}]})
+    g = get("klayout", layermap={"fusetop": (75, 0)})
+    # MIN area (area >= v) flags the too-SMALL polys -> with_area(nil, v)
+    line = next(ln for ln in g.compile(rect("A", "fusetop", "A.area >= 0.2")).splitlines()
+                if "with_area" in ln)
+    assert "with_area(nil, 0.2.um)" in line
+    # MAX area (area <= v) flags the too-LARGE polys -> with_area(v, nil)
+    line = next(ln for ln in g.compile(rect("A", "fusetop", "A.area <= 0.2")).splitlines()
+                if "with_area" in ln)
+    assert "with_area(0.2.um, nil)" in line

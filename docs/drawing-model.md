@@ -62,10 +62,12 @@ means:**
   check* (width / space / separation / enclosing).
 - between **wavy** edges → **not a distance at all**, but a **topological
   assertion** about how two shapes relate. It picks an `inside` / `outside` /
-  `interacting` selection from the relation you drew (see *Restrict the subject…*).
-  The operator carries the touch semantics — `X >= 0` → "they don't overlap, but
-  the gap may be **zero** (may touch)" → e.g. an **`outside`** selection (KLayout
-  `outside` keeps polygons that merely touch).
+  `interacting` / `overlapping` selection from the *relation you drew* (see
+  *Restrict the subject…*): inside → `inside`, touch → `interacting`, overlap →
+  `overlapping`, disjoint → `outside`. For the disjoint case the operator carries
+  the touch semantics — `X >= 0` → "they don't overlap, but the gap may be **zero**
+  (may touch)" → an **`outside`** selection (KLayout `outside` keeps polygons that
+  merely touch). A *drawn* touch (coinciding edges), by contrast, is `interacting`.
 
 This is the single most important convention: **straight measure = check, wavy
 measure = relation.**
@@ -154,10 +156,19 @@ selection op:
 | what you draw (subject vs context) | compiler derives |
 |---|---|
 | subject **inside** the context | `X.inside(Y)` |
-| **disjoint or just touching** (non-overlap) | `X.outside(Y)` |
-| **overlapping** the context | `X.interacting(Y)` |
+| **disjoint** (drawn apart; the wavy `>= 0` allows a zero gap) | `X.outside(Y)` |
+| **touching** (coinciding edges — one shape's edge *is* the other's) | `X.interacting(Y)` |
+| **overlapping** (interiors cross) | `X.overlapping(Y)` ≡ `X.not_outside(Y)` |
 
-The **wavy measure is the signal**: drawing one to a layer makes this a *selection*
+The **exact relation you draw is the signal** — `touch` and `overlap` are different
+pictures with different meanings. A *touch* (coinciding edges) counts as
+`interacting`; a genuine *area overlap* is `overlapping` (equivalently
+`not_outside` — "not wholly outside" = has overlap). To get `outside` you draw the
+shapes **apart** (disjoint); the wavy `>= 0` measure just says the gap *may* reach
+zero. This matches the scope table below exactly (touch→`interacting`,
+overlap→`overlapping`) — selection and scope read relations the same way.
+
+The **wavy measure is the signal** that this is a *selection*: drawing one to a layer makes it a *selection*
 (`X.inside(Y)`, keeping whole polygons). The *same* containing layer drawn with **no
 measure** — just covering — would instead be a *combine* (`X.and(Y)`, the
 overlap-of-two-layers recipe above). They're behaviourally close when the subject
@@ -165,6 +176,38 @@ is inside `Y`, but the measure is what tells them apart. Apply the wavy measure 
 **each** subject shape (both rects of a space rule), and you can chain several
 (`X.inside(A).inside(B)`). The separation **argument** can be selected the same
 way: a wavy measure from `B` to its context → `X.separation(Y.outside(Z))`.
+
+### Negated selections (`not_inside`): label several instances
+The positive selections above are each a *single* relation — one picture. A
+**negation** like `not_inside(Y)` ("keep the X polygons **not** wholly inside Y")
+has no single positive picture: it keeps a whole *family* of relations (outside,
+touching, straddling) and drops only one (wholly inside). So you draw the subject
+layer **more than once** and **label** each instance flagged (a violation) or not:
+
+- the **flagged** instance carries the check/measurement (the violation), drawn in
+  a kept relation — e.g. the subject **outside** Y, and a second copy **straddling**
+  Y's edge;
+- a **not-flagged counter-example** — the same layer drawn **wholly inside** Y —
+  shows the relation that is *carved out*.
+
+A selection is really a **partition of relations into flagged / dropped**, and
+every op is a distinct row of this table (✓ = that relation is kept):
+
+| op | inside | disjoint | touch | overlap |
+|---|---|---|---|---|
+| `inside` | ✓ | | | |
+| `not_interacting` | | ✓ | | |
+| `outside` | | ✓ | ✓ | |
+| `overlapping` ≡ `not_outside` | ✓ | | | ✓ |
+| `interacting` | ✓ | | ✓ | ✓ |
+| `not_inside` | | ✓ | ✓ | ✓ |
+
+The compiler reads the relations of the labeled instances (inside → dropped,
+disjoint + overlap → kept) and **looks up the matching row** → `X.not_inside(Y)`.
+You only draw the extra counter-example(s) for a **negation**; a positive
+selection stays a single flagged instance (everything else dropped by default).
+Nothing here is derived — just the subject layer drawn a few times in its natural
+relations, each labeled.
 
 ### Restrict a rule to a domain / region (a marker layer)
 Draw a marker-layer rect **around** the subject, with **no measure** (fully
@@ -245,6 +288,8 @@ one; everything else above is a single drawing.
 | Two pictures that look alike | Distinguish by | Means |
 |---|---|---|
 | straight measure vs wavy measure | the edges it spans | a real distance (a *check*) vs a topological relation |
+| **touch** (coinciding edges) vs **overlap** (interiors cross) | the drawn relation | `interacting(Y)` (touch counts) vs `overlapping(Y)` ≡ `not_outside(Y)` (area overlap only) |
+| **one flagged instance** vs flagged + a **not-flagged counter-example** | is there a carve-out? | a positive selection vs a **negation** (`not_inside`) — the dropped relation labels which |
 | wavy `>= 0` vs no measure (both disjoint) | is there a measure? | `outside` selection (touch OK) vs `not_interacting` scope (strict) |
 | a 2nd layer **covering** the measurement vs a **cutout off** it | where the measurement sits | combine (`.and`) vs remove (`.not`) |
 | a 2nd layer off the measurement: **real edge** vs **all wavy** | the layer's edges | a device cut out (remove, `.not`) vs a domain marker (filter/scope) |

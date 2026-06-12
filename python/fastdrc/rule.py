@@ -115,6 +115,26 @@ class Rule:
                 out.append((sa, sb))
         return out
 
+    def is_flagged(self, shape):
+        """A drawn instance is FLAGGED (a positive example -- the violation, the
+        default) or a not-flagged COUNTER-EXAMPLE: a same-layer instance drawn in
+        a particular relation to a context to show that that relation is NOT
+        flagged. Counter-examples turn a selection into a labeled truth table, so
+        a NEGATION (e.g. not_inside) -- which has no single positive picture -- is
+        drawn as `flagged outside/overlap instances + a not-flagged inside one`."""
+        return bool(self.shapes.get(shape, {}).get("flagged", True))
+
+    def instances_relating_to(self, layer, context):
+        """Every drawn instance OF `layer` that asserts a wavy-measure relation to
+        the `context` shape, as [(shape, flagged)] -- the labeled examples the
+        selection op for `context` is read off (see is_flagged)."""
+        out = []
+        for sa, sb in self.relation_selections():
+            for inst, ctx in ((sa, sb), (sb, sa)):
+                if ctx == context and self.layer_of(inst) == layer:
+                    out.append((inst, self.is_flagged(inst)))
+        return out
+
     def edge_length(self, edge_id):
         """Drawn Euclidean length of an edge (native eval; informational -- the
         rule threshold is symbolic, in the constraint)."""
@@ -220,6 +240,23 @@ class Rule:
     # --- constraint facts (mined from the parsed ASTs) ---
     def layer_of(self, shape):
         return self._attr_eq(shape, "layer")
+
+    def overlapping_markers(self, context, exclude):
+        """Layers of shapes that OVERLAP the `context` marker shape (and aren't an
+        operand/instance in `exclude`) -- i.e. a DERIVED marker drawn as overlapping
+        real layers, e.g. a gate = poly2 over comp => the marker is poly2 & comp =
+        tgate. The compiler ANDs these into the marker layer (the combine recipe,
+        applied to a context). Returns distinct helper layers, sorted."""
+        base = self.layer_of(context)
+        out = set()
+        for name in self.shapes:
+            if name == context or name in exclude:
+                continue
+            if self.relation(context, name) in ("overlap", "inside", "contains"):
+                ml = self.layer_of(name)
+                if ml and ml != base:
+                    out.add(ml)
+        return sorted(out)
 
     def net_of(self, shape):
         return self._attr_eq(shape, "net")

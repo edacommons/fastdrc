@@ -42,7 +42,7 @@ def run_exprs(exprs, gds, lm):
     # define pure-AND derived vars (ncomp = comp & nplus ...) so OFFICIAL ops that
     # reference them by name run; each resolves to base layers, so order is free.
     import validate_klayout as _vk
-    body += [f"{v} = " + " & ".join(sorted(ls)) for v, ls in _vk._VARDEFS.items()]
+    body += [f"{v} = {_vk._var_expansion(*ad)}" for v, ad in _vk._VARDEFS.items()]
     for i, (rid, expr) in enumerate(exprs):
         body.append(f"x{i} = {expr}")
         body.append(f'x{i}.output("{rid}", "{rid}")')
@@ -82,31 +82,48 @@ def layout_for(r, lm):
     elif op == "with_area":                             # area below threshold
         side = max(1, int(math.sqrt(v) * 1000 * 0.5))
         s.append((*bl, 0, 0, side, side))
-    for cl in r["covers"]:                              # AND-ed layer -> must cover
+    for cl in r["covers"] + r.get("arg_covers", []):    # AND-ed layer (subject or arg) -> covers
         s.append((*lm[cl], -2000, -2000, 8000, 8000))
-    for hl in r["holes"]:                               # NOT-ed layer -> must NOT cover
+    for hl in r["holes"] + r.get("arg_holes", []):      # NOT-ed layer -> must NOT cover
         s.append((*lm[hl], 90000, 90000, 91000, 91000))
     for so, mk in r["scope"]:                           # in-domain so the rule fires
         far = (*lm[mk], 90000, 90000, 91000, 91000)
         near = (*lm[mk], -2000, -2000, 8000, 8000)
         s.append(far if so == "not_interacting" else near)
-    for sel_op, y in r.get("selections", []):           # X.inside/outside/interacting(Y)
+    for sel_op, y in r.get("selections", []):           # X.inside/outside/interacting/overlapping(Y)
         box = {"inside": (-5000, -5000, 30000, 30000),    # context contains the violating X
                "outside": (100000, 100000, 101000, 101000),  # context far (disjoint)
-               "interacting": (-3000, -3000, 5000, 5000)}[sel_op]  # context overlaps X
-        s.append((*lm[y], *box))
+               "interacting": (-3000, -3000, 5000, 5000),     # context overlaps X
+               # overlapping / not_outside need area overlap; a containing box gives it
+               "overlapping": (-5000, -5000, 30000, 30000),
+               "not_outside": (-5000, -5000, 30000, 30000),
+               "not_interacting": (200000, 200000, 201000, 201000)}[sel_op]  # far -> X kept
+        for bl in _marker_layers(y, lm):                  # derived marker -> its base layers
+            s.append((*lm[bl], *box))
         # NOTE: for separation, outside(Y) before separation(Y) is a behavioral
         # no-op -- the only subject polys it drops are those area-overlapping Y, and
         # plain separation never flags overlapping polys anyway (verified across
         # touch/overlap/inside configs). We still emit it for op-text fidelity.
     for sel_op, y in r.get("arg_selections", []):       # arg = via2.interacting(metal2) etc.
         # the context must NOT empty the arg: inside/interacting -> a big box that
-        # contains/overlaps the arg geometry; outside -> far (arg stays selected).
+        # contains/overlaps the arg; outside/not_interacting -> far (arg stays selected).
         box = {"inside": (-5000, -5000, 30000, 30000),
                "interacting": (-5000, -5000, 30000, 30000),
-               "outside": (200000, 200000, 201000, 201000)}[sel_op]
-        s.append((*lm[y], *box))
+               "outside": (200000, 200000, 201000, 201000),
+               "not_interacting": (200000, 200000, 201000, 201000)}[sel_op]
+        for bl in _marker_layers(y, lm):
+            s.append((*lm[bl], *box))
     return s
+
+
+def _marker_layers(y, lm):
+    """The gds layers for a selection marker: the layer itself, or -- for a DERIVED
+    var (tgate = poly2 & comp) -- its base layers, placed at the same box so they
+    overlap into the AND. Skips anything not in the layermap."""
+    if y in lm:
+        return [y]
+    import validate_klayout as _vk
+    return [l for l in _vk._VARDEFS.get(y, (frozenset(),))[0] if l in lm]
 
 
 def main():
