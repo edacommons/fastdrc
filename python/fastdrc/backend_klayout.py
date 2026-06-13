@@ -56,19 +56,23 @@ class KLayoutBackend(Backend):
         # -> violation check (width/space/sep/enclosing); a MAX bound (optionally
         # WITH a min = a two-sided range) -> a .drc(...) narrow-gap / range
         # SELECTOR. Wavy measures are topological selections (in _check_expr).
-        checks = self._group_bounds(rule)
+        eols = rule.eol_measures()                       # [(var, cap, side)] from GEOMETRY
+        eol_vars = {v for v, _, _ in eols}
+        eol_edges = {e for _, c, s in eols for e in (c, s)}   # length bounds the EOL claims
+        checks = [c for c in self._group_bounds(rule) if c[0] not in eol_vars]
         areas = rule.area_bounds()                       # both min (>=) and max (<=)
         angles = rule.angle_bounds()
         corners = rule.corner_bounds()
-        lengths = rule.length_bounds()
+        lengths = [lb for lb in rule.length_bounds() if lb[0] not in eol_edges]
         crosses = [v for v, mm in rule.measures.items() if mm.get("crossed")]  # presence
-        total = len(checks) + len(areas) + len(angles) + len(corners) + len(lengths) + len(crosses)
+        total = (len(checks) + len(areas) + len(angles) + len(corners) + len(lengths)
+                 + len(crosses) + len(eols))
         off = 0
         for i, (var, (lo, hi)) in enumerate(checks):
             self._emit_check(rule, var, lo, hi, i, total)
         off += len(checks)
-        for j, (shape, op, value) in enumerate(areas):
-            self._emit_area(rule, shape, op, value, off + j, total)
+        for j, (shape, op, value, on_holes) in enumerate(areas):
+            self._emit_area(rule, shape, op, value, off + j, total, on_holes)
         off += len(areas)
         for k, (edge, lo, hi) in enumerate(angles):
             self._emit_angle(rule, edge, lo, hi, off + k, total)
@@ -81,6 +85,9 @@ class KLayoutBackend(Backend):
         off += len(lengths)
         for k, var in enumerate(crosses):                # CROSS -> presence violation
             self._emit_check(rule, var, None, None, off + k, total)
+        off += len(crosses)
+        for k, (var, cap, side) in enumerate(eols):      # END-OF-LINE construction
+            self._emit_eol(rule, var, cap, side, off + k, total)
         return self._assemble()
 
     def _assemble(self):
@@ -244,10 +251,13 @@ class KLayoutBackend(Backend):
             union = exprs[0] + "".join(f".or({e})" for e in exprs[1:])
             self._emit(rule, union, 0, 1, rule.name or "or")
 
-    def _emit_area(self, rule, shape, op, value, idx, total):
+    def _emit_area(self, rule, shape, op, value, idx, total, on_holes=False):
         """Area check on a (possibly derived/selected) layer. MIN (`area >= v`) ->
         with_area(nil, v) (flags the too-small polys); MAX (`area <= v`) ->
-        with_area(v, nil) (flags the too-large polys)."""
+        with_area(v, nil) (flags the too-large polys).
+
+        on_holes (a drawn donut + `A.holes.area`): the layer's VOIDS are the subject
+        (`L.holes.with_area(...)`), so a min-void-area rule flags slivers/pinholes."""
         measured = {shape}
         # wavy-measure selections on the area shape (e.g. sab.outside(otp_mk))
         sels, sel_consumed = [], set()
@@ -267,7 +277,8 @@ class KLayoutBackend(Backend):
         v = self._fmt(value)
         selsuf = "".join(f".{so}({l})" for so, l in sorted(set(sels)))
         args = f"nil, {v}.um" if op in (">", ">=") else f"{v}.um, nil"   # min vs max area
-        core = f"{self._derived(rule, shape, measured | sel_consumed)}{selsuf}.with_area({args})"
+        holes = ".holes" if on_holes else ""
+        core = f"{self._derived(rule, shape, measured | sel_consumed)}{holes}{selsuf}.with_area({args})"
         suffix = "".join(f".{op}({mk})" for op, mk in self._scope(rule, consumed, shape))
         if self.scope_all:
             sop, region = self.scope_all
@@ -366,6 +377,10 @@ class KLayoutBackend(Backend):
             expr += f".not({n})"
         for op, marker in sorted((o, self._fmt_deriv(m)) for o, m in d["selections"]):
             expr += f".{op}({marker})"
+        if d.get("halo"):                   # a signed margin: grow (>0) / shrink (<0) the region
+            expr += f".sized({self._fmt(d['halo'])}.um)"
+            # NOTE: `rounded` is carried on the Rule but not rendered yet -- a rounded grow
+            # isn't a `.sized` mode (those handle acute corners); it needs rounded_corners.
         return expr
 
     def _derived(self, rule, shape, measured):
@@ -418,6 +433,35 @@ class KLayoutBackend(Backend):
                 self._decls.append(f'{var} = input("{layer}")')
             self._layers[layer] = var
         return self._layers[layer]
+
+    def _emit_eol(self, rule, var, cap, side, idx, total):
+        """END-OF-LINE. The CAP edge of a narrow wire (recovered geometrically) carries
+        a spacing/enclosing rule. Emit KLayout's edge-of-line idiom: select the narrow
+        runs (drc(width <= Weol).with_length(Slen, nil, both)), take their cap edges
+        (short edges bridging BOTH sides, minus the sides), apply the rule. Weol/Slen
+        come from the cap's / a side's edge-length bounds; op + arg from the geometry."""
+        m = rule.measures[var]
+        sf, st = rule.shape_of_edge(m["from"]), rule.shape_of_edge(m["to"])
+        L = self._layer_var(rule.layer_of(sf))
+        mt = m.get("metric") or self.metric
+        lb = {e: (lo, hi) for e, k, lo, hi in rule.length_bounds() if k == "with"}
+        weol, slen = f"{self._fmt(lb[cap][1])}.um", f"{self._fmt(lb[side][0])}.um"
+        v = f"{self._fmt(next(b.value for b in rule.bounds() if b.var == var and b.is_min))}.um"
+        rid = rule.name or f"{var}.eol"
+        desc = rule.desc or rid
+        cond, eol = f"eol{idx}_cond", f"eol{idx}"
+        self._checks.append(f"{cond} = {L}.drc(width <= {weol}).with_length({slen}, nil, both)")
+        self._checks.append(
+            f"{eol} = {L}.edges.with_length(nil, {weol})"
+            f".interacting({cond}.first_edges).interacting({cond}.second_edges)"
+            f".not({cond}.first_edges).not({cond}.second_edges)")
+        op = "enclosing" if rule.relation(sf, st) in ("contains", "inside") else "separation"
+        arg = f"{self._layer_var(rule.layer_of(st))}.edges"
+        res = self._result_var(rid, idx, total)
+        self._checks.append(f"{res} = {eol}.{op}({arg}, {v}, {mt}).polygons(0.001)")
+        self._checks.append(f'{res}.output("{rid}", "{desc}")')
+        for fv in (res, eol, cond):
+            self._checks.append(f"{fv}.forget")
 
     def _result_var(self, rid, idx, total):
         base = self._var(rid).lower()

@@ -117,6 +117,15 @@ One closed rect with **all edges wavy** — it stands for "any polygon"; only th
 total area is constrained, no edge is measured. `A.area >= 0.2025`.
 → `comp.with_area(nil, 0.2025)`
 
+### Min void area (a hole / ring)
+Draw the shape as a **donut** — an outer outline with an inner **hole loop**
+(`hole_loops`) cut out — and measure *the void*, not the ring: `A.holes.area >= 0.35`.
+`A.holes` is a genuine sub-feature of the drawn shape (like an edge's length), so the
+compiler recovers "the layer's enclosed voids" from the drawn hole and the threshold
+from the constraint. A min-void-area rule flags pinholes/slivers in a fill.
+→ `nplus.holes.with_area(nil, 0.35)`
+(The same drawn void is what lets `X.inside(G.holes)` express "X surrounded by ring G".)
+
 ### A check on the overlap of two layers (a device)
 Draw **both real layers**, with the second one **covering the measured region**
 (the part you measure sits inside it). You draw `comp` and `mos_cap_mk` — two
@@ -267,6 +276,27 @@ A shape with a **straight** edge; constrain its length:
 | `e.length != 0.22` | `layer.edges.without_length(0.22)` |
 | `e.length >= 0.1 and e.length <= 0.5` | `layer.edges.with_length(0.1, 0.5)` |
 
+### End-of-line (a wire end)
+A min-width wire is *two straight sides + wavy ends*. An **end-of-line** rule is that
+same wire with **one end made real**: draw the **cap** (the short end edge) **straight**
+while the *other* end stays **wavy** ("the wire continues"), keep the two sides straight,
+and add two edge-length constraints — `cap.length <= Weol` (the EOL width) and
+`side.length >= Slen` (the min run length). Put the rule measure on the cap (e.g. an
+inner contact it must enclose). No new primitive, no to-scale drawing: the cap-opposite-
+a-wavy-end geometry *is* the end-of-line, and the compiler emits KLayout's idiom:
+→ `cond = metal1.drc(width <= Weol).with_length(Slen, nil, both)`
+→ `eol = metal1.edges.with_length(nil, Weol).interacting(cond.first_edges).interacting(cond.second_edges).not(cond.first_edges).not(cond.second_edges)`
+→ `eol.enclosing(contact.edges, 0.06)`
+
+### Halo (a "within X" margin on a shape)
+A shape carries an optional **halo** — a signed margin (default 0) its region is
+**grown** (halo > 0) or **shrunk** (halo < 0) by, the formal form of a DRM figure's
+dashed offset line ("within X of"). Draw it as a **dashed/dotted offset outline**
+(outside the shape for +, inside for −). A `rounded` tick selects rounded vs square
+corners on the grown region (reserved — not yet rendered to KLayout). The compiler
+appends it to that shape's derived region:
+→ `nwell.outside(dnwell).sized(0.429.um)` (a nwell-outside-dnwell region grown 0.429)
+
 ### Min/max size (contact/via) — edges as the output
 A contact/via must be *exactly* the right size, so any edge of the **wrong length**
 is a violation. Draw the layer with a straight edge and `e.length != 0.22`; the
@@ -351,6 +381,12 @@ rule** (its own shapes + measures + constraints), group them under the one rule
 name, and the compiler compiles each and **unions their violations**. A violation
 in *either* case is a violation of the rule.
 → `case1.or(case2)`
+
+The cases need not be the same *kind*: **SB.4** is "salicide block too close to a
+contact **OR** overlapping one" — a *separation* case unioned with a *presence*
+(overlap) case. Each variant is recognized independently, so the union is only as
+complete as its parts (an unrecognized operand keeps the whole rule deferred —
+never partially emitted).
 
 This is the only form where a "rule" is genuinely **several drawings** rather than
 one; everything else above is a single drawing.

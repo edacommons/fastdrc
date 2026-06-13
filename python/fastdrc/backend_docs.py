@@ -82,9 +82,14 @@ class DocsBackend(Backend):
         out = []
         for var, (lo, hi) in self._gb(rule):
             out.append(self._dim(rule, var, lo, hi))
-        for shape, op, value in rule.area_bounds():
+        for shape, op, value, on_holes in rule.area_bounds():
             kind = "at least" if op == ">=" else "at most"
-            out.append(f"{self._deriv_en(rule, shape)} must be {kind} {_fmt(value)} µm² in area.")
+            subj = self._deriv_en(rule, shape)
+            if on_holes:
+                out.append(f"every enclosed void (hole) in {subj} must be {kind} "
+                           f"{_fmt(value)} µm² in area.")
+            else:
+                out.append(f"{subj} must be {kind} {_fmt(value)} µm² in area.")
         for edge, lo, hi in rule.angle_bounds():
             sh = rule.shape_of_edge(edge)
             out.append(f"{self._deriv_en(rule, sh)} must have no edge angled between "
@@ -105,7 +110,21 @@ class DocsBackend(Backend):
                 out.append(f"{subj} edges {rng} µm long are flagged.")
         for var in [v for v, mm in rule.measures.items() if mm.get("crossed")]:
             out.append(self._presence(rule, var))
+        for var, cap, side in rule.eol_measures():
+            out.append(self._eol(rule, var, cap, side))
         return out
+
+    def _eol(self, rule, var, cap, side):
+        m = rule.measures[var]
+        sf, st = rule.shape_of_edge(m["from"]), rule.shape_of_edge(m["to"])
+        L, arg = self._name(rule.layer_of(sf)), self._name(rule.layer_of(st))
+        lb = {e: (lo, hi) for e, k, lo, hi in rule.length_bounds() if k == "with"}
+        v = _fmt(next(b.value for b in rule.bounds() if b.var == var and b.is_min))
+        verb = ("enclose" if rule.relation(sf, st) in ("contains", "inside")
+                else "be at least {} µm from".format(v))
+        tail = f"{arg} by at least {v} µm" if verb == "enclose" else f"{arg}"
+        return (f"the end-of-line edge of a narrow {L} wire (width ≤ {_fmt(lb[cap][1])} µm, "
+                f"length ≥ {_fmt(lb[side][0])} µm) must {verb} {tail}.")
 
     def _gb(self, rule):                    # group straight-measure bounds (min, max) per var
         from collections import defaultdict
@@ -188,6 +207,10 @@ class DocsBackend(Backend):
             multi = len(ctxs) > 1 and any(" " in c for c in ctxs)
             wrap = (lambda p: f"[{p}]") if multi else (lambda p: p)
             phrase += f" that {_SEL.get(op, 'relates to')} {_join([wrap(c) for c in ctxs])}"
+        h = d.get("halo")
+        if h:                                # the signed halo / margin (rounded reserved)
+            phrase = (f"{phrase} grown by {_fmt(h)} µm" if h > 0
+                      else f"{phrase} shrunk by {_fmt(-h)} µm")
         return phrase
 
     def _gate_en(self, rule, shape):        # gate-edge subject (mirrors the backend's edge_dl)

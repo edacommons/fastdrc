@@ -51,6 +51,70 @@ def test_presence_must_interact():
     assert "contact must interact with (touch or overlap) metal1" in _desc(r)
 
 
+def test_eol_construction():
+    # END-OF-LINE: a drawn wire-end (narrow run, a straight cap opposite a wavy
+    # 'continues' end) + the eol rule -> KLayout's cond/eol idiom (CO.6a shape);
+    # docs describes it as an end-of-line edge.
+    import fastdrc.backend_klayout  # noqa: F401
+    # NO flag, NO explicit thresholds: a3 is the cap (straight, opposite the WAVY a1
+    # 'continues' end); Weol/Slen are ordinary edge-length constraints recovered from
+    # the drawn scene.
+    A = {"name": "A", "edges": _edges("a", 0, 0, 10, 3, {0, 2, 3})}   # a1 wavy; a3 cap; a0/a2 sides
+    B = {"name": "B", "edges": _edges("b", 1, 1, 2, 2, set())}        # contact inside the end
+    r = {"name": "CO.6a", "desc": "EOL enclosure", "shapes": [A, B],
+         "measures": [{"name": "R", "from": "a3", "to": "b3", "metric": "projection"}],
+         "constraints": [{"kind": "match", "expr": "A.layer == metal1"},
+                         {"kind": "match", "expr": "B.layer == contact"},
+                         {"kind": "check", "expr": "a3.length <= 0.34"},   # = EOL width Weol
+                         {"kind": "check", "expr": "a0.length >= 0.24"},   # = min run length Slen
+                         {"kind": "check", "expr": "R >= 0.06"}]}
+    drc = get("klayout", layermap={"metal1": (34, 0), "contact": (33, 0)}).compile(Rule(r))
+    assert "metal1.drc(width <= 0.34.um).with_length(0.24.um, nil, both)" in drc
+    assert (".edges.with_length(nil, 0.34.um).interacting(eol0_cond.first_edges)"
+            ".interacting(eol0_cond.second_edges).not(eol0_cond.first_edges)"
+            ".not(eol0_cond.second_edges)") in drc
+    assert "eol0.enclosing(contact.edges, 0.06.um, projection).polygons(0.001)" in drc
+    d = get("docs").compile(Rule(r))
+    assert "end-of-line edge of a narrow metal1 wire" in d and "must enclose contact" in d
+
+
+def test_halo_primitive():
+    # a shape's signed HALO (a 'within X' margin, drawn as a dashed offset line) ->
+    # .sized(halo.um); both backends render it from the same derivation.
+    import fastdrc.backend_klayout  # noqa: F401
+    A = {"name": "A", "edges": _edges("a", 0, 0, 4, 10, {1}), "halo": 0.429}
+    B = {"name": "B", "edges": _edges("b", 6, 0, 10, 10, {3})}
+    r = {"name": "H.1", "desc": "haloed sep", "shapes": [A, B],
+         "measures": [{"name": "S", "from": "a1", "to": "b3"}],
+         "constraints": [{"kind": "match", "expr": "A.layer == nwell"},
+                         {"kind": "match", "expr": "B.layer == comp"},
+                         {"kind": "check", "expr": "S >= 0.5"}]}
+    drc = get("klayout", layermap={"nwell": (21, 0), "comp": (22, 0)}).compile(Rule(r))
+    assert "nwell.sized(0.429.um).separation(comp" in drc
+    assert "nwell grown by 0.429 µm must be at least 0.5 µm from comp" in get("docs").compile(Rule(r))
+    A["halo"] = -0.18                          # negative halo = shrink
+    assert "nwell.sized(-0.18.um)" in get("klayout", layermap={"nwell": (21, 0), "comp": (22, 0)}).compile(Rule(r))
+    assert "nwell shrunk by 0.18 µm" in get("docs").compile(Rule(r))
+
+
+def test_void_area_primitive():
+    # min-VOID-area (NP.8b shape): a DONUT of `base` (outer loop + an inner
+    # hole_loops void) measured by `A.holes.area` -> L.holes.with_area(...). The
+    # `.holes` is recovered from the drawn void, the threshold from the constraint.
+    import fastdrc.backend_klayout  # noqa: F401
+    A = {"name": "A", "edges": _edges("a", 0, 0, 10, 10, set()),
+         "hole_loops": [_edges("h", 3, 3, 7, 7, set())]}
+    r = {"name": "NP.8b", "desc": "min void area", "shapes": [A], "measures": [],
+         "constraints": [{"kind": "match", "expr": "A.layer == nplus"},
+                         {"kind": "check", "expr": "A.holes.area >= 0.35"}]}
+    drc = get("klayout", layermap={"nplus": (32, 0)}).compile(Rule(r))
+    assert "nplus.holes.with_area(nil, 0.35.um)" in drc
+    assert "every enclosed void (hole) in nplus must be at least 0.35 µm²" in _desc(r)
+    # NO drawn void (no hole_loops) -> NOT a void rule: `.holes` is never invented.
+    del A["hole_loops"]
+    assert ".holes" not in get("klayout", layermap={"nplus": (32, 0)}).compile(Rule(r))
+
+
 def test_both_backends_render_one_shared_analysis():
     # The KLayout and docs backends are now thin FORMATTERS over the same
     # Rule.check_derivations -- so they can't semantically diverge. This pins that:

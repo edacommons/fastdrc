@@ -64,6 +64,8 @@ def layout_for(r, lm):
     """Geometry (gds_layer, dt, x0,y0,x1,y1 in nm) that VIOLATES rule r, plus the
     covering/hole/scope geometry positioned so the rule fires on it."""
     op, base = r["op"], r["base"]
+    if op == "or":          # OR-of-variants: a layout that violates the FIRST variant
+        return layout_for(r["variants"][0], lm)   # fires that case -> the union fires too
     bl = lm[base]
     v = float(r["value"]) if r["value"] else 0.0
     vnm = int(round(v * 1000))
@@ -81,6 +83,11 @@ def layout_for(r, lm):
     elif op == "separation":
         g = max(1, vnm // 2)
         s += [(*bl, 0, 0, 1000, 1000), (*lm[r["arg"][0]], 1000 + g, 0, 2000 + g, 1000)]
+    elif op == "with_area" and r.get("void"):           # min-VOID-area: a DONUT whose
+        side = max(2, int(math.sqrt(v) * 1000 * 0.5))   # hole is smaller than threshold
+        h0, h1 = 4000, 4000 + side                      # the under-area void
+        s += [(*bl, 0, 0, h0, 10000), (*bl, h1, 0, 10000, 10000),   # left, right
+              (*bl, h0, 0, h1, h0), (*bl, h0, h1, h1, 10000)]       # bottom, top (frame)
     elif op == "with_area":                             # area below threshold
         side = max(1, int(math.sqrt(v) * 1000 * 0.5))
         s.append((*bl, 0, 0, side, side))
@@ -138,6 +145,8 @@ def main():
     matched = fired = 0
     fails = []
     for r in rules:
+        if r["op"] == "edge_eol":         # multi-statement cond/eol construction -- op-level
+            continue                      # only (a single-expression run can't reference its vars)
         gds = tempfile.mktemp(suffix=".gds")
         try:
             gen_layout(layout_for(r, lm), gds)

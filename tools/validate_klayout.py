@@ -253,6 +253,10 @@ def _norm_lenargs(kind, largs):
 def canon(line):
     """Canonical, order-insensitive signature of a KLayout check line."""
     rhs = line.split("=", 1)[1] if "=" in line else line
+    ors = _split_or(rhs)                   # OR-of-variants -> an order-insensitive set of
+    if ors:                                # operand signatures (a bare-var operand expands
+        # to its definition first, so ours -- inlined -- matches the deck's `a.or(b)`).
+        return ("or", frozenset(canon(_OR_DEFS.get(o, o)) for o in ors))
     m = _OP.search(rhs)
     if m is None:                          # no dimensional op -> a PRESENCE region (the
         # region itself is the violation). Signature = subject layers + selections.
@@ -282,6 +286,8 @@ def canon(line):
         val = re.search(r"([0-9.]+)\.um", args_str)
         a_and, a_not, value = frozenset(), frozenset(), val.group(1) if val else ""
         mode = "minarea" if args_str.strip().startswith("nil") else "maxarea"  # nil,v vs v,nil
+        if re.search(r"\.holes\b", subj_str):    # L.holes.with_area = a VOID-area rule,
+            mode += "_holes"                     # distinct from L.with_area (whole-region)
     elif op in ("width", "space"):
         parts = [p.strip() for p in args_str.split(",")]
         a_and, a_not, value, mode = frozenset(), frozenset(), parts[0].replace(".um", ""), _get(parts, 1)
@@ -449,119 +455,236 @@ def _balanced(s):
     return "".join(out)
 
 
+_OR_DEFS = {}            # var -> its rhs, so a union operand var expands to its check
+
+
+def _split_or(rhs):
+    """If `rhs` is a TOP-LEVEL union of checks (`exprA.or(exprB).or(...)`), return
+    the operand strings [exprA, exprB, ...]; else None. A union is recognized only
+    when the `.or(...)` chain spans the WHOLE rhs -- a `.or` buried in a derived
+    layer (`nat.or(ncomp).covering(...)`) has trailing ops, so it's NOT one."""
+    rhs = re.split(r"\.(?:output|forget)\(", rhs.strip())[0].strip()
+    ors, depth, i = [], 0, 0
+    while i < len(rhs):
+        c = rhs[i]
+        if c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+        elif depth == 0 and rhs[i:i + 4] == ".or(":
+            ors.append(i)
+        i += 1
+    if not ors:
+        return None
+    operands, end = [rhs[:ors[0]].strip()], None
+    for p in ors:
+        inner = _balanced(rhs[p + 4:])
+        operands.append(inner.strip())
+        end = p + 4 + len(inner) + 1
+    if rhs[end:].strip() or not operands[0]:         # trailing ops -> a layer-union, not a check-union
+        return None
+    return operands
+
+
 def _get(seq, i):
     return seq[i] if i < len(seq) else ""
 
 
+def _recognize_dim(rhs, lm, skip):
+    """Recognize a DIMENSIONAL check expression (`<subject>.<op>(args).polygons(...)`)
+    into a partial rule dict (no id/desc/line), or None if unsupported. `skip` is
+    incremented with the defer reason. Shared by the per-line scan and OR operand
+    recognition, so an inline union operand parses exactly like a standalone rule."""
+    m = _OP.search(rhs)
+    if not m:
+        return None
+    op = m.group(1)
+    subject = expand_base(rhs[:rhs.index("." + op + "(")].strip(), _VARDEFS)
+    void = bool(re.fullmatch(r"\w+\.holes", subject))      # bare L.holes -> min-void-area
+    if void:
+        subject = subject[:-len(".holes")]
+    parsed = parse_complex_subject(subject)
+    if parsed is None:
+        skip["complex_subj"] += 1
+        return None
+    base, ands, nots, selections = parsed
+    selections = [d for o, y in selections for d in _decompose_sel(o, y)]
+    s_and = frozenset({base}) | frozenset(ands)
+    s_not = frozenset(nots)
+    if (ands or nots) and op not in ("width", "space", "with_area", "separation"):
+        skip["derived_encsep"] += 1
+        return None
+    tail = rhs[rhs.index("." + op + "(") + len("." + op + "("):]
+    args = _balanced(tail)
+    arg_selections, arg_covers, arg_holes = [], [], []
+    area_op = ">="
+    if op == "with_area":
+        mn = re.match(r"\s*nil\s*,\s*([0-9.]+)\.um", args)
+        mx = re.match(r"\s*([0-9.]+)\.um\s*,\s*nil", args)
+        if ".not_in" in tail or not (mn or mx):
+            skip["area_max"] += 1
+            return None
+        arg_layers, mode = [], ""
+        value, area_op = (mn.group(1), ">=") if mn else (mx.group(1), "<=")
+    else:
+        parts = [p.strip() for p in args.split(",")]
+        need = 2 if op in ("width", "space") else 3
+        if len(parts) < need:
+            skip["argshape"] += 1
+            return None
+        if op in ("width", "space"):
+            arg_layers, value, mode = [], parts[0].replace(".um", ""), parts[1]
+        else:
+            argp = parse_complex_subject(expand_base(parts[0], _VARDEFS))
+            if argp is None:
+                skip["derived_arg"] += 1
+                return None
+            arg_base, arg_ands, arg_nots, arg_selections = argp
+            arg_selections = [d for o, y in arg_selections for d in _decompose_sel(o, y)]
+            if (arg_ands or arg_nots) and op not in ("separation", "enclosing"):
+                skip["derived_arg"] += 1
+                return None
+            if op == "enclosing" and any(y == base for _, y in arg_selections):
+                skip["derived_arg"] += 1
+                return None
+            arg_layers, arg_covers, arg_holes = [arg_base], arg_ands, arg_nots
+            value, mode = parts[1].replace(".um", ""), parts[2]
+    if any(not _drawable_marker(o, y) for o, y in selections + arg_selections):
+        skip["complex_subj"] += 1
+        return None
+    sel_layers = []
+    for _, y in selections + arg_selections:
+        sel_layers += _marker_deep_layers(y)
+    if any(l not in lm for l in list(s_and | s_not) + arg_layers + sel_layers):
+        skip["nonbase"] += 1
+        return None
+    after = tail.split(")", 1)[1] if ")" in tail else ""
+    scope = _SCOPE.findall(after)
+    if any(mk not in lm for _, mk in scope):
+        skip["nonbase"] += 1
+        return None
+    if any(so not in _HANDLED_SCOPE for so, _ in scope):
+        skip["area_scope"] += 1
+        return None
+    return {"op": op, "base": base, "covers": sorted(s_and - {base}),
+            "holes": sorted(s_not), "arg": arg_layers, "value": value, "mode": mode,
+            "scope": scope, "selections": selections, "arg_selections": arg_selections,
+            "arg_covers": arg_covers, "arg_holes": arg_holes, "area_op": area_op,
+            "void": void, "behavioral_only": False}
+
+
+def _recognize_presence_region(region, lm, skip):
+    """Recognize a PRESENCE region (no dimensional op -- the region IS the violation)
+    into a partial rule dict, or None. Shared by the presence scan + OR operands."""
+    region = expand_base(region, _VARDEFS)
+    p = parse_complex_subject(region)
+    if p is None:
+        skip["complex_subj"] += 1
+        return None
+    pbase, pands, pnots, psels = p
+    psels = [d for o, y in psels for d in _decompose_sel(o, y)]
+    if any(not _drawable_marker(o, y) for o, y in psels):
+        skip["complex_subj"] += 1
+        return None
+    sl = []
+    for _, y in psels:
+        sl += _marker_deep_layers(y)
+    if any(l not in lm for l in [pbase] + pands + pnots + sl):
+        skip["nonbase"] += 1
+        return None
+    return {"op": "presence", "base": pbase, "covers": sorted(pands),
+            "holes": sorted(pnots), "arg": [], "value": "", "mode": "", "scope": [],
+            "selections": psels, "arg_selections": [], "arg_covers": [], "arg_holes": [],
+            "area_op": ">=", "void": False, "behavioral_only": False}
+
+
+def _recognize_operand(expr, lm):
+    """An OR operand may be a bare var (resolved by caller) or an inline expression:
+    recognize it as a dimensional check or a presence region. Returns a rule dict
+    (id None) or None if unsupported (-> the whole union defers)."""
+    expr = expr.strip()
+    if _split_or(expr):                          # a nested union -> defer for now
+        return None
+    sink = dict.fromkeys(("complex_subj", "derived_encsep", "derived_arg", "argshape",
+                          "area_scope", "nonbase", "area_max"), 0)
+    if _OP.search(expr):
+        part = _recognize_dim(expr, lm, sink)
+    else:
+        region = re.split(r"\.(?:polygons|output|forget)\(", expr)[0].strip()
+        part = _recognize_presence_region(region, lm, sink)
+    if part is None:
+        return None
+    return {**part, "id": None, "desc": "", "line": expr}
+
+
 def parse_rules(text, lm):
-    global _VARDEFS
+    global _VARDEFS, _OR_DEFS
     _VARDEFS = parse_and_vars(text, lm)         # derived-var (pure-AND) resolution
     lines = text.splitlines()
+    _OR_DEFS = {ln.split("=", 1)[0].strip(): ln.split("=", 1)[1].strip()
+                for ln in lines if "=" in ln and not ln.lstrip().startswith("#")}
+    recognized = {}        # lhs var -> its recognized check dict (incl. no-output intermediates),
+    #                        so a union's operand vars resolve to drawable sub-rules
     rules = []
     skip = dict(complex_subj=0, derived_encsep=0, derived_arg=0, argshape=0,
-                area_scope=0, no_output=0, nonbase=0, area_max=0)
+                area_scope=0, no_output=0, nonbase=0, area_max=0, or_unresolved=0)
     for i, line in enumerate(lines):
-        m = _OP.search(line)
-        if not m or "=" not in line:
+        if "=" not in line or line.lstrip().startswith("#"):
             continue
-        op = m.group(1)
         rhs = line.split("=", 1)[1]
-        subject = expand_base(rhs[:rhs.index("." + op + "(")].strip(), _VARDEFS)
-        # one parse for plain / AND-NOT-derived / (multi-)selection subjects; None
-        # if it has an unhandled op (or / holes / edges / not_inside) -> deferred.
-        parsed = parse_complex_subject(subject)
-        if parsed is None:
-            skip["complex_subj"] += 1
+        if _split_or(rhs):                   # a top-level union -> the OR post-pass owns it
             continue
-        base, ands, nots, selections = parsed
-        selections = [d for o, y in selections for d in _decompose_sel(o, y)]
-        s_and = frozenset({base}) | frozenset(ands)
-        s_not = frozenset(nots)
-        derived = bool(ands or nots)
-        behavioral_only = False
-        # derived separation now round-trips (op-aware covering covers only the
-        # subject, + balanced-paren canon). Derived ENCLOSING stays deferred: its
-        # arg is INSIDE the subject, so any covering of the subject also covers it.
-        if derived and op not in ("width", "space", "with_area", "separation"):
-            skip["derived_encsep"] += 1
+        if not _OP.search(rhs):
             continue
-        tail = rhs[rhs.index("." + op + "(") + len("." + op + "("):]
-        args = _balanced(tail)               # MATCHING close paren (derived args nest)
-        arg_selections, arg_covers, arg_holes = [], [], []
-        area_op = ">="                       # min-area by default (with_area direction)
-        if op == "with_area":
-            # with_area(nil, v) = MIN area (A.area >= v); with_area(v, nil) = MAX
-            # area (A.area <= v). `.not_in` (area between two values) is deferred.
-            mn = re.match(r"\s*nil\s*,\s*([0-9.]+)\.um", args)
-            mx = re.match(r"\s*([0-9.]+)\.um\s*,\s*nil", args)
-            if ".not_in" in tail or not (mn or mx):
-                skip["area_max"] += 1
-                continue
-            arg_layers, mode = [], ""
-            value, area_op = (mn.group(1), ">=") if mn else (mx.group(1), "<=")
-        else:
-            parts = [p.strip() for p in args.split(",")]
-            need = 2 if op in ("width", "space") else 3
-            if len(parts) < need:
-                skip["argshape"] += 1
-                continue
-            if op in ("width", "space"):
-                arg_layers, value, mode = [], parts[0].replace(".um", ""), parts[1]
-            else:
-                # arg may be a SELECTED or AND/NOT-DERIVED layer (e.g.
-                # nwell.outside(dnwell), poly2.and(sab)); parse it like a subject.
-                argp = parse_complex_subject(expand_base(parts[0], _VARDEFS))
-                if argp is None:
-                    skip["derived_arg"] += 1
-                    continue
-                arg_base, arg_ands, arg_nots, arg_selections = argp
-                arg_selections = [d for o, y in arg_selections for d in _decompose_sel(o, y)]
-                # AND/NOT-derived arg now works for enclosing too: drawn match-first
-                # (the inner device near the subject's EDGE), the doping covers only
-                # the device, not the subject's interior -- no entanglement.
-                if (arg_ands or arg_nots) and op not in ("separation", "enclosing"):
-                    skip["derived_arg"] += 1
-                    continue
-                # a self-referential arg selection on ENCLOSING (context layer ==
-                # subject base, e.g. nat.enclosing(ncomp.interacting(nat))) is
-                # ambiguous to draw -- the inner context and the subject share a
-                # layer. Separation handles it (subject clear of the arg); enclosing
-                # doesn't (arg sits inside the subject). Defer just the enclosing case.
-                if op == "enclosing" and any(y == base for _, y in arg_selections):
-                    skip["derived_arg"] += 1
-                    continue
-                arg_layers, arg_covers, arg_holes = [arg_base], arg_ands, arg_nots
-                value, mode = parts[1].replace(".um", ""), parts[2]
-        # a selection marker may be a DERIVED var (not_interacting(tgate)); expand it
-        # to its base layers for the in-layermap check.
-        if any(not _drawable_marker(o, y) for o, y in selections + arg_selections):
-            skip["complex_subj"] += 1            # AND/NOT inside a regular-selection marker
+        part = _recognize_dim(rhs, lm, skip)
+        if part is None:
             continue
-        sel_layers = []
-        for _, y in selections + arg_selections:
-            sel_layers += _marker_deep_layers(y)
-        if any(l not in lm for l in list(s_and | s_not) + arg_layers + sel_layers):
-            skip["nonbase"] += 1
-            continue
-        after = tail.split(")", 1)[1] if ")" in tail else ""   # result chain after the op
-        scope = _SCOPE.findall(after)
-        if any(mk not in lm for _, mk in scope):
-            skip["nonbase"] += 1
-            continue
-        if any(so not in _HANDLED_SCOPE for so, _ in scope):
-            skip["area_scope"] += 1
-            continue
-        rid, desc = _find_output(lines, i, line.split("=", 1)[0].strip())
+        lhs = line.split("=", 1)[0].strip()
+        rid, desc = _find_output(lines, i, lhs)
+        rdict = {**part, "id": rid, "desc": desc, "line": line}
+        recognized[lhs] = rdict            # stash even no-output intermediates (union operands)
         if rid is None:
             skip["no_output"] += 1
             continue
-        rules.append({"id": rid, "desc": desc, "op": op, "base": base,
-                      "covers": sorted(s_and - {base}), "holes": sorted(s_not),
-                      "arg": arg_layers, "value": value, "mode": mode,
-                      "scope": scope, "line": line, "selections": selections,
-                      "arg_selections": arg_selections, "arg_covers": arg_covers,
-                      "arg_holes": arg_holes, "area_op": area_op,
-                      "behavioral_only": behavioral_only})
+        rules.append(rdict)
+    # END-OF-LINE: the deck's 3-statement construction
+    #   cond = L.drc(width <= Weol).with_length(Slen, nil, both)
+    #   eol  = L.edges.with_length(nil, Weol).interacting(cond.first_edges)...not(...)
+    #   out  = eol.enclosing(arg.edges, V, metric)
+    # is the formal "wire-end" scene: a narrow run with a straight CAP. We TRACE the
+    # three vars to recover (L, Weol, Slen, op, arg, V) and round-trip via the as-drawn
+    # wire-end (Rule.eol_measures recognizes it; the backend re-emits this construction).
+    done = {r["id"] for r in rules}
+    rawdef = {}
+    for l in lines:
+        mm = re.match(r"\s*(\w+)\s*=\s*([^=].*)", l)
+        if mm and ".output(" not in l and ".forget" not in l:
+            rawdef.setdefault(mm.group(1), mm.group(2).strip())
+    for i, line in enumerate(lines):
+        mo = re.match(r'\s*(\w+)\.output\("([^"]*)",\s*"([^"]*)"\)', line)
+        if not mo or mo.group(2) in done:
+            continue
+        var, rid, desc = mo.group(1), mo.group(2), mo.group(3)
+        rm = re.match(r"(\w+)\.(enclosing|separation|space|width)\((\w+)\.edges,\s*([0-9.]+)"
+                      r"\.um(?:,\s*(\w+))?\)", rawdef.get(var, ""))
+        if not rm:
+            continue
+        eolvar, dop, arg, val, metric = rm.groups()
+        em = re.match(r"(\w+)\.edges\.with_length\(nil,\s*([0-9.]+)\.um\)\.interacting\((\w+)"
+                      r"\.first_edges\)", rawdef.get(eolvar, ""))
+        if not em:
+            continue
+        L, weol, condvar = em.groups()
+        cm = re.search(r"\.drc\(\s*width\s*<=\s*[0-9.]+\.um\)\.with_length\(([0-9.]+)\.um",
+                       rawdef.get(condvar, ""))
+        if not cm or L not in lm or arg not in lm:
+            continue
+        done.add(rid)
+        rules.append({"id": rid, "desc": desc, "op": "edge_eol", "base": L, "weol": weol,
+                      "slen": cm.group(1), "eol_op": dop, "arg": [arg], "value": val,
+                      "mode": metric or "euclidian", "covers": [], "holes": [], "scope": [],
+                      "selections": [], "arg_selections": [], "arg_covers": [], "arg_holes": [],
+                      "area_op": ">=", "behavioral_only": False, "line": line})
     # EDGE-DIMENSIONAL (gate WIDTH): `BASE.edges.and(GATE.edges).not(M)...width(L)` --
     # poly width over the gate (tgate = poly2 & comp). The covering GATE layer(s) form
     # the gate edge-marker; .not(M) cutouts become edge .not. First slice: WIDTH only,
@@ -664,30 +787,41 @@ def parse_rules(text, lm):
             if dm:
                 defn, defline = dm.group(1).strip(), lines[j]
                 break
-        if defn is None or _OP.search(defn) or ".drc(" in defn:
-            continue                                    # dimensional -> handled above
-        region = expand_base(re.split(r"\.(?:output|forget|polygons)\(", defn)[0].strip(), _VARDEFS)
-        p = parse_complex_subject(region)
-        if p is None:
-            skip["complex_subj"] += 1
-            continue
-        pbase, pands, pnots, psels = p
-        psels = [d for o, y in psels for d in _decompose_sel(o, y)]
-        if any(not _drawable_marker(o, y) for o, y in psels):
-            skip["complex_subj"] += 1
-            continue
-        sl = []
-        for _, y in psels:
-            sl += _marker_deep_layers(y)
-        if any(l not in lm for l in [pbase] + pands + pnots + sl):
-            skip["nonbase"] += 1
+        if defn is None or _OP.search(defn) or ".drc(" in defn or _split_or(defn):
+            continue                                    # dimensional / union -> handled elsewhere
+        region = re.split(r"\.(?:output|forget|polygons)\(", defn)[0].strip()
+        part = _recognize_presence_region(region, lm, skip)
+        if part is None:
             continue
         done.add(rid)
-        rules.append({"id": rid, "desc": desc, "op": "presence", "base": pbase,
-                      "covers": sorted(pands), "holes": sorted(pnots), "arg": [],
-                      "value": "", "mode": "", "scope": [], "line": defline,
-                      "selections": psels, "arg_selections": [], "arg_covers": [],
-                      "arg_holes": [], "area_op": ">=", "behavioral_only": False})
+        rdict = {**part, "id": rid, "desc": desc, "line": defline}
+        recognized[var] = rdict
+        rules.append(rdict)
+    # OR-of-variants: `final = caseA.or(caseB)...` -- a union of checks. Each operand
+    # is a separately-defined var (resolved from `recognized`) OR an inline expression
+    # (recognized directly). If ALL operands round-trip, emit an OR rule; one we can't
+    # recognize keeps the whole union deferred. Backend unions them; docs lists each.
+    done = {r["id"] for r in rules}
+    for i, line in enumerate(lines):
+        if "=" not in line or line.lstrip().startswith("#"):
+            continue
+        lhs, rhs = (p.strip() for p in line.split("=", 1))
+        ors = _split_or(rhs)
+        if not ors or len(ors) < 2:
+            continue
+        rid, desc = _find_output(lines, i, lhs)
+        if rid is None or rid in done:
+            continue
+        variants = [recognized.get(o) or _recognize_operand(o, lm) for o in ors]
+        if any(v is None for v in variants):
+            skip["or_unresolved"] += 1
+            continue
+        done.add(rid)
+        rules.append({"id": rid, "desc": desc, "op": "or", "base": variants[0]["base"],
+                      "variants": variants, "line": line, "value": "", "mode": "",
+                      "covers": [], "holes": [], "arg": [], "scope": [], "selections": [],
+                      "arg_selections": [], "arg_covers": [], "arg_holes": [], "void": False,
+                      "behavioral_only": False})
     return rules, skip
 
 
@@ -757,6 +891,9 @@ def _marker_pos(scope_op, i):
 
 def as_drawn(r):
     op, v, base, holes = r["op"], r["value"], r["base"], r["holes"]
+    if op == "or":               # OR-of-variants -> a rule whose `or` is each variant's scene
+        return {"name": r["id"], "desc": r["desc"],
+                "or": [as_drawn(v) for v in r["variants"]]}
     # `match` constraints identify WHICH geometry the rule is about (layers,
     # markers); the single `check` is the assertion verified (a violation is a
     # matched configuration where the check fails).
@@ -783,6 +920,20 @@ def as_drawn(r):
             shapes.append(_rect(f"G{gi}", 3 - gi, -2 - gi, 7 + gi, 6 + gi, f"g{gi}"))
             cons.append(_match(f"G{gi}.layer == {gl}"))     # crosses A's centre -> covers its
             #   device point with relation 'overlap' (not 'inside') -> recovered as the gate
+    elif op == "edge_eol":
+        # END-OF-LINE: a wire whose CAP (a3, straight) faces a WAVY 'continues' end (a1);
+        # the two SIDES (a0,a2) straight. cap.length <= Weol, side.length >= Slen are the
+        # thresholds; the arg sits INSIDE the end (-> relation contains -> enclosing). The
+        # backend's Rule.eol_measures recognizes this and emits the cond/eol construction.
+        A = _rect("A", 0, 0, 10, 4, "a")
+        for e in A["edges"]:
+            if e["id"] in ("a0", "a2", "a3"):
+                e["edge"] = True                      # sides + cap straight; a1 (right) wavy
+        shapes = [A, _rect("B", 1, 1, 3, 3, "b")]     # arg inside the wire end
+        meas = [{"name": "R", "from": "a3", "to": "b3", "metric": r["mode"]}]
+        cons = [_match(f"A.layer == {base}"), _match(f"B.layer == {r['arg'][0]}"),
+                _check(f"a3.length <= {r['weol']}"), _check(f"a0.length >= {r['slen']}"),
+                _check(f"R >= {v}")]
     elif op == "edge_length":
         # min/max SIZE: the EDGE a0's length is the violation. A length constraint
         # (!= for without_length, == / range for with_length) -> the backend emits
@@ -798,6 +949,15 @@ def as_drawn(r):
             cexpr = " and ".join(c for c in (f"a0.length >= {lo}" if lo else None,
                                              f"a0.length <= {hi}" if hi else None) if c)
         cons = [_match(f"A.layer == {base}"), _check(cexpr)]
+    elif op == "with_area" and r.get("void"):
+        # min-VOID-area: a DONUT of `base` (outer loop + an inner hole_loops void),
+        # measured by `A.holes.area`. The backend recovers `.holes` from the drawn
+        # void + the threshold from the constraint -> L.holes.with_area(...).
+        A = _rect("A", 0, 0, 10, 10, "a")
+        A["hole_loops"] = [_rect("H", 3, 3, 7, 7, "h")["edges"]]
+        shapes = [A]
+        meas = []
+        cons = [_match(f"A.layer == {base}"), _check(f"A.holes.area {r.get('area_op', '>=')} {v}")]
     elif op == "with_area":
         shapes = [_rect("A", 0, 0, 10, 4, "a")]
         meas = []
@@ -1076,6 +1236,32 @@ def validate_angle_rules(text, lm):
     return ok, tot, fails
 
 
+def _eol_sig(text):
+    """Trace an end-of-line construction (cond/eol/result) to its signature
+    (L, Weol, Slen, op, arg, V, metric) -- so the deck's and ours compare on STRUCTURE,
+    not on the opaque cond/eol variable names (which differ)."""
+    defs = {}
+    for l in text.splitlines():
+        m = re.match(r"\s*(\w+)\s*=\s*(.+)", l)
+        if m:
+            defs[m.group(1)] = m.group(2).strip()
+    for rhs in defs.values():
+        rm = re.match(r"(\w+)\.(enclosing|separation|space|width)\((\w+)\.edges,\s*"
+                      r"([0-9.]+)\.um(?:,\s*(\w+))?\)", rhs)
+        if not rm:
+            continue
+        eolvar, op, arg, val, metric = rm.groups()
+        em = re.match(r"(\w+)\.edges\.with_length\(nil,\s*([0-9.]+)\.um\)\.interacting\((\w+)"
+                      r"\.first_edges\)", defs.get(eolvar, ""))
+        if not em:
+            continue
+        cm = re.search(r"\.drc\(\s*width\s*<=\s*[0-9.]+\.um\)\.with_length\(([0-9.]+)\.um",
+                       defs.get(em.group(3), ""))
+        if cm:
+            return (em.group(1), em.group(2), cm.group(1), op, arg, val, metric or "euclidian")
+    return None
+
+
 def main():
     text = open(DECK, encoding="utf-8").read()
     lm = parse_layermap(text)
@@ -1086,7 +1272,11 @@ def main():
         if r.get("behavioral_only"):     # op text diverges (selection); behavioral-only
             continue
         drc = get("klayout", layermap=lm, metric=r["mode"]).compile(Rule(as_drawn(r)))
-        ok = canon(our_line(drc)) == canon(r["line"])
+        if r["op"] == "edge_eol":         # multi-statement construction: compare SIGNATURES
+            ok = _eol_sig(drc) == (r["base"], r["weol"], r["slen"], r["eol_op"],
+                                   r["arg"][0], r["value"], r["mode"])
+        else:
+            ok = canon(our_line(drc)) == canon(r["line"])
         kind = ("derived" if r["covers"] or r["holes"]
                 else "scoped" if r["scope"] else "clean")
         key = (r["op"], kind)

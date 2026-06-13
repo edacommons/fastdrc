@@ -330,7 +330,8 @@ class Rule:
             nots = sorted({self.layer_of(c) for c in self.removed(shape) if c not in ex}
                           | set(self.hole_layers(shape)))
             return {"base": self.layer_of(shape), "ands": ands, "nots": nots,
-                    "selections": sel[shape]}
+                    "selections": sel[shape], "halo": self.halo(shape),
+                    "rounded": self.rounded(shape)}
         return deriv(sf), deriv(st), measured | scope_consumed
 
     def _marker(self, subj, other, measured, consumed):
@@ -384,7 +385,43 @@ class Rule:
                              {"base": self.layer_of(c), "ands": [], "nots": [], "selections": []}))
                 consumed.add(c)
         consumed.add(other)
-        return op, {"base": ml, "ands": ands, "nots": nots, "selections": sels}
+        return op, {"base": ml, "ands": ands, "nots": nots, "selections": sels,
+                    "halo": self.halo(other), "rounded": self.rounded(other)}
+
+    def eol_measures(self):
+        """End-of-line measures, recovered from GEOMETRY (no flag): a measure whose
+        FROM edge is a wire CAP -- a straight edge whose opposite edge in the loop is
+        WAVY (the 'continues' end) -- carrying a MAX edge-length bound (the EOL width
+        Weol), with a side edge carrying a MIN edge-length bound (the min run length
+        Slen). Returns [(var, cap_edge, side_edge)]. Both thresholds are ordinary
+        edge-length constraints; nothing about EOL is stashed or flagged."""
+        lb = {e: (lo, hi) for e, k, lo, hi in self.length_bounds() if k == "with"}
+        out = []
+        for v, mm in self.measures.items():
+            cap = mm.get("from")
+            if mm.get("crossed") or cap is None or lb.get(cap, (None, None))[1] is None:
+                continue
+            es = [e["id"] for e in self.shapes[self.shape_of_edge(cap)]["edges"]]
+            if cap not in es or len(es) != 4 or not self._edge_straight(cap):
+                continue
+            i = es.index(cap)
+            if self._edge_straight(es[(i + 2) % 4]):      # opposite edge must be WAVY
+                continue
+            side = next((s for s in (es[(i + 1) % 4], es[(i - 1) % 4])
+                         if lb.get(s, (None, None))[0] is not None), None)
+            if side:
+                out.append((v, cap, side))
+        return out
+
+    def halo(self, shape):
+        """A shape's HALO: a signed margin (µm) its region is grown (>0) or shrunk
+        (<0) by -- the formal form of a DRM 'within X' / offset, drawn as a dashed
+        offset outline. Default 0 (no halo). Compiles to `.sized(halo.um)`."""
+        return self.shapes.get(shape, {}).get("halo", 0) or 0
+
+    def rounded(self, shape):
+        """Whether the halo grows with ROUNDED corners (vs square). A drawn tick."""
+        return bool(self.shapes.get(shape, {}).get("rounded"))
 
     def net_of(self, shape):
         return self._attr_eq(shape, "net")
@@ -409,15 +446,30 @@ class Rule:
                     out.append(b)
         return out
 
+    def holes(self, shape: str) -> bool:
+        """Does this shape carry a drawn VOID (a donut: outer loop + an inner
+        ``hole_loops`` boundary)?  The void is a genuine sub-feature of the drawn
+        shape -- like an edge's length -- so ``<shape>.holes.area`` measures it and
+        a relation can sit inside it (``X.inside(L.holes)``)."""
+        return bool(self.shapes.get(shape, {}).get("hole_loops"))
+
     def area_bounds(self) -> list:
-        """Bounds on a shape's area: ``A.area >= v`` -> (shape, op, value)."""
+        """Bounds on a shape's area -> (shape, op, value, on_holes). ``A.area >= v``
+        is the whole region; ``A.holes.area >= v`` measures the drawn VOID (on_holes
+        True -> the layer's ``.holes``)."""
         out = []
         for _, ast in self.constraints:
             if isinstance(ast, dict) and ast.get("op") in _CMP:
                 a, b = ast["args"]
                 ref = a.get("ref", "") if isinstance(a, dict) else ""
-                if ref.endswith(".area") and isinstance(b, dict) and "num" in b:
-                    out.append((ref[:-len(".area")], ast["op"], b["num"]))
+                if not (isinstance(b, dict) and "num" in b):
+                    continue
+                if ref.endswith(".holes.area"):
+                    shape = ref[:-len(".holes.area")]
+                    if self.holes(shape):            # only if a void is genuinely drawn
+                        out.append((shape, ast["op"], b["num"], True))
+                elif ref.endswith(".area"):
+                    out.append((ref[:-len(".area")], ast["op"], b["num"], False))
         return out
 
     def angle_bounds(self) -> list:

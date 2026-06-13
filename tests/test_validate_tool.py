@@ -97,3 +97,47 @@ def test_parse_subject_ignores_nested_marker_ands():
     # top-level AND/NOT still captured
     ands, nots = parse_subject("comp.and(nplus).not(otp_mk)")
     assert ands == frozenset({"comp", "nplus"}) and nots == frozenset({"otp_mk"})
+
+
+def test_or_union_roundtrip_via_synthetic_deck():
+    # OR-of-variants: a deck `final = caseA.or(caseB)` whose operands are separately
+    # DEFINED vars. parse_rules resolves each operand to its recognized sub-rule,
+    # builds an `or` rule; as_drawn -> a {or:[...]} scene; the backend unions them.
+    # We feed a tiny synthetic deck through the REAL parse/as_drawn/compile/canon
+    # path and assert canon(ours) == canon(the deck union line).
+    from validate_klayout import parse_layermap, parse_rules, canon
+    deck = "\n".join([
+        "layer_a = polygons(100, 0)",   # (layermap lines are parsed by parse_layermap)
+        "wa = poly2.width(0.23.um, euclidian).polygons(0.001)",
+        "wb = comp.width(0.3.um, euclidian).polygons(0.001)",
+        "u_l1 = wa.or(wb)",
+        'u_l1.output("U.1", "poly2 OR comp too narrow")',
+    ])
+    lm = {"poly2": (30, 0), "comp": (22, 0)}
+    # parse_layermap needs the real header form; inject lm directly via parse_rules
+    import validate_klayout as vk
+    rules, _ = vk.parse_rules(deck, lm)
+    u = next(r for r in rules if r["id"] == "U.1")
+    assert u["op"] == "or" and [v["op"] for v in u["variants"]] == ["width", "width"]
+    drc = get("klayout", layermap=lm).compile(Rule(as_drawn(u)))
+    ours = our_line(drc)
+    assert ".or(" in ours
+    # the union round-trips against the deck line, order-insensitively
+    assert canon(ours) == canon(u["line"])
+    swapped = "z = comp.width(0.3.um, euclidian).polygons(0.001).or(poly2.width(0.23.um, euclidian).polygons(0.001))"
+    assert canon(ours) == canon(swapped)
+
+
+def test_or_defers_when_an_operand_is_unsupported():
+    # if ANY operand can't be recognized, the whole union stays deferred (no partial
+    # / wrong emission) -- the no-shortcuts discipline.
+    from validate_klayout import parse_rules
+    deck = "\n".join([
+        "wa = poly2.width(0.23.um, euclidian).polygons(0.001)",
+        "wb = comp.some_unhandled_op(0.3.um).polygons(0.001)",
+        "u_l1 = wa.or(wb)",
+        'u_l1.output("U.2", "deferred")',
+    ])
+    rules, skip = parse_rules(deck, {"poly2": (30, 0), "comp": (22, 0)})
+    assert not any(r["id"] == "U.2" for r in rules)
+    assert skip["or_unresolved"] >= 1
