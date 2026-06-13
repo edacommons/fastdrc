@@ -26,6 +26,35 @@ _CMP = {">", ">=", "<", "<="}
 _FLIP = {">": "<", ">=": "<=", "<": ">", "<=": ">="}
 
 
+def rel_to_sel(rel):
+    """Map a drawn relation to the whole-polygon SELECTION op. The drawn relation
+    IS the signal: TOUCH (coinciding edges, gap 0) -> `interacting`; genuine area
+    OVERLAP -> `overlapping` (== `not_outside`); containment -> `inside`; else
+    (disjoint) -> `outside`."""
+    return ("inside" if rel == "inside" else "interacting" if rel == "touch"
+            else "overlapping" if rel == "overlap" else "outside")
+
+
+# truth table: each selection op -> the relations it KEEPS. Every row is distinct,
+# so labeled example instances (some flagged, some not) identify the op uniquely;
+# a NEGATION (not_inside) is a row whose excluded set is a single relation.
+SEL_ROWS = {
+    "inside":          frozenset({"inside"}),
+    "not_interacting": frozenset({"disjoint"}),
+    "outside":         frozenset({"disjoint", "touch"}),
+    "overlapping":     frozenset({"inside", "overlap"}),
+    "interacting":     frozenset({"inside", "touch", "overlap"}),
+    "not_inside":      frozenset({"disjoint", "touch", "overlap"}),
+}
+
+
+def lookup_sel(kept, dropped):
+    """The selection op whose row keeps every `kept` relation and none of `dropped`;
+    among consistent ops the MOST permissive. None if nothing fits."""
+    cands = [op for op, keep in SEL_ROWS.items() if kept <= keep and not (dropped & keep)]
+    return max(cands, key=lambda op: len(SEL_ROWS[op])) if cands else None
+
+
 class Bound:
     """A numeric bound on a measure variable, e.g. ``W >= 2``."""
 
@@ -257,6 +286,105 @@ class Rule:
                 if ml and ml != base:
                     out.add(ml)
         return sorted(out)
+
+    # --- the analyzed "derived layer" view: the single source both backends FORMAT ---
+    def check_derivations(self, sf, st):
+        """For a measured check between shapes `sf` and `st`, the OBJECTIVE derived-
+        layer analysis of each, plus the set of shapes CONSUMED (so they're neither
+        AND-ed nor treated as scope). Returns ``(deriv(sf), deriv(st), consumed)``. A
+        derivation is ``{base, ands, nots, selections}`` (layer NAMES), where each
+        selection is ``(op, marker)`` and the marker is itself a derivation. Both
+        backends format this and never re-derive it, so the .drc and the English
+        describe the same facts. Encapsulates cover->and, cutout->not, wavy-measure->
+        selection (op via the labeled-instances table), and selected-marker recovery."""
+        measured = {sf, st}
+        consumed = set()
+        sel = {sf: [], st: []}
+        for sa, sb in self.relation_selections():
+            for subj in (sf, st):
+                other = sb if sa == subj else sa if sb == subj else None
+                if other is not None and other not in measured:
+                    sel[subj].append(self._marker(subj, other, measured, consumed))
+                    consumed.add(other)
+                    break
+        scope_consumed = set(consumed)
+        for ms in measured:
+            scope_consumed |= {s for s in (self.covering(ms) + self.removed(ms))
+                               if s not in measured and s not in consumed}
+        # a leftover shape whose layer is ALSO an operand layer can't be a scope marker
+        # (it would drop everything) -> read it as a selection on the subject.
+        operand_layers = {self.layer_of(sf), self.layer_of(st)}
+        for name in self.shapes:
+            if name in measured or name in scope_consumed:
+                continue
+            ml = self.layer_of(name)
+            if ml and ml in operand_layers:
+                sel[sf].append(self._marker(sf, name, measured, consumed))
+                consumed.add(name)
+                scope_consumed.add(name)
+
+        def deriv(shape):
+            ex = measured | consumed
+            ands = sorted({self.layer_of(c) for c in self.covering(shape)
+                           if c not in ex and self.layer_of(c) not in (None, self.layer_of(shape))})
+            nots = sorted({self.layer_of(c) for c in self.removed(shape) if c not in ex}
+                          | set(self.hole_layers(shape)))
+            return {"base": self.layer_of(shape), "ands": ands, "nots": nots,
+                    "selections": sel[shape]}
+        return deriv(sf), deriv(st), measured | scope_consumed
+
+    def _marker(self, subj, other, measured, consumed):
+        """``(op, marker-derivation)`` for a wavy-measured CONTEXT `other` of `subj`:
+        the selection op (from the labeled-instances table when counter-examples are
+        present, else the drawn relation) and the context's own derivation -- doping
+        that WHOLLY covers it (relation inside), its own cutouts (excluding the
+        subject's), and its own contexts. Mutates `consumed` with what it claims."""
+        ml = self.layer_of(other)
+        insts = self.instances_relating_to(self.layer_of(subj), other)
+        dropped = {self.relation(s, other) for s, f in insts if not f}
+        ands, nots, sels = [], [], []
+        if dropped:
+            kept = {self.relation(s, other) for s, f in insts if f}
+            op = lookup_sel(kept, dropped) or rel_to_sel(self.relation(subj, other))
+            consumed.update(s for s, _ in insts)
+            for s, f in insts:
+                if not f:
+                    consumed.update(self.covering(s))
+            helpers = self.overlapping_markers(other, measured | {s for s, _ in insts})
+            ands += helpers
+            for h in helpers:
+                consumed.update(s for s in self.shapes if self.layer_of(s) == h
+                                and self.relation(other, s) in ("overlap", "inside", "contains"))
+        else:
+            op = rel_to_sel(self.relation(subj, other))
+        measure_pts = set()
+        for mm in self.measures.values():
+            measure_pts.add(self.shape_of_edge(mm["from"]))
+            measure_pts.add(self.shape_of_edge(mm["to"]))
+        subj_covers = {c for s in measured for c in self.covering(s)}
+        subj_removed = {c for s in measured for c in self.removed(s)}
+        own_ctx = {c for sa, sb in self.relation_selections()
+                   for c in (sb if sa == other else sa if sb == other else None,) if c}
+        for d in self.covering(other):
+            dl_ = self.layer_of(d)
+            if (d not in measure_pts and d not in subj_covers and d != other
+                    and d not in consumed and dl_ and dl_ != ml
+                    and self.relation(other, d) == "inside"):
+                ands.append(dl_)
+                consumed.add(d)
+        for d in self.removed(other):
+            dl_ = self.layer_of(d)
+            if (dl_ and dl_ != ml and d not in measure_pts and d not in consumed
+                    and d not in subj_removed):
+                nots.append(dl_)
+                consumed.add(d)
+        for c in sorted(own_ctx - measured - {s for s, _ in insts}):
+            if self.relation(other, c) not in ("contains", "equal"):
+                sels.append((rel_to_sel(self.relation(other, c)),
+                             {"base": self.layer_of(c), "ands": [], "nots": [], "selections": []}))
+                consumed.add(c)
+        consumed.add(other)
+        return op, {"base": ml, "ands": ands, "nots": nots, "selections": sels}
 
     def net_of(self, shape):
         return self._attr_eq(shape, "net")

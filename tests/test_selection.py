@@ -186,7 +186,7 @@ def test_subject_and_arg_share_a_selection_context():
 def test_lookup_sel_truth_table():
     # the selection op is read off the (kept, dropped) relations of labeled
     # instances; a negation is a row whose excluded set is a single relation.
-    from fastdrc.backend_klayout import _lookup_sel
+    from fastdrc.rule import lookup_sel as _lookup_sel   # now lives on the Rule surface
     # not_inside: inside dropped, disjoint+overlap kept (the discriminating case)
     assert _lookup_sel({"disjoint", "overlap"}, {"inside"}) == "not_inside"
     # inside dropped + disjoint kept ALONE is still ambiguous (outside vs not_inside);

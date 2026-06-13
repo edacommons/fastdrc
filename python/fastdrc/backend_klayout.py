@@ -22,45 +22,11 @@ geometry relation from `rule.relation`. `input` uses a layermap (name ->
 from __future__ import annotations
 
 from .backend import register, Backend
-from .rule import Rule
+from .rule import Rule, rel_to_sel as _rel_to_sel   # selection classification lives on the Rule
 
 # flip a comparison so the value can move to the left of a .drc() range predicate
 # (e.g. `S >= 0.04` -> `0.04 <= S`): used to build `lo <= pred < hi`.
 _FLIPOP = {">": "<", ">=": "<=", "<": ">", "<=": ">="}
-
-
-def _rel_to_sel(rel):
-    """Map a drawn relation to the whole-polygon SELECTION op. The drawn relation
-    IS the signal: TOUCH (coinciding edges, gap 0) -> `interacting` (touch counts);
-    genuine area OVERLAP -> `overlapping` (== `not_outside`, touch excluded);
-    containment -> `inside`; else (disjoint, gap may be 0) -> `outside`."""
-    return ("inside" if rel == "inside"
-            else "interacting" if rel == "touch"
-            else "overlapping" if rel == "overlap"
-            else "outside")
-
-
-# truth table: each selection op -> the set of subject/context RELATIONS it keeps
-# (flags). Every row is distinct, so labeled example instances (some flagged, some
-# not) identify the op uniquely -- and a NEGATION (not_inside) is just a row whose
-# excluded set is a single relation.
-_SEL_ROWS = {
-    "inside":          frozenset({"inside"}),
-    "not_interacting": frozenset({"disjoint"}),
-    "outside":         frozenset({"disjoint", "touch"}),
-    "overlapping":     frozenset({"inside", "overlap"}),
-    "interacting":     frozenset({"inside", "touch", "overlap"}),
-    "not_inside":      frozenset({"disjoint", "touch", "overlap"}),
-}
-
-
-def _lookup_sel(kept, dropped):
-    """The selection op whose truth-table row keeps every `kept` relation and none
-    of the `dropped` ones. Among consistent ops prefer the MOST permissive (the
-    negation the counter-examples were drawn to express). None if nothing fits."""
-    cands = [op for op, keep in _SEL_ROWS.items()
-             if kept <= keep and not (dropped & keep)]
-    return max(cands, key=lambda op: len(_SEL_ROWS[op])) if cands else None
 
 
 @register
@@ -137,118 +103,15 @@ class KLayoutBackend(Backend):
         sf, st = rule.shape_of_edge(m["from"]), rule.shape_of_edge(m["to"])
         mt = m.get("metric") or self.metric   # the metric is a property of the measure
         measured = {sf, st}
+        # The DERIVED-LAYER analysis (cover->and, cutout->not, wavy-measure->selection
+        # via the labeled-instances table, selected-marker recovery) is the Rule's
+        # analyzed view -- the SINGLE source of truth both backends format, never
+        # re-derive. We only RENDER it to KLayout syntax here (`_fmt_deriv`).
+        deriv_sf, deriv_st, consumed = rule.check_derivations(sf, st)
+        derivs = {sf: deriv_sf, st: deriv_st}
 
-        # Topological SELECTIONS (outside/inside/interacting) on the measured
-        # shapes -- sel_for[shape] is a list of (op, layer). They CLAIM their
-        # context shape (sel_consumed) so it is neither AND-ed as a covering nor
-        # treated as a scope marker, and `inside` stays a selection (not `and`).
-        sel_for = {sf: [], st: []}
-        sel_consumed = set()
-
-        def _add_sel(subj, other):
-            ml = rule.layer_of(other)
-            if not ml:
-                return False
-            # labeled same-layer instances relating to `other` (the measured subj
-            # plus any counter-examples). With counter-examples, read the op off the
-            # truth table; otherwise the single drawn relation (back-compatible).
-            insts = rule.instances_relating_to(rule.layer_of(subj), other)
-            dropped = {rule.relation(s, other) for s, f in insts if not f}
-            mvar = self._layer_var(ml)
-            if dropped:
-                kept = {rule.relation(s, other) for s, f in insts if f}
-                so = _lookup_sel(kept, dropped) or _rel_to_sel(rule.relation(subj, other))
-                sel_consumed.update(s for s, _ in insts)   # consume the label instances
-                for s, f in insts:                         # ...and the CONTRAST's doping/covers
-                    if not f:                              # (not the measured arg's -- it needs them)
-                        sel_consumed.update(rule.covering(s))
-                # ONLY when counter-examples are present (a negation drawing) do we
-                # read a DERIVED marker: shapes overlapping `other` (a gate = poly2
-                # over comp) AND into the marker -> not_interacting(poly2.and(comp))
-                # = tgate. Gating on `dropped` keeps simple selections untouched
-                # (their incidental layout overlaps aren't derived markers).
-                helpers = rule.overlapping_markers(other, measured | {s for s, _ in insts})
-                mvar += "".join(f".and({self._layer_var(h)})" for h in helpers)
-                for h in helpers:
-                    sel_consumed.update(s for s in rule.shapes if rule.layer_of(s) == h
-                                        and rule.relation(other, s) in ("overlap", "inside", "contains"))
-            else:
-                so = _rel_to_sel(rule.relation(subj, other))
-            # SELECTED marker: the marker may be its own device (pcomp = comp + pplus
-            # doping) with its own selection (inside nwell). DOPING = different-layer
-            # shapes covering the marker's device point that are PURE doping -- never a
-            # measure endpoint (so not a subject/arg/context), not a subject cover, and
-            # not the marker's CONTAINER (a well contains its diffusions, isn't doped).
-            measure_pts = set()
-            for mm in rule.measures.values():
-                measure_pts.add(rule.shape_of_edge(mm["from"]))
-                measure_pts.add(rule.shape_of_edge(mm["to"]))
-            subj_covers = {c for ms in measured for c in rule.covering(ms)}
-            subj_removed = {c for ms in measured for c in rule.removed(ms)}
-            own_ctx = {c for sa, sb in rule.relation_selections()
-                       for c in (sb if sa == other else sa if sb == other else None,) if c}
-            for d in rule.covering(other):
-                dl_ = rule.layer_of(d)
-                if (d not in measure_pts and d not in subj_covers and d != other
-                        and d not in sel_consumed and dl_ and dl_ != ml
-                        and rule.relation(other, d) == "inside"):   # doping WHOLLY covers the
-                    #   marker (implant over active); a scope marker only partially overlaps
-                    mvar += f".and({self._layer_var(dl_)})"
-                    sel_consumed.add(d)
-            for d in rule.removed(other):                 # marker's OWN cutout -> .not(layer)
-                dl_ = rule.layer_of(d)
-                if (dl_ and dl_ != ml and d not in measure_pts and d not in sel_consumed
-                        and d not in subj_removed):        # NOT the subject's cutout sitting
-                    #   inside an inside-context box (that's the subject's own .not)
-                    mvar += f".not({self._layer_var(dl_)})"
-                    sel_consumed.add(d)
-            for c in sorted(own_ctx - measured - {s for s, _ in insts}):  # marker's OWN selection
-                # (exclude labeled instances/contrasts, but NOT a shared context like a
-                # well used by both the subject's and the marker's inside-selection)
-                if rule.relation(other, c) not in ("contains", "equal"):
-                    mvar += f".{_rel_to_sel(rule.relation(other, c))}({self._layer_var(rule.layer_of(c))})"
-                    sel_consumed.add(c)        # the marker's own context isn't a subject
-                    #   scope marker; a shared well still re-emits via its own _add_sel(subj, well)
-            sel_for[subj].append((so, mvar))
-            sel_consumed.add(other)
-            return True
-
-        # wavy-edge measures = topological assertions; attach each to whichever
-        # measured shape it touches (subject or separation arg). A context may be
-        # selected by BOTH (e.g. subject AND arg inside the same region), so we
-        # don't gate on sel_consumed here -- only on which measured shape the
-        # measure connects.
-        for sa, sb in rule.relation_selections():
-            for subj in (sf, st):
-                other = sb if sa == subj else sa if sb == subj else None
-                if other is not None and other not in measured:
-                    _add_sel(subj, other)
-                    break
-
-        # shapes that combine (cover the device point) or remove (cutout) into a
-        # measured shape's derived layer -- EXCEPT those already inside-selections.
-        derived = set()
-        for ms in measured:
-            derived |= {s for s in (rule.covering(ms) + rule.removed(ms))
-                        if s not in measured and s not in sel_consumed}
-        consumed = measured | derived | sel_consumed
-
-        # A leftover marker whose layer is ALSO a check operand can't be a result
-        # scope (it would drop everything); it's a selection on the subject.
-        operand_layers = {rule.layer_of(sf), rule.layer_of(st)}
-        for name in rule.shapes:
-            if name in consumed:
-                continue
-            ml = rule.layer_of(name)
-            if ml and ml in operand_layers:
-                _add_sel(sf, name)
-                consumed.add(name)
-
-        def selsuf(shape):
-            return "".join(f".{so}({l})" for so, l in sorted(set(sel_for[shape])))
-
-        def dl(shape):                          # derived layer, minus selected contexts
-            return self._derived(rule, shape, measured | sel_consumed) + selsuf(shape)
+        def dl(shape):                          # derived layer string, from the shared analysis
+            return self._fmt_deriv(derivs[shape])
 
         def edge_dl(shape):                     # EDGE-dimensional subject: gate width/space.
             # base.edges.and((base & active).edges) -- recovered from the GEOMETRY: a
@@ -491,6 +354,19 @@ class KLayoutBackend(Backend):
         self._checks.append(f"{var} = {core}{suffix}")
         self._checks.append(f'{var}.output("{rid}", "{desc}")')
         self._checks.append(f"{var}.forget")
+
+    def _fmt_deriv(self, d):
+        """Render a Rule derivation {base, ands, nots, selections} to KLayout syntax.
+        AND-operands (base + covers) sorted (commute); then .not(cutouts); then each
+        selection .op(marker), the marker itself a rendered derivation. This is the
+        ONLY place the KLayout backend turns the shared analysis into op text."""
+        expr = self._layer_var(d["base"]) + "".join(   # base first, then sorted AND-operands
+            f".and({v})" for v in sorted(self._layer_var(a) for a in d["ands"]))
+        for n in sorted(self._layer_var(x) for x in d["nots"]):
+            expr += f".not({n})"
+        for op, marker in sorted((o, self._fmt_deriv(m)) for o, m in d["selections"]):
+            expr += f".{op}({marker})"
+        return expr
 
     def _derived(self, rule, shape, measured):
         """The layer a measured shape checks on: its own layer AND every
