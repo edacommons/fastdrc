@@ -400,6 +400,12 @@ def test_cross_presence_violation():
     line = _cross_line([A, Bfar], [{"name": "X", "from": "a1", "to": "b3", "crossed": True}], lm)
     assert line == "lvpwell.outside(nwell)"
 
+    # "A must NOT touch B": slide B until its left edge (b3) COINCIDES with A's right
+    # edge (a1) -> they touch -> interacting. The cross now sits ON the shared edge.
+    Btouch = {"name": "B", "edges": _edges("b", 6, 0, 12, 6, set())}        # b3 (x=6) == a1 (x=6)
+    line = _cross_line([A, Btouch], [{"name": "X", "from": "a1", "to": "b3", "crossed": True}], lm)
+    assert line == "lvpwell.interacting(nwell)"
+
 
 def test_or_of_crossed_variants():
     # OR-of-variants where each variant is a CROSSED (presence) case: a rule with

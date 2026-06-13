@@ -267,6 +267,30 @@ A shape with a **straight** edge; constrain its length:
 | `e.length != 0.22` | `layer.edges.without_length(0.22)` |
 | `e.length >= 0.1 and e.length <= 0.5` | `layer.edges.with_length(0.1, 0.5)` |
 
+### Min/max size (contact/via) — edges as the output
+A contact/via must be *exactly* the right size, so any edge of the **wrong length**
+is a violation. Draw the layer with a straight edge and `e.length != 0.22`; the
+flagged edges are rendered as thin polygons via `.extended` so they're outputtable:
+→ `contact.edges.without_length(0.22).extended(0, 0, 0.001, 0.001)`
+
+### Gate width (poly over the gate) — a directional edge width
+A transistor gate is a **poly line crossing a comp region**; the channel width is
+the poly width *at the crossing*. Draw the poly `A` (its two measured edges
+**straight**), and a `comp` rect that **crosses** it (a partial overlap — comp runs
+*through* the poly, as a real gate does). The compiler reads that crossing relation
+and derives the gate `tgate = poly2 & comp` as the edge-marker. Mark the width as an
+**edge** measure (a directional, edge-to-edge distance, not a polygon width). Two
+neighbours are told apart **by how they sit on the subject**, exactly like combine
+vs filter elsewhere:
+
+| what you draw, relative to the poly | compiler derives |
+|---|---|
+| a layer **crossing** it (partial overlap) | the **gate** — `.and((poly2 & it).edges)` |
+| a mask layer **containing** it (full cover) | a **region filter** — `.and(mask)` |
+| a cutout **inside** it (real edge) | **remove** — `.not(cut)` |
+
+→ `poly2.edges.and((poly2 & comp).edges).not(otp_mk).and(ymtp_mk).width(0.13)`
+
 ### Narrow-region / range selector (`.drc`)
 A width/space/separation/enclosure measure with a **MAX** bound (or a two-sided
 range) — this **selects** the narrow region instead of **checking** for a
@@ -281,6 +305,40 @@ violation:
 | `0.04 <= E < 0.06` | `via1.drc(0.04 <= enclosed(metal1) < 0.06)` |
 
 (`W >= V` checks for a violation; `W <= V` selects what is narrower than `V`.)
+
+### A configuration that must never exist (the cross)
+Most rules check a *quantity* ("this distance is too small"). The other half of DRC
+forbids a *configuration outright* ("these two must never overlap"). You draw the
+forbidden picture and put a **cross** on the measure — a measure whose bound is
+**"never"** (not `>= V`). There's no threshold: the drawn **relation itself is the
+rule**, and the compiler reads it exactly like a selection (`_rel_to_sel`):
+
+| what you draw (A vs B) | how you mark it | compiler derives | reads as |
+|---|---|---|---|
+| **disjoint** (a gap) | cross **in the gap** between the two edges | `A.outside(B)` is the violation | A must **interact** with B |
+| **touch** (edges coincide) | cross drawn **over the shared edge** (an X on it) | `A.interacting(B)` is the violation | A must **not touch** B |
+| **overlap** (interiors cross) | cross over the overlap | `A.overlapping(B)` is the violation | A must **not overlap** B (touching OK) |
+| **inside** | cross, A drawn inside B | `A.inside(B)` is the violation | A must **not be inside** B |
+
+The flagged region *is* the output (no `width`/`space` op, no threshold) — `outside(B)`
+keeps the A's with no contact, `interacting(B)` keeps the A's that touch-or-overlap,
+etc. So the violation is "every A in *this relation* to B."
+
+> **Why the X sits on the edge for the touch case.** Start from the disjoint picture
+> (cross *in the gap* between A's edge and B's edge). Now slide B until those two
+> edges **coincide** — A and B now touch. The cross was *between* the two edges, but
+> they're now at the same place, so it has nowhere to live — you draw it **across the
+> coinciding edge** (an X over the contact). That X-on-the-edge is the natural mark
+> for "this contact is forbidden": touch → `interacting` → must not touch.
+
+The gap *size* never matters (close vs far are both "disjoint" → same rule); a cross
+has no distance. For a distance bound, use a normal `>= V` measure instead.
+
+> **Future extension — a directional cross.** Today the cross reads the *shape*
+> relation, so which specific edges you pick doesn't change the result. If a rule ever
+> needs "*this particular* edge of A must abut B" (a directional contact), letting the
+> cross read the **edge pairing** (not just the shapes) is the clean way to express
+> it — the same way straight edges already carry orientation for angle/corner rules.
 
 ### A rule with two alternative cases (OR)
 Some rules count more than one configuration as the same violation. E.g. **NP.11**

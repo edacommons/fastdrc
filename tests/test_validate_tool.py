@@ -47,6 +47,37 @@ def test_many_subtractions_dont_leak_to_scope():
         assert ".interacting(" not in op and ".overlapping(" not in op  # no scope leak
 
 
+def test_gate_width_edge_rule():
+    # PL.2-class gate width: poly width over the gate. The structure is RECOVERED from
+    # the drawn geometry -- the GATE active layer crosses the subject (drawn as an
+    # overlap -> relation 'overlap'), a mask FILTER contains it (a covering -> relation
+    # 'inside' -> .and(M)), a cutout is removed (-> .not(M)). Nothing is stashed.
+    r = {"id": "PL.2", "desc": "d", "op": "edge_width", "base": "poly2", "gate": ["comp"],
+         "covers": ["m1"], "holes": ["m2"], "arg": [], "value": "0.28", "mode": "euclidian",
+         "scope": [], "selections": [], "arg_selections": [], "arg_covers": [], "arg_holes": [],
+         "area_op": ">="}
+    assert _op(r) == ("poly2.edges.and(poly2.and(comp).edges).not(m2).and(m1)"
+                      ".width(0.28.um, euclidian).polygons(0.001)")
+
+
+def _edge_rule(kind, lo, hi):
+    return {"id": "CO.1", "desc": "d", "op": "edge_length", "base": "poly2",
+            "kind": kind, "lo": lo, "hi": hi, "extended": "0, 0, 0.001, 0.001",
+            "covers": [], "holes": [], "arg": [], "value": "", "mode": "", "scope": [],
+            "selections": [], "arg_selections": [], "arg_covers": [], "arg_holes": [],
+            "area_op": ">="}
+
+
+def test_edge_size_rule_round_trips():
+    # CO.1-class: LAYER.edges.(with|without)_length(L).extended(...) -- min/max
+    # contact/via size; the flagged EDGES (rendered as thin polygons) are the
+    # violation. The validator's first .edges round-trip.
+    assert _op(_edge_rule("without", "0.22", "0.22")) == \
+        "poly2.edges.without_length(0.22.um).extended(0, 0, 0.001, 0.001)"
+    assert _op(_edge_rule("with", None, "0.34")) == \
+        "poly2.edges.with_length(nil, 0.34.um).extended(0, 0, 0.001, 0.001)"
+
+
 def test_inside_and_marker_decomposes():
     # inside(A&B&C) == inside(A).inside(B).inside(C) -- containment is intersective.
     assert sorted(_decompose_sel("inside", "dnwell.and(dualgate).and(ldmos_xtor)")) == \

@@ -250,6 +250,27 @@ class KLayoutBackend(Backend):
         def dl(shape):                          # derived layer, minus selected contexts
             return self._derived(rule, shape, measured | sel_consumed) + selsuf(shape)
 
+        def edge_dl(shape):                     # EDGE-dimensional subject: gate width/space.
+            # base.edges.and((base & active).edges) -- recovered from the GEOMETRY: a
+            # covering layer that PARTIALLY CROSSES the subject (overlap) is the active
+            # region forming the GATE (poly over comp = tgate); a covering layer that
+            # CONTAINS the subject (inside) is a mask FILTER -> a plain edge .and(M);
+            # cutouts (removed) become edge .not(M). No stashed structure.
+            base = self._layer_var(rule.layer_of(shape))
+            gate_covers, filters = [], []
+            for c in rule.covering(shape):
+                if c in measured:
+                    continue
+                (filters if rule.relation(shape, c) == "inside" else gate_covers).append(
+                    self._layer_var(rule.layer_of(c)))
+            gate = base + "".join(f".and({c})" for c in sorted(gate_covers))
+            core = f"{base}.edges.and({gate}.edges)"
+            for r in sorted(self._layer_var(rule.layer_of(c)) for c in rule.removed(shape)):
+                core += f".not({r})"
+            for f in sorted(filters):           # mask region the gate edges sit inside
+                core += f".and({f})"
+            return core
+
         if m.get("crossed"):                               # a CROSS: the derived REGION is
             # itself the violation (presence) -- output it, no measure/threshold. The
             # crossed config's RELATION picks the op, exactly like a selection (a cross
@@ -264,7 +285,14 @@ class KLayoutBackend(Backend):
             body, v_scope = core, "0"
         elif hi is None:                                   # MIN bound -> violation check
             v = self._fmt(lo.value)
-            if sf == st:                                   # intra-shape -> width
+            if m.get("edges"):                             # gate-EDGE width/space/separation
+                if sf == st:
+                    core = f"{edge_dl(sf)}.width({v}.um, {mt})"
+                elif edge_dl(sf) == edge_dl(st):
+                    core = f"{edge_dl(sf)}.space({v}.um, {mt})"
+                else:
+                    core = f"{edge_dl(sf)}.separation({edge_dl(st)}, {v}.um, {mt})"
+            elif sf == st:                                 # intra-shape -> width
                 core = f"{dl(sf)}.width({v}.um, {mt})"
             else:
                 rel = rule.relation(sf, st)
@@ -418,6 +446,8 @@ class KLayoutBackend(Backend):
             core = f"{layer}.edges.with_length({nm(lo)})"      # exact length
         else:
             core = f"{layer}.edges.with_length({nm(lo)}, {nm(hi)})"
+        if rule.data.get("extended"):          # edge-SIZE: render the flagged edges as thin
+            core += f".extended({self.EDGE_EXTEND})"   # polygons (a fixed output convention)
         suffix = "".join(f".{op}({mk})" for op, mk in self._scope(rule, {shape}, shape))
         rid = rule.name or f"{edge}.length"
         desc = rule.desc or rid
@@ -429,6 +459,9 @@ class KLayoutBackend(Backend):
     # corners() returns degenerate points; the deck sizes them to a small box so
     # they carry area and can be output. 0.1um matches the GF180 corner rules.
     CORNER_SIZE = "0.1"
+    # edge-SIZE rules render flagged edges as 1nm-thick polygons so they're outputtable;
+    # a fixed convention (the edge analogue of CORNER_SIZE), matching the GF180 deck.
+    EDGE_EXTEND = "0, 0, 0.001, 0.001"
 
     def _emit_corner(self, rule, edge, angle, idx, total):
         """Corner-angle check -> corners(a).sized(S).or(corners(-a).sized(S)).

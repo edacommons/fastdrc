@@ -155,6 +155,101 @@ def parse_subject(s):
     return frozenset(ands), frozenset(nots)
 
 
+_EDGE_SIZE = re.compile(r"\s*(\w+)\.edges\.(with_length|without_length)\(([^)]*)\)"
+                        r"\.extended\(([^)]*)\)(.*)$")
+
+
+def _walk_edge_chain(chain):
+    """Walk the balanced op-chain after `BASE.edges`: `.and(X.edges)` -> a GATE
+    (X's base-layer set), `.not(M)` -> an edge cutout, `.and(M)` (M a region) -> an
+    edge region-AND. Returns (gates, enots, eands) as sets, or None if an unhandled
+    op (interacting / selection) is hit -- those edge rules stay deferred."""
+    gates, enots, eands = set(), set(), set()
+    i = 0
+    while i < len(chain):
+        cm = re.match(r"\.(\w+)\(", chain[i:])
+        if not cm:
+            return None
+        cop, arg = cm.group(1), _balanced(chain[i + cm.end():])
+        if arg.endswith(".edges") and cop == "and":
+            gates.add(_norm_marker(arg[:-len(".edges")]))
+        elif cop == "not":
+            enots.add(_norm_marker(arg))
+        elif cop == "and":
+            eands.add(_norm_marker(arg))
+        else:
+            return None
+        i += cm.end() + len(arg) + 1
+    return gates, enots, eands
+
+
+def _parse_edge_dim(region):
+    """Parse `BASE.edges.and(GATE.edges).not(M)...width/space/separation(args)<after>`
+    into (base, gates_raw, enots, eands, op, value, mode, after). gates_raw are the
+    raw `X` of each `.and(X.edges)`. None if the chain has an unhandled op."""
+    bm = re.match(r"(\w+)\.edges", region)
+    if not bm:
+        return None
+    base, rest = bm.group(1), region[bm.end():]
+    gates_raw, enots, eands = [], [], []
+    op = value = mode = None
+    after, i = "", 0
+    while i < len(rest):
+        cm = re.match(r"\.(\w+)\(", rest[i:])
+        if not cm:
+            return None
+        cop, arg = cm.group(1), _balanced(rest[i + cm.end():])
+        nxt = i + cm.end() + len(arg) + 1
+        if cop in ("width", "space", "separation"):
+            op = cop
+            parts = [p.strip() for p in arg.split(",")]
+            if cop == "separation":
+                value, mode = _get(parts, 1).replace(".um", ""), _get(parts, 2)
+            else:
+                value, mode = parts[0].replace(".um", ""), _get(parts, 1)
+            after = rest[nxt:]
+            break
+        if cop == "and" and arg.endswith(".edges"):
+            gates_raw.append(arg[:-len(".edges")])
+        elif cop == "not":
+            enots.append(arg)
+        elif cop == "and":
+            eands.append(arg)
+        else:
+            return None
+        i = nxt
+    return None if op is None else (base, gates_raw, enots, eands, op, value, mode, after)
+
+
+def _canon_edge_dim(op, subj_str, rhs, m):
+    """Canon signature for an EDGE-dimensional rule (gate width):
+    `BASE.edges.and(GATE.edges).not(M)...OP(value)`. tgate.edges and
+    (poly2&comp).edges normalize to the same gate set."""
+    bm = re.match(r"\s*(\w+)\.edges", subj_str)
+    walk = _walk_edge_chain(subj_str[bm.end():])
+    if walk is None:
+        return None
+    gates, enots, eands = walk
+    tail = rhs[m.end():]
+    args_str = _balanced(tail)
+    parts = [p.strip() for p in args_str.split(",")]
+    value, mode = parts[0].replace(".um", ""), _get(parts, 1)
+    after = tail[len(args_str) + 1:]
+    return (frozenset({bm.group(1)}), frozenset(enots), frozenset(eands), "edge_" + op,
+            frozenset(gates), frozenset(), frozenset(), value, mode,
+            frozenset(_SCOPE.findall(after)))
+
+
+def _norm_lenargs(kind, largs):
+    """Canonical length-arg key: `without_length(0.22.um)` -> 'without:0.22';
+    `with_length(nil, 0.34.um)` -> 'with:nil:0.34'."""
+    vals = []
+    for p in (x.strip() for x in largs.split(",")):
+        mm = re.match(r"([0-9.]+)\.um", p)
+        vals.append(mm.group(1) if mm else p)              # 'nil' stays
+    return ("without" if kind == "without_length" else "with") + ":" + ":".join(vals)
+
+
 def canon(line):
     """Canonical, order-insensitive signature of a KLayout check line."""
     rhs = line.split("=", 1)[1] if "=" in line else line
@@ -162,12 +257,22 @@ def canon(line):
     if m is None:                          # no dimensional op -> a PRESENCE region (the
         # region itself is the violation). Signature = subject layers + selections.
         region = expand_base(re.split(r"\.(?:output|forget)\(", rhs)[0].strip(), _VARDEFS)
+        em = _EDGE_SIZE.match(region)      # edge-SIZE: LAYER.edges.(with|without)_length(...).extended(...)
+        if em:
+            base, kind, largs, ext, after = em.groups()
+            return (frozenset({base}), frozenset(), frozenset(), "edge_length",
+                    frozenset(), frozenset(), frozenset({re.sub(r'\s+', '', ext)}),
+                    _norm_lenargs(kind, largs), "", frozenset(_SCOPE.findall(after)))
         s_and, s_not = parse_subject(region)
         s_sel = parse_selections(region)
         return (s_and, s_not, s_sel, "presence",
                 frozenset(), frozenset(), frozenset(), "", "", frozenset())
     op = m.group(1)
     subj_str = expand_base(rhs[:m.start()], _VARDEFS)      # derived-var base -> AND chain
+    if ".edges" in subj_str:                              # EDGE-dimensional (gate width)
+        sig = _canon_edge_dim(op, subj_str, rhs, m)
+        if sig is not None:
+            return sig
     s_and, s_not = parse_subject(subj_str)
     s_sel = parse_selections(subj_str)                    # inside/outside/interacting on subject
     tail = rhs[m.end():]
@@ -457,6 +562,91 @@ def parse_rules(text, lm):
                       "arg_selections": arg_selections, "arg_covers": arg_covers,
                       "arg_holes": arg_holes, "area_op": area_op,
                       "behavioral_only": behavioral_only})
+    # EDGE-DIMENSIONAL (gate WIDTH): `BASE.edges.and(GATE.edges).not(M)...width(L)` --
+    # poly width over the gate (tgate = poly2 & comp). The covering GATE layer(s) form
+    # the gate edge-marker; .not(M) cutouts become edge .not. First slice: WIDTH only,
+    # no region-AND filters / subject selections (those stay deferred).
+    done = {r["id"] for r in rules}
+    skip["edge_dim"] = 0
+    for i, line in enumerate(lines):
+        mo = re.match(r'\s*(\w+)\.output\("([^"]*)",\s*"([^"]*)"\)', line)
+        if not mo:
+            continue
+        var, rid, desc = mo.group(1), mo.group(2), mo.group(3)
+        if rid in done:
+            continue
+        defn = defline = None
+        for j in range(i - 1, -1, -1):
+            dm = re.match(rf"\s*{re.escape(var)}\s*=\s*([^=].*)", lines[j])
+            if dm:
+                defn, defline = dm.group(1).strip(), lines[j]
+                break
+        if defn is None or ".edges" not in defn:
+            continue
+        region = expand_base(re.split(r"\.(?:output|forget)\(", defn)[0].strip(), _VARDEFS)
+        pe = _parse_edge_dim(region)
+        if pe is None:
+            continue
+        base, gates_raw, enots, eands, eop, value, mode, after = pe
+        if eop != "width" or not gates_raw:                 # first slice: gate WIDTH
+            continue
+        # gate = the active region (drawn CROSSING the subject); filters = mask regions
+        # (drawn CONTAINING it); cutouts = removed. The backend recovers all three from
+        # the drawn relations -- nothing about the structure is stashed.
+        gate = sorted({l for g in gates_raw for l in _marker_deep_layers(g)} - {base})
+        filters = sorted({l for e in eands for l in _marker_deep_layers(e)})
+        cuts = sorted({l for e in enots for l in _marker_deep_layers(e)})
+        if base not in lm or any(l not in lm for l in gate + filters + cuts):
+            continue
+        scope = [(o, mk) for o, mk in _SCOPE.findall(after) if o in _HANDLED_SCOPE and mk in lm]
+        done.add(rid)
+        rules.append({"id": rid, "desc": desc, "op": "edge_width", "base": base,
+                      "gate": gate, "covers": filters, "holes": cuts,
+                      "arg": [], "value": value, "mode": mode, "scope": scope, "line": defline,
+                      "selections": [], "arg_selections": [], "arg_covers": [], "arg_holes": [],
+                      "area_op": ">=", "behavioral_only": False})
+    # EDGE-SIZE rules: `var = LAYER.edges.(with|without)_length(...).extended(...)` --
+    # min/max contact/via size. The flagged EDGES are the violation, rendered as thin
+    # polygons via .extended. The validator's first round-trip of an .edges rule.
+    done = {r["id"] for r in rules}
+    skip["edge_size"] = 0
+    for i, line in enumerate(lines):
+        mo = re.match(r'\s*(\w+)\.output\("([^"]*)",\s*"([^"]*)"\)', line)
+        if not mo:
+            continue
+        var, rid, desc = mo.group(1), mo.group(2), mo.group(3)
+        if rid in done:
+            continue
+        defn = defline = None
+        for j in range(i - 1, -1, -1):
+            dm = re.match(rf"\s*{re.escape(var)}\s*=\s*([^=].*)", lines[j])
+            if dm:
+                defn, defline = dm.group(1).strip(), lines[j]
+                break
+        if defn is None:
+            continue
+        region = expand_base(re.split(r"\.(?:output|forget)\(", defn)[0].strip(), _VARDEFS)
+        em = _EDGE_SIZE.match(region)
+        if not em:
+            continue
+        base, kind, largs, ext, after = em.groups()
+        if base not in lm:
+            continue
+        nums = [None if p.strip() == "nil" else
+                (re.match(r"([0-9.]+)\.um", p.strip()) or re.match(r"([0-9.]+)", p.strip())).group(1).rstrip(".")
+                for p in largs.split(",")]
+        if kind == "without_length":
+            k, lo, hi = "without", nums[0], nums[0]
+        else:
+            k, lo, hi = "with", nums[0], (nums[1] if len(nums) > 1 else nums[0])
+        scope = [(o, mk) for o, mk in _SCOPE.findall(after) if o in _HANDLED_SCOPE and mk in lm]
+        done.add(rid)
+        rules.append({"id": rid, "desc": desc, "op": "edge_length", "base": base,
+                      "kind": k, "lo": lo, "hi": hi, "extended": True,
+                      "covers": [], "holes": [], "arg": [], "value": "", "mode": "",
+                      "scope": scope, "line": defline, "selections": [],
+                      "arg_selections": [], "arg_covers": [], "arg_holes": [],
+                      "area_op": ">=", "behavioral_only": False})
     # PRESENCE rules: `var = <region with NO dimensional op>; var.output(...)`. The
     # region itself is the violation (a cross). Subject base + AND/NOT + selections.
     done = {r["id"] for r in rules}
@@ -577,6 +767,37 @@ def as_drawn(r):
         shapes = [_rect("A", 0, 0, 10, 4, "a")]
         meas = [{"name": "X", "from": "a0", "to": "a1", "crossed": True}]
         cons = [_match(f"A.layer == {base}")]
+    elif op == "edge_width":
+        # gate WIDTH: poly A. The GATE active layer(s) are drawn CROSSING A (a partial
+        # overlap) so the backend recovers them as the gate; mask FILTERS are drawn
+        # CONTAINING A (shared cover loop -> relation inside); cutouts are removed
+        # (shared hole loop). edge_dl reads the three apart from the geometry. The width
+        # measure carries edges:True; a1/a3 are straight (a real measured distance).
+        shapes = [_rect("A", 0, 0, 10, 4, "a")]
+        for e in shapes[0]["edges"]:
+            if e["id"] in ("a1", "a3"):
+                e["edge"] = True
+        meas = [{"name": "W", "from": "a1", "to": "a3", "edges": True}]
+        cons = [_match(f"A.layer == {base}"), _check(f"W >= {v}")]
+        for gi, gl in enumerate(r.get("gate", [])):        # active region CROSSING A (overlap)
+            shapes.append(_rect(f"G{gi}", 3 - gi, -2 - gi, 7 + gi, 6 + gi, f"g{gi}"))
+            cons.append(_match(f"G{gi}.layer == {gl}"))     # crosses A's centre -> covers its
+            #   device point with relation 'overlap' (not 'inside') -> recovered as the gate
+    elif op == "edge_length":
+        # min/max SIZE: the EDGE a0's length is the violation. A length constraint
+        # (!= for without_length, == / range for with_length) -> the backend emits
+        # base.edges.(with|without)_length(...). .extended renders edges as polygons.
+        shapes = [_rect("A", 0, 0, 10, 4, "a")]
+        meas = []
+        lo, hi, k = r["lo"], r["hi"], r["kind"]
+        if k == "without":
+            cexpr = f"a0.length != {lo}"
+        elif lo == hi:
+            cexpr = f"a0.length == {lo}"
+        else:
+            cexpr = " and ".join(c for c in (f"a0.length >= {lo}" if lo else None,
+                                             f"a0.length <= {hi}" if hi else None) if c)
+        cons = [_match(f"A.layer == {base}"), _check(cexpr)]
     elif op == "with_area":
         shapes = [_rect("A", 0, 0, 10, 4, "a")]
         meas = []
@@ -783,8 +1004,11 @@ def as_drawn(r):
     for s in shapes:
         for e in s["edges"]:
             e["edge"] = e["id"] in straight
-    return {"name": r["id"], "desc": r["desc"], "shapes": shapes,
-            "measures": meas + sel_meas, "constraints": cons}
+    out = {"name": r["id"], "desc": r["desc"], "shapes": shapes,
+           "measures": meas + sel_meas, "constraints": cons}
+    if r.get("extended"):                  # edge-size: render flagged edges as thin polygons
+        out["extended"] = r["extended"]
+    return out
 
 
 def _match(expr):
