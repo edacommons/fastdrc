@@ -23,6 +23,19 @@ class Backend:
     def compile(self, rule: Rule) -> str:
         raise NotImplementedError
 
+    def compile_all(self, rules) -> str:
+        """Compile several rules (rule dicts or `Rule`s) into one output. A backend
+        with a shared preamble (a deck) overrides this to emit it once."""
+        return "\n".join(self.compile(r if isinstance(r, Rule) else Rule(r)) for r in rules)
+
+    def compile_data(self, data: dict) -> str:
+        """Compile what a rule FILE holds: one rule, or a sheet of many (one drawn
+        scene, see `fastdrc.sheet`)."""
+        from .sheet import is_sheet, rules_of
+        if not is_sheet(data):
+            return self.compile(Rule(data))
+        return self.compile_all(rules_of(data))
+
 
 _REGISTRY: dict[str, type] = {}
 

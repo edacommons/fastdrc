@@ -501,6 +501,100 @@ one; everything else above is a single drawing.
 
 ---
 
+## The way design manuals draw rules — and say them
+
+The conventions above were checked against how foundry design manuals draw and word
+their rules (the open GF180MCU and SKY130 manuals, among others). The figures share
+one visual language, and the model follows it:
+
+| in a manual's figure | here |
+|---|---|
+| real layers drawn as they sit: a bar, a band across it, an implant over part of it | the same shapes; relations are read off the drawing |
+| a named derived region in the legend (NCOMP, tap, gate, poly resistor) | a **legend**: `"layers": {"pcomp": "comp and pplus"}`, then draw `pcomp` |
+| a dimension arrow between two edges | a measure with a `check` bound |
+| an arrow labelled with an inequality that is a *condition* ("< 0.34 wide") | a measure / length with a `match` bound |
+| a big **X** over a shape or a configuration | a **cross**: on the shape, or on the relation that is forbidden |
+| a tick next to an arrangement that is fine | an **allowed example** (the shape's mark) |
+| break lines: "the shape continues" | wavy edges |
+| ONE figure carrying many rules | a **sheet**: one scene, a list of rules (below) |
+
+And the phrases manuals use map onto drawings like this:
+
+| a manual says | you draw | compiles to |
+|---|---|---|
+| *A width* / *A space* (notch included) | one shape / two shapes, an arrow | `A.width(v)` / `A.space(v)` |
+| *... with run length > x* | the same, plus the filter `S.run > x` | `A.space(v, projection, projecting > x)` |
+| *P space to Q, square check* / *projection check* | the measure's metric | `P.separation(Q, v, square)` |
+| *(P space to Q) checked over R* | R drawn over the measured stretch | `P.and(R).separation(Q.and(R), v)` |
+| *J overlap past K* / *J extension beyond K* | J and K crossing, an arrow from K's edge to J's end | `J.enclosing(K, v)` |
+| *L overlap of M* | the arrow inside both | `L.overlap(M, v)` |
+| *G within H by x* (enclosure) | G inside H, an arrow across the margin | `H.enclosing(G, v)` |
+| *G within H by x* / *H overlap of G*, straddling prohibited | the same arrow, set to **within** | `H.enclosing(G, v).or(G.overlapping(H).not_inside(H))` |
+| *J must be within K* (every J) | the same, plus the check `J in K` | `... ` and `J.not_inside(K)` |
+| *... with coinciding permitted* | the bound `E >= v or E == 0` | zero-width violations dropped |
+| *C prohibited over D* / *must not touch* / *must not be inside* | the two shapes in that relation, crossed | `C.overlapping(D)` / `.interacting` / `.inside` |
+| *C must not straddle D* (inside is fine) | C drawn across D's edge, crossed as "never straddle" | `C.overlapping(D).not_inside(D)` |
+| *K must be on A or B* | a shape whose layer is the set `{A, B}`, K inside it, the check `K in X` | `K.not_inside(A.or(B))` |
+| *A maximum width* / *maximum within* | the check `W <= v` | `A.drc(width > v)` |
+| *gate length*: poly edges over diffusion | poly crossing diffusion, an edge-to-edge width | `poly.edges.and((poly & diff).edges).width(v)` |
+| *minimum area* / *enclosed area* | `A.area >= v` / `A.holes.area >= v` | `A.with_area(nil, v)` / `A.holes.with_area(nil, v)` |
+
+Not drawn by example (yet): density, summed areas, counts ("must contain exactly n"),
+"span" (wide-line) conditions, and a required neighbour within a maximum distance.
+
+### Sheets — one figure, many rules
+
+A manual's figure draws a situation once and hangs many rules on it. A **sheet** is
+that figure: `shapes` + `measures` + the layer facts, and `rules` — each a name with
+its constraint (or its cross) on the scene:
+
+```json
+{"name": "SAB", "shapes": [...], "measures": [...], "constraints": [...],
+ "rules": [{"name": "SB.6", "desc": "...", "constraints": [{"kind": "check", "expr": "E6 >= 0.22"}]},
+           {"name": "SB.8", "desc": "...", "measures": ["X8"]}]}
+```
+
+Each rule reads only its part of the scene:
+
+- the shapes it measures;
+- anything drawn **over the spot the arrow sits on** — but not a *background*, a
+  shape that holds the whole measured shape (the diffusion under a contact, a well):
+  moving the arrow can say nothing about such a layer, so it takes part only when the
+  rule names it (`"with": ["COMP"]`);
+- for a crossed-out shape, everything it is drawn on;
+- the contexts those shapes are linked to.
+
+The rest of the figure belongs to other rules. `"with"` / `"without"` / `"shapes"`
+on a rule override this; `"cross"` / `"allowed"` put the marks on shapes for that
+rule only. Two entries may share a name — a rule and its crossed-out example.
+`fastdrc rules sheet.json` compiles a sheet to one deck.
+
+**Where the arrow is put matters**, as in a manual. A measure is read *at its spot*:
+by default the middle of the stretch where its two edges face each other, or where
+you put it — `"at": c`, the coordinate along the edges. The same two poly edges give
+"poly spacing" with the arrow on field and "gate spacing" with the arrow over the
+diffusion, because the diffusion is then drawn over the measured spot.
+
+**A table of values.** Manuals give most rules as a table: one arrow, a value per
+column (3.3 V, 5 V …). Name each column once by where it applies, and give the rule
+its values with `?` in the constraint:
+
+```json
+"domains": {"3.3V": [["not_interacting", "v5_xtor"], ["not_interacting", "dualgate"]],
+            "5V":   [["overlapping", "dualgate"]]},
+"rules": [{"name": "PL.4", "constraints": [{"kind": "check", "expr": "E4 >= ?"}],
+           "values": {"3.3V": 0.22, "5V": 0.22}}]
+```
+
+→ the rules `PL.4_3.3V` and `PL.4_5V`, each scoped to its column. A rule with no
+number that still holds per column lists them: `"columns": ["3.3V", "5V"]`.
+
+**A section note** — "these rules do not apply inside OTP_MK" — is `"except":
+["otp_mk"]` on the sheet (every rule) or on one rule, instead of a cutout drawn into
+every shape.
+
+---
+
 ## In the editor (`fastdrc gui`)
 
 - **Drag** on empty canvas: a new shape (all edges wavy). **Double-click** an edge:

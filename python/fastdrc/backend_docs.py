@@ -24,11 +24,13 @@ def _rel_to_sel(rel):                       # mirror of the KLayout backend's ma
 # a CROSS on a relation forbids it: how the REQUIREMENT reads, per the selection op
 # the crossed relation compiles to (the op selects the violating shapes, so the
 # sentence states its opposite).
-_CROSS = {"overlapping": "must not overlap", "inside": "must not lie inside",
+_CROSS = {"straddling": "must not straddle the edge of",
+          "overlapping": "must not overlap", "inside": "must not lie inside",
           "interacting": "must not touch or overlap", "outside": "must overlap",
           "not_interacting": "must touch or overlap", "not_inside": "must lie inside"}
 # how a SELECTION op reads as a restricting clause (singular, plural)
-_SEL = {"inside": ("lies inside", "lie inside"), "outside": ("lies outside", "lie outside"),
+_SEL = {"straddling": ("straddles the edge of", "straddle the edge of"),
+        "inside": ("lies inside", "lie inside"), "outside": ("lies outside", "lie outside"),
         "interacting": ("touches or overlaps", "touch or overlap"),
         "overlapping": ("overlaps", "overlap"),
         "not_interacting": ("is clear of", "are clear of"),
@@ -65,6 +67,9 @@ class DocsBackend(Backend):
         if layer and "|" in layer:            # a layer SET reads as "a or b"
             return " or ".join(self._name(l) for l in layer.split("|"))
         return self.glossary.get(layer, layer)
+
+    def compile_all(self, rules) -> str:
+        return "".join(self.compile(r if isinstance(r, Rule) else Rule(r)) for r in rules)
 
     def compile(self, rule: Rule) -> str:
         head = rule.name or "(rule)"
@@ -124,6 +129,11 @@ class DocsBackend(Backend):
             out.append(self._presence(rule, var))
         for var, cap, side in eol:
             out.append(self._eol(rule, var, cap, side))
+        for inner, outer in rule.inside_checks():
+            d_in, d_out, used = rule.check_derivations(inner, outer)
+            out.append(self._with_scope(
+                f"every {self._fmt_deriv_en(d_in)} must lie wholly inside "
+                f"{self._fmt_deriv_en(d_out)}.", self._scope(rule, inner, used)))
         return out
 
     def _length(self, rule, edge, kind, form, lo, hi):
@@ -175,7 +185,7 @@ class DocsBackend(Backend):
                     else f"{self._gate_en(rule, sf)} must be at least {v} µm from "
                          f"{self._gate_en(rule, st)}")
             return self._with_scope(core + f" ({mt}).", scope)
-        ds, dt, consumed = rule.check_derivations(sf, st)   # the shared analysis
+        ds, dt, consumed = rule.measure_derivations(var)    # the shared analysis
         subj, arg = self._fmt_deriv_en(ds), self._fmt_deriv_en(dt)
         scope = self._scope(rule, sf, consumed)
         if not select and hi is not None:               # MAX check -> must not exceed it
@@ -196,6 +206,8 @@ class DocsBackend(Backend):
             a, b = self._fmt_deriv_en(over["outer"]), self._fmt_deriv_en(over["inner"])
             core = {"extension": f"{a} must extend at least {v} µm beyond {b}",
                     "overlap": f"{a} must overlap {b} by at least {v} µm"}[over["kind"]]
+            if lo.zero_ok:
+                core += " — or exactly 0 (coinciding edges are allowed)"
             return self._with_scope(core + f" ({mt}).",
                                     self._scope(rule, over["outer_shape"], over["consumed"]))
         if not select:                                  # MIN check -> a violation check
@@ -207,10 +219,17 @@ class DocsBackend(Backend):
                 if rel in ("inside", "contains"):
                     outer, inner = (arg, subj) if rel == "inside" else (subj, arg)
                     core = f"{outer} must enclose {inner} by at least {v} µm"
+                    if m.get("within"):
+                        core += f", and no {inner} may lie across its edge"
                 elif subj == arg:                   # the SAME derived layer on both sides
                     core = f"any two shapes of {subj} must be at least {v} µm apart"
                 else:
                     core = f"{subj} must be at least {v} µm from {arg}"
+            run = rule.run_bounds().get(var)
+            if run:
+                core += f", where the edges run side by side for {run[0]} {_fmt(run[1])} µm"
+            if lo.zero_ok:
+                core += " — or exactly 0 (coinciding edges are allowed)"
             return self._with_scope(core + f" ({mt}).", scope)
         pred = "width" if sf == st else "space" if subj == arg else "separation"
         cond = (f"{pred} ≥ {_fmt(lo.value)} µm" if hi is None
@@ -264,7 +283,7 @@ class DocsBackend(Backend):
             for op, marker in selections:
                 by_op[op].append(self._fmt_deriv_en(marker))
             for op in sorted(by_op):
-                ctxs = sorted(by_op[op])
+                ctxs = sorted(set(by_op[op]))
                 # bracket only to delimit a MULTI-context list with compound parts; a single
                 # context (even a compound one) reads fine without brackets
                 multi = len(ctxs) > 1 and any(" " in c for c in ctxs)
@@ -290,7 +309,8 @@ class DocsBackend(Backend):
             if cl and cl != base:
                 (filt if rule.relation(shape, c) == "inside" else gate).append(cl)
         cuts = sorted({self._name(l) for c in rule.removed(shape)
-                       for l in (rule.layer_of(c) or "?").split("|")})
+                       for l in (rule.layer_of(c) or "?").split("|")}
+                      | {self._name(l) for l in rule.excepted()})
         phrase = (f"{self._name(base)} edges over the gate ({self._name(base)}"
                   + "".join(f" & {self._name(g)}" for g in sorted(set(gate))) + ")") if gate \
             else f"{self._name(base)} edges"
@@ -305,10 +325,15 @@ class DocsBackend(Backend):
         for name in rule.shapes:
             if name in consumed or not rule.layer_of(name):
                 continue
-            phrase = {"disjoint": "away from", "overlap": "overlapping",
-                      "touch": "touching"}.get(rule.relation(shape, name))
-            if phrase:
-                out.append((phrase, self._name(rule.layer_of(name))))
+            # the same three readings the deck gets (KLayoutBackend._scope): apart,
+            # touching, or -- any way of sharing area -- overlapping
+            phrase = {"disjoint": "away from", "outside": "away from",
+                      "touch": "touching"}.get(rule.relation(shape, name), "overlapping")
+            out.append((phrase, self._name(rule.layer_of(name))))
+        words = {"not_interacting": "away from", "interacting": "touching", "inside": "inside",
+                 "outside": "outside"}
+        out += [(words.get(op, "overlapping"), self._name(layer))
+                for op, layer in rule.data.get("scope") or []]
         return out
 
     def _with_scope(self, core, scope):

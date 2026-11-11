@@ -84,3 +84,27 @@ def test_a_hole_shape_is_written_as_the_void_of_the_shape_it_lies_in():
     out = model_to_json(meta, shapes, measures, cons)
     assert "hole_loops" not in out["shapes"][0] and out["shapes"][1]["cut"] is True
     assert void_owner(void, shapes) is None
+
+
+def test_sheet_fields_are_typed_as_one_line_each():
+    from fastdrc.editor import (format_columns, format_legend, format_values, parse_columns,
+                                parse_legend, parse_values)
+    legend = {"pcomp": "comp and pplus", "gate": "poly2 and comp"}
+    assert parse_legend("pcomp = comp and pplus; gate = poly2 and comp") == legend
+    assert parse_legend(format_legend(legend)) == legend
+    cols = {"3.3V": [["not_interacting", "v5_xtor"], ["not_interacting", "dualgate"]],
+            "5V": [["overlapping", "dualgate"]]}
+    assert parse_columns(format_columns(cols)) == cols
+    assert parse_values("3.3V=0.22, 5V=0.3") == {"3.3V": 0.22, "5V": 0.3}
+    assert parse_values(format_values({"3.3V": 0.22})) == {"3.3V": 0.22}
+
+
+def test_a_sheet_survives_open_and_save():
+    sheet = {"name": "S", "domains": {"5V": [["overlapping", "dualgate"]]}, "except": ["otp_mk"],
+             "layers": {"gate": "poly2 and comp"},
+             "shapes": [{"name": "A", "edges": _edges("a", 0, 0, 10, 4, {1, 3})}],
+             "measures": [{"name": "W", "from": "a1", "to": "a3", "at": 2.0}],
+             "constraints": [{"kind": "match", "expr": "A.layer == poly2"}],
+             "rules": [{"name": "PL.1", "constraints": [{"kind": "check", "expr": "W >= ?"}],
+                        "values": {"5V": 0.2}}]}
+    assert _roundtrip(sheet) == sheet

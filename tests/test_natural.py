@@ -154,3 +154,68 @@ def test_legend_with_a_subtraction():
                                  {"kind": "check", "expr": "W >= 0.18"}]})
     deck = get("klayout", layermap={"poly2": (30, 0), "comp": (22, 0)}).compile(rule)
     assert "field_poly = poly2.not(comp)" in deck
+
+
+def test_coinciding_edges_permitted_is_said_in_the_constraint():
+    # "must extend at least 0.22 -- or not at all": zero distance is not a violation
+    bar, band = _rect("L", 0, 0, 10, 4, {1}), _rect("X", 3, -2, 7, 6, {1})
+    op, en, _ = _compile([bar, band], {"from": "x1", "to": "l1"}, {"L": "comp", "X": "sab"},
+                         bound="E >= 0.22 or E == 0")
+    assert op == "comp.enclosing(sab, 0.22.um, euclidian).polygons"      # zero-width pairs dropped
+    assert "or exactly 0 (coinciding edges are allowed)" in en
+
+
+def test_run_length_condition_on_a_spacing():
+    # "space to a neighbour that runs alongside for more than 1 um"
+    a, b = _rect("A", 0, 0, 4, 10, {1}), _rect("B", 6, 0, 10, 10, {3})
+    r = Rule({"name": "R", "desc": "r", "shapes": [a, b],
+              "measures": [{"name": "S", "from": "a1", "to": "b3", "metric": "projection"}],
+              "constraints": [{"kind": "match", "expr": "A.layer == metal2"},
+                              {"kind": "match", "expr": "B.layer == metal2"},
+                              {"kind": "match", "expr": "S.run > 1"},
+                              {"kind": "check", "expr": "S >= 0.3"}]})
+    deck = get("klayout").compile(r)
+    assert "metal2.space(0.3.um, projection, projecting > 1.um).polygons(0.001)" in deck
+    assert "where the edges run side by side for > 1 µm" in get("docs").compile(r)
+
+
+def test_must_be_within_is_an_enclosure_plus_lying_inside():
+    # CO.6 "metal1 overlap of contact": the margin, AND the contact must be inside at all
+    metal, contact = _rect("M", 0, 0, 10, 8, {1}), _rect("K", 6, 3, 8, 5, {1})
+    r = Rule({"name": "CO.6", "desc": "metal over contact", "shapes": [metal, contact],
+              "measures": [{"name": "E", "from": "m1", "to": "k1"}],
+              "constraints": [{"kind": "match", "expr": "M.layer == metal1"},
+                              {"kind": "match", "expr": "K.layer == contact"},
+                              {"kind": "check", "expr": "E >= 0.005"},
+                              {"kind": "check", "expr": "K in M"}]})
+    ops = [ln.split("=", 1)[1].strip() for ln in get("klayout").compile(r).splitlines() if "_l1 =" in ln]
+    assert ops == ["metal1.enclosing(contact, 0.005.um, euclidian).polygons(0.001)",
+                   "contact.not_inside(metal1)"]
+    assert "every contact must lie wholly inside metal1." in get("docs").compile(r)
+
+
+def test_within_is_the_margin_and_no_straddling_in_one_arrow():
+    # a manual's "DNWELL overlap of PCOMP": the margin, and a PCOMP across the well's
+    # edge has none. One arrow with "within" set -- not a second drawing.
+    well, tap = _rect("W", 0, 0, 20, 12, {1}), _rect("T", 12, 4, 16, 8, {1})
+    r = Rule({"name": "DF.4e", "desc": "d", "layers": {"pcomp": "comp and pplus"},
+              "shapes": [well, tap],
+              "measures": [{"name": "E", "from": "w1", "to": "t1", "within": True}],
+              "constraints": [{"kind": "match", "expr": "W.layer == dnwell"},
+                              {"kind": "match", "expr": "T.layer == pcomp"},
+                              {"kind": "check", "expr": "E >= 0.93"}],
+              "scope": [["overlapping", "dualgate"]]})
+    op = next(ln.split("=", 1)[1].strip() for ln in get("klayout").compile(r).splitlines()
+              if "_l1 =" in ln)
+    assert op == ("dnwell.enclosing(pcomp, 0.93.um, euclidian).polygons(0.001)"
+                  ".or(pcomp.overlapping(dnwell).not_inside(dnwell)).overlapping(dualgate)")
+    en = get("docs").compile(r)
+    assert "dnwell must enclose pcomp by at least 0.93 µm, and no pcomp may lie across its edge" in en
+
+
+def test_crossed_out_shape_with_a_condition_is_one_rule():
+    # "Area < 0.2025" with an X over the small shape: the filter says which ones
+    small = dict(_rect("A", 0, 0, 3, 3), crossed=True)
+    ops, _, _ = _rule([small], [{"kind": "match", "expr": "A.layer == comp"},
+                                {"kind": "match", "expr": "A.area < 0.2025"}])
+    assert ops == ["comp.with_area(nil, 0.2025.um)"]

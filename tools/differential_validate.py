@@ -14,7 +14,9 @@ instead of counting them.
 
 Run:  python tools/differential_validate.py [--corpus | --dir DIR] [--tiles N] [rule-id ...]
   --corpus  compile docs/gf180mcu/drawn_rules/<id>.json instead of as_drawn(deck rule)
-  --dir DIR compile the drawings in DIR (matched to deck rules by their "name")
+  --dir DIR compile the drawings in DIR (matched to deck rules by their "name").
+            DIR/validate.json may say how to check rules the deck parser can't read
+            and give realistic layouts for any rule (see spec_rule)
   SEEDS=file.json  extra hand-made firing layouts: {rule-id: [[[layer,x0,y0,x1,y1],..],..]}
 Exit status 1 if any rule differs or errors.
 """
@@ -50,8 +52,9 @@ CORPUS = os.path.join(REPO, "docs", "gf180mcu", "drawn_rules")
 def official_block(r):
     """(statements, result_var) exactly as the deck has them."""
     line = r["line"]
+    pre = list(r.get("_pre") or [])                 # definitions the statement relies on
     if ".output(" not in line:
-        return [line], line.split("=", 1)[0].strip()
+        return pre + [line], line.split("=", 1)[0].strip()
     var = line.split(".output", 1)[0].strip()
     i = next(k for k, l in enumerate(LINES) if l.strip() == line.strip())
     blk = []
@@ -61,21 +64,39 @@ def official_block(r):
         if not s.startswith("#") and not s.startswith("logger"):
             blk.append(s)
         k -= 1
-    return blk[::-1], var
+    return pre + blk[::-1], var
+
+
+def spec_rule(name, sp):
+    """A rule record for an official statement the deck parser does not read, from a
+    validation spec entry: {"official": output variable, "tag": text its output line
+    contains (to pick one of several), "pre": [definitions], "like": {op, base, arg,
+    value} (what kind of layout exercises it), "layouts": [[[layer, x0, y0, x1, y1]..]..]}."""
+    var, tag = sp["official"], sp.get("tag")
+    line = next(l for l in LINES if l.strip().startswith(var + ".output(") and (not tag or tag in l))
+    like = sp.get("like") or {}
+    return {"id": name, "op": like.get("op", "width"), "base": like.get("base", "comp"),
+            "arg": [like["arg"]] if like.get("arg") else [], "value": str(like.get("value", "")),
+            "mode": like.get("mode", "euclidian"), "covers": [], "holes": [], "scope": [],
+            "selections": [], "arg_selections": [], "arg_covers": [], "arg_holes": [],
+            "area_op": ">=", "void": False, "line": line,
+            "_pre": sp.get("pre"), "_layouts": sp.get("layouts")}
 
 
 def our_block(deck):
     """Our complete deck minus the report plumbing; returns (statements, var)."""
-    out, var = [], None
+    out = ["__outs = []"]
     for l in deck.splitlines():
         s = l.strip()
         if not s or s.startswith("#") or s.endswith(".forget"):
             continue
         if ".output(" in s:
-            var = s.split(".output", 1)[0].strip()
+            # a rule may report several checks (even reusing a variable name): collect
+            # each result where it is output, and compare their union
+            out.append(f"__outs << __norm({s.split('.output', 1)[0].strip()})")
             continue
         out.append(s)
-    return out, var
+    return out, "__outs.inject { |a, b| a | b }"
 
 
 def layers_of(*texts):
@@ -183,9 +204,11 @@ def rand_layout(layers, vn, D, rng):
 def build_tiles(r, layers, ntiles, rng):
     vn, D = dims(r)
     seeds = [x for x in [seed_layout(r)] + extra_seeds(r, vn) if x]
+    extra = list(r.get("_layouts") or [])           # realistic layouts given with the rule
     if os.environ.get("SEEDS"):
-        for lay in json.load(open(os.environ["SEEDS"])).get(r["id"], []):
-            seeds.insert(0, [[*LM[n], *c] for n, *c in lay])
+        extra += json.load(open(os.environ["SEEDS"])).get(r["id"], [])
+    for lay in extra:
+        seeds.insert(0, [[*LM[n], *c] for n, *c in lay])
     tiles = list(seeds)
     while len(tiles) < ntiles:
         if seeds and rng.random() < 0.65:
@@ -195,12 +218,15 @@ def build_tiles(r, layers, ntiles, rng):
     return tiles
 
 
-RUBY_TAIL = r'''
+RUBY_NORM = r'''
 def __norm(l)
   return l if l.polygons?
   return l.polygons(0.001) if l.edge_pairs?
   l.extended(0, 0, 0.001, 0.001)
 end
+'''
+
+RUBY_TAIL = r'''
 __a = __norm(__off).data.merged
 __b = __norm(__our).data.merged
 __x = __a ^ __b
@@ -213,7 +239,9 @@ def run_rule(r, drawn, ntiles):
     rid = r["id"]
     rng = random.Random(rid)
     try:
-        deck = get("klayout", layermap=LM, metric=r["mode"] or "euclidian").compile(Rule(drawn))
+        be = get("klayout", layermap=LM, metric=r["mode"] or "euclidian")
+        # a rule may be drawn in several parts under one name: they are one rule
+        deck = be.compile_all(drawn) if isinstance(drawn, list) else be.compile(Rule(drawn))
     except Exception as e:                                           # noqa: BLE001
         return rid, "COMPILE-ERR", str(e)[:100]
     ours, ovar = our_block(deck)
@@ -233,6 +261,7 @@ def run_rule(r, drawn, ntiles):
     L.append(f'source("{gds}")')
     L += [f"{n} = polygons({l}, {d})" for n, (l, d) in LM.items()]
     L += [f"{v} = {vk._var_expansion(*ad)}" for v, ad in vk._VARDEFS.items()]
+    L.append(RUBY_NORM)
     L += off + [f"__off = {fvar}"]
     L += ours + [f"__our = {ovar}"]
     L.append(RUBY_TAIL % {"half": PITCH // 2, "pitch": PITCH, "res": res})
@@ -265,19 +294,31 @@ def main():
     cdir = CORPUS
     if "--dir" in args:                    # another folder of drawings, e.g. hand-drawn ones
         cdir, corpus = args[args.index("--dir") + 1], True
+    spec = {}
     if corpus:
-        for f in glob.glob(os.path.join(cdir, "*.json")):
-            j = json.load(open(f))
-            cj[j.get("name", os.path.basename(f))] = j
-    for r in RULES:
-        if ids and r["id"] not in ids:
-            continue
-        if corpus:
-            if r["id"] not in cj:
+        from fastdrc.sheet import rules_of
+        for f in sorted(glob.glob(os.path.join(cdir, "*.json"))):
+            if os.path.basename(f) == "validate.json":   # how to check them, not a drawing
+                spec = json.load(open(f)).get("rules", {})
                 continue
-            jobs.append((r, cj[r["id"]]))
+            for j in rules_of(json.load(open(f))):      # a sheet holds many rules
+                cj.setdefault(j.get("name", os.path.basename(f)), []).append(j)
+    parsed = {r["id"]: r for r in RULES}
+    names = list(parsed) if not corpus else [n for n in cj if n in parsed or n in spec]
+    for name in names:
+        if ids and name not in ids:
+            continue
+        if name in spec and spec[name].get("official"):  # a statement the parser can't read
+            r = spec_rule(name, spec[name])
+        elif name in spec:                               # just realistic layouts for it
+            r = dict(parsed[name], _layouts=spec[name].get("layouts"))
+        else:
+            r = parsed[name]
+        if corpus:
+            jobs.append((r, cj[name] if len(cj[name]) > 1 else cj[name][0]))
         else:
             jobs.append((r, vk.as_drawn(r)))
+    unchecked = sorted(n for n in cj if n not in parsed and n not in spec) if corpus else []
     with ThreadPoolExecutor(8) as ex:
         results = list(ex.map(lambda j: run_rule(j[0], j[1], ntiles), jobs))
     ok = [x for x in results if x[1] == "OK"]
@@ -306,6 +347,17 @@ def main():
             print("   dir :", d["dir"])
         else:
             print("  ", d)
+    print("\nper rule:")
+    for rid, st, d in results:
+        if not isinstance(d, dict):
+            print(f"  {rid:14} {st}")
+            continue
+        vd, n = d["verdict_differs"], d["tiles"]
+        note = "  (official never fired: unverified)" if d["off_fired"] == 0 else ""
+        print(f"  {rid:14} " + ("identical markers" if st == "OK" else
+                                f"same verdict on {n - len(vd)} of {n} layouts") + note)
+    if unchecked:
+        print("not checked (no official statement known for them):", ", ".join(unchecked))
     return 1 if len(ok) != len(results) else 0
 
 

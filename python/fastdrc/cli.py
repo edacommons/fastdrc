@@ -134,6 +134,31 @@ def compose(config_path, out_override=None):
         print(f"  warning: {w}", file=sys.stderr)
 
 
+def _compile_rules(args):
+    """`fastdrc rules`: drawn rule files -> one deck / one text."""
+    import json
+
+    from . import backend_docs, backend_klayout   # noqa: F401  (register the backends)
+    from .backend import get
+    from .sheet import rules_of
+
+    kw = {}
+    if args.layermap:
+        with open(args.layermap) as f:
+            kw["layermap"] = {k: tuple(v) for k, v in json.load(f).items()}
+    rules = []
+    for path in args.files:
+        with open(path) as f:
+            rules += rules_of(json.load(f))
+    text = get(args.to, **(kw if args.to == "klayout" else {})).compile_all(rules)
+    if args.out:
+        with open(args.out, "w") as f:
+            f.write(text)
+    else:
+        sys.stdout.write(text)
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="fastdrc",
@@ -167,6 +192,15 @@ def main(argv=None):
     inf_p.add_argument("--d", type=int, required=True, help="distance in DBU: > 0 grows (a halo), < 0 shrinks")
     inf_p.add_argument("--out", required=True, help="output layer (.tiles)")
 
+    rules_p = sub.add_parser(
+        "rules", help="Compile drawn rule files (single rules or sheets) into a "
+                      "KLayout DRC deck, or into plain-language rule text.")
+    rules_p.add_argument("files", nargs="+", help="rule / sheet .json files")
+    rules_p.add_argument("--to", default="klayout", choices=["klayout", "docs", "facts"],
+                         help="what to produce (default: a KLayout .drc deck)")
+    rules_p.add_argument("--layermap", help="JSON file {layer name: [gds layer, datatype]}")
+    rules_p.add_argument("-o", "--out", help="write here instead of standard output")
+
     gui_p = sub.add_parser(
         "gui", help="Launch the visual rule editor (Tkinter).")
     gui_p.add_argument("file", nargs="?", help="optional rule .json to open")
@@ -183,6 +217,8 @@ def main(argv=None):
     elif args.command == "inflate":
         n = fastdrc.inflate(args.infile, args.d, args.out)
         print(f"inflate {args.infile} by {args.d} -> {args.out} ({n} tiles)")
+    elif args.command == "rules":
+        return _compile_rules(args)
     elif args.command == "gui":
         from fastdrc import editor
         editor.run(args.file)

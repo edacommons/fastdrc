@@ -48,6 +48,8 @@ def rel_to_sel(rel):
 # so labeled example instances (some flagged, some not) identify the op uniquely;
 # a NEGATION (not_inside) is a row whose excluded set is a single relation.
 SEL_ROWS = {
+    # not a KLayout op of its own: over the other shape's edge -- partly in, partly out
+    "straddling":      frozenset({"overlap"}),
     "inside":          frozenset({"inside"}),
     "not_interacting": frozenset({"disjoint"}),
     "outside":         frozenset({"disjoint", "touch"}),
@@ -70,6 +72,7 @@ class Bound:
     def __init__(self, var, op, value, kind="check"):
         self.var, self.op, self.value = var, op, value
         self.kind = kind                      # the constraint's kind: "match" / "check"
+        self.zero_ok = False                  # written `W >= v or W == 0`: coinciding edges pass
 
     @property
     def is_min(self):
@@ -92,8 +95,11 @@ class Rule:
         self.measures = {m["name"]: m for m in data.get("measures", [])}
         # A cross drawn OVER a shape ("this must not exist", as a datasheet marks it):
         # the same check as a cross on a measure across that shape -- carried as one.
+        filtered = self._filtered_shapes(data)
         for name, s in self.shapes.items():
-            if s.get("crossed") and s.get("edges"):
+            # ... unless a filter on the shape says WHICH ones are crossed out ("area <
+            # 2", an X over it): then that filter's matches are the violation already
+            if s.get("crossed") and s.get("edges") and name not in filtered:
                 e0 = s["edges"][0]["id"]
                 self.measures[f"cross_{name}"] = {"name": f"cross_{name}", "from": e0, "to": e0,
                                                   "crossed": True, "of_shape": True}
@@ -106,6 +112,17 @@ class Rule:
         self._edge_owner = {e["id"]: name
                             for name, s in self.shapes.items() for e in s["edges"]}
         self._anchors = {}    # shape -> the point it is checked at, while reading a measure
+
+    @staticmethod
+    def _filtered_shapes(data):
+        """Shapes that carry a `match` on their own area."""
+        out = set()
+        for c in data.get("constraints", []):
+            if c.get("kind") == "match":
+                for ref in _all_refs(parse(c["expr"])):
+                    if ref.endswith(".area"):
+                        out.add(ref.split(".")[0])
+        return out
 
     # --- geometry / topology (via our functions) ---
     def polygon(self, shape):
@@ -167,6 +184,16 @@ class Rule:
             if sa is not None and sb is not None and sa != sb:
                 out.append((sa, sb))
         return out
+
+    def _straddle_cross(self, subj, other):
+        """Is the relation subj-other crossed as "must not STRADDLE" (``"crossed":
+        "straddle"``)? Drawn overlapping, a plain cross forbids any shared area; this
+        one forbids only lying across the other's edge -- wholly inside is fine."""
+        for m in self.measures.values():
+            if m.get("crossed") == "straddle" and {self.shape_of_edge(m["from"]),
+                                                   self.shape_of_edge(m["to"])} == {subj, other}:
+                return True
+        return False
 
     def crossed_relation(self, mname):
         """``(subject, context)`` when measure `mname` is a CROSS drawn between two
@@ -299,6 +326,57 @@ class Rule:
         for e in self.shapes[self._edge_owner[edge_id]]["edges"]:
             if e["id"] == edge_id:
                 return (tuple(map(float, e["start"])), tuple(map(float, e["end"])))
+
+    def measure_spots(self, mname):
+        """Where a measure sits: one point on each of its two edges. By default the
+        middle of the stretch where the edges face each other; a measure may say
+        ``"at": c`` -- the coordinate ALONG its (axis-parallel) edges where the arrow
+        is drawn, as in a manual's figure the arrow is put on a chosen part of an edge."""
+        m = self.measures[mname]
+        a, b = self._facing_points(m["from"], m["to"])
+        c = m.get("at")
+        if c is None:
+            return a, b
+        A, B = self._edge_ends(m["from"]), self._edge_ends(m["to"])
+        vert = lambda E: E[0][0] == E[1][0]         # noqa: E731  (x constant)
+        horz = lambda E: E[0][1] == E[1][1]         # noqa: E731
+        clamp = lambda v, lo, hi: max(min(lo, hi), min(max(lo, hi), v))   # noqa: E731
+        if vert(A) and vert(B):
+            return ((A[0][0], clamp(c, A[0][1], A[1][1])), (B[0][0], clamp(c, B[0][1], B[1][1])))
+        if horz(A) and horz(B):
+            return ((clamp(c, A[0][0], A[1][0]), A[0][1]), (clamp(c, B[0][0], B[1][0]), B[0][1]))
+        return a, b
+
+    def _just_inside(self, shape, p):
+        """A point of `shape` right next to the point `p` on its boundary."""
+        poly = self.polygon(shape)
+        xs, ys = [q[0] for q in poly], [q[1] for q in poly]
+        eps = 1e-4 * (math.hypot(max(xs) - min(xs), max(ys) - min(ys)) or 1.0)
+        for dx, dy in ((eps, 0), (-eps, 0), (0, eps), (0, -eps),
+                       (eps, eps), (-eps, eps), (eps, -eps), (-eps, -eps)):
+            q = (p[0] + dx, p[1] + dy)
+            if topology.contains(poly, q):
+                return q
+        return p
+
+    def measure_derivations(self, mname):
+        """`check_derivations` for the two shapes of a distance measure, read AT THE
+        MEASURE: what combines with a shape is what is drawn over the spot where the
+        arrow touches it (for a width: over the middle of the arrow) -- not whatever
+        happens to cover the shape's centre."""
+        m = self.measures[mname]
+        sf, st = self.shape_of_edge(m["from"]), self.shape_of_edge(m["to"])
+        if not self.measure_is_straight(mname) or m.get("crossed"):
+            return self.check_derivations(sf, st)
+        a, b = self.measure_spots(mname)
+        if sf == st:
+            self._anchors = {sf: ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)}
+        else:
+            self._anchors = {sf: self._just_inside(sf, a), st: self._just_inside(st, b)}
+        try:
+            return self.check_derivations(sf, st)
+        finally:
+            self._anchors = {}
 
     def _facing_points(self, ea, eb):
         """The pair of points, one on each edge, where a measure between the two edges
@@ -446,7 +524,7 @@ class Rule:
             # removing a SET of layers is removing each of them
             nots = sorted({l for c in self.removed(shape) if c not in ex
                            for l in split_layers(self.layer_of(c))}
-                          | set(self.hole_layers(shape)))
+                          | set(self.hole_layers(shape)) | set(self.excepted()))
             # A relation to layer Y is drawn against the shape AS DRAWN. If Y is also cut
             # out of that shape, the relation can only be read BEFORE the cut: what is
             # left after removing Y can no longer overlap or sit inside Y. So a plain
@@ -487,7 +565,7 @@ class Rule:
             return None
         # where on each edge the measure sits: the two points facing each other (an
         # edge's own midpoint may lie far from the other shape)
-        af, at = self._facing_points(m["from"], m["to"])
+        af, at = self.measure_spots(mname)
         mid = ((af[0] + at[0]) / 2, (af[1] + at[1]) / 2)
         span = math.hypot(at[0] - af[0], at[1] - af[1]) or 1.0
         in_f = topology.contains(self.polygon(sf), mid)
@@ -548,6 +626,8 @@ class Rule:
                                 and self.relation(other, s) in ("overlap", "inside", "contains"))
         else:
             op = rel_to_sel(self.relation(subj, other))
+        if self._straddle_cross(subj, other):
+            op = "straddling"
         measure_pts = set()
         for mm in self.measures.values():
             measure_pts.add(self.shape_of_edge(mm["from"]))
@@ -619,6 +699,7 @@ class Rule:
             elif self.measure_is_straight(name) and any(b.var == name for b in self.bounds()):
                 out.append((sf, st, name))
         out += [(sh, sh, None) for sh, *_ in self.area_bounds()]
+        out += [(a, b, None) for a, b in self.inside_checks()]
         for facts in (self.length_facts(), self.corner_facts(), self.angle_bounds()):
             out += [(self.shape_of_edge(f[0]),) * 2 + (None,)
                     for f in facts if self.shape_of_edge(f[0])]
@@ -691,6 +772,12 @@ class Rule:
             roles.setdefault(name, "not used by any check yet")
         return roles
 
+    def excepted(self):
+        """Layers the whole rule does not apply under -- a manual's section note ("not
+        applicable inside OTP_MK"), stated once in words (``"except": [...]``) instead
+        of a cutout drawn into every shape. Removed from every checked layer."""
+        return list(self.data.get("except") or [])
+
     def eol_edges(self):
         """The cap and side edges of every end-of-line construction: their length
         constraints QUALIFY the wire end (filters), they are not rules of their own."""
@@ -723,11 +810,41 @@ class Rule:
         out = []
         names = set(self.measures)
         for kind, ast in self.constraints:
+            zero_ok = False
+            if isinstance(ast, dict) and ast.get("op") == "or":
+                # `E >= v or E == 0`: the distance must reach v -- or be exactly zero
+                # (the two edges coincide, which a manual calls "coinciding permitted")
+                keep = [a for a in ast["args"] if not _is_zero(a, names)]
+                if len(keep) == 1 and len(keep) < len(ast["args"]):
+                    ast, zero_ok = keep[0], True
             for leaf in _and_leaves(ast):       # a two-sided range is one `and`
                 b = _bound(leaf, names)
                 if b is not None:
-                    b.kind = kind
+                    b.kind, b.zero_ok = kind, zero_ok
                     out.append(b)
+        return out
+
+    def run_bounds(self) -> dict:
+        """``{measure: (op, value)}`` from ``S.run > 0.5``: the rule applies only where
+        the two measured edges run side by side for that long (a parallel run length)
+        -- how a manual words "space to a wide line" or "... with run length > x"."""
+        out = {}
+        for _, ast in self.constraints:
+            for var, op, num in _attr_cmps(ast, ".run"):
+                if var in self.measures:
+                    out[var] = (op, num)
+        return out
+
+    def inside_checks(self) -> list:
+        """``[(inner, outer)]`` from the check ``K in M``: every K must lie wholly
+        inside M -- "must be within", for which an enclosure distance alone is not
+        enough (it says nothing about a K that sticks out or lies elsewhere)."""
+        out = []
+        for kind, ast in self.constraints:
+            if kind == "check" and isinstance(ast, dict) and ast.get("op") == "in":
+                a, b = ast["args"]
+                if a.get("ref") in self.shapes and b.get("ref") in self.shapes:
+                    out.append((a["ref"], b["ref"]))
         return out
 
     def distance_rules(self) -> list:
@@ -860,6 +977,14 @@ class Rule:
 
 # --- small AST queries over the {op, args[]} constraint form ---
 
+def _all_refs(ast):
+    if isinstance(ast, dict):
+        if "ref" in ast:
+            yield ast["ref"]
+        for a in ast.get("args", []) or []:
+            yield from _all_refs(a)
+
+
 def _eq_value(ast, target):
     """If ast is ``X == target`` (either order), return the other side's
     value (a ref name or a number); else None."""
@@ -902,6 +1027,15 @@ def _and_leaves(ast):
             yield from _and_leaves(a)
     else:
         yield ast
+
+
+def _is_zero(ast, varnames):
+    """Is ast ``var == 0`` (either order)?"""
+    if isinstance(ast, dict) and ast.get("op") == "==":
+        a, b = ast["args"]
+        return ((a.get("ref") in varnames and b.get("num") == 0)
+                or (b.get("ref") in varnames and a.get("num") == 0))
+    return False
 
 
 def _bound(ast, varnames):

@@ -109,6 +109,61 @@ def model_from_json(o, nid, next_name):
     return meta, shapes, measures, constraints
 
 
+def parse_legend(text):
+    """`pcomp = comp and pplus; gate = poly2 and comp` -> {"pcomp": "comp and pplus", ...}"""
+    out = {}
+    for part in text.split(";"):
+        if "=" in part:
+            k, v = part.split("=", 1)
+            if k.strip() and v.strip():
+                out[k.strip()] = v.strip()
+    return out
+
+
+def format_legend(d):
+    return "; ".join(f"{k} = {v}" for k, v in (d or {}).items())
+
+
+def parse_columns(text):
+    """`3.3V: not_interacting v5_xtor, not_interacting dualgate | 5V: overlapping dualgate`
+    -> the sheet's "domains" (a table's columns, each named by where it applies)."""
+    out = {}
+    for part in text.split("|"):
+        if ":" not in part:
+            continue
+        name, conds = part.split(":", 1)
+        pairs = [c.split() for c in conds.split(",")]
+        if name.strip():
+            out[name.strip()] = [[c[0], c[1]] for c in pairs if len(c) == 2]
+    return out
+
+
+def format_columns(d):
+    return " | ".join(f"{k}: " + ", ".join(f"{op} {layer}" for op, layer in v)
+                      for k, v in (d or {}).items())
+
+
+def parse_values(text):
+    """`3.3V=0.22, 5V=0.3` -> {"3.3V": 0.22, "5V": 0.3}"""
+    out = {}
+    for part in text.split(","):
+        if "=" in part:
+            k, v = part.split("=", 1)
+            try:
+                out[k.strip()] = float(v)
+            except ValueError:
+                pass
+    return out
+
+
+def format_values(d):
+    return ", ".join(f"{k}={v:g}" for k, v in (d or {}).items())
+
+
+def parse_names(text):
+    return [w for w in text.replace(",", " ").split() if w]
+
+
 def void_owner(hole, shapes):
     """The material shape a hole shape is the VOID of: the smallest one it lies
     inside (None if it lies in none)."""
@@ -254,7 +309,7 @@ class Editor:
         tb = tk.Frame(side, bg=PANEL)
         tb.pack(fill="x", padx=8, pady=6)
         for txt, cmd in (("Open", self.open), ("Save", self.save), ("Clear", self.clear),
-                         ("Fit", self.fit)):
+                         ("Fit", self.fit), ("+ rule", self.add_rule)):
             tk.Button(tb, text=txt, command=cmd).pack(side="left", padx=2)
         self.case_bar = tk.Frame(side, bg=PANEL)
         self.case_bar.pack(fill="x", padx=8, pady=(0, 4))
@@ -306,10 +361,10 @@ class Editor:
             from .rule import Rule
             _backends()
             data = self.serialize()
-            if not data["shapes"] and not data.get("or"):
+            if not data.get("shapes") and not data.get("or"):
                 out, tag = "(nothing drawn yet)", ""
             else:
-                out, tag = get(self._backend.get()).compile(Rule(data)).rstrip(), ""
+                out, tag = get(self._backend.get()).compile_data(data).rstrip(), ""
         except Exception as ex:                # e.g. a half-typed constraint
             out, tag = f"{type(ex).__name__}: {ex}", "err"
         if (out, tag) == self._text_shown:     # unchanged -> keep scroll position / selection
@@ -354,10 +409,59 @@ class Editor:
         """How the compiler reads each shape of the drawing on the canvas."""
         try:
             from .rule import Rule
+            from .sheet import rules_of
             cur = model_to_json(self.meta, self.shapes, self.measures, self.constraints)
-            self._roles = Rule(cur).shape_roles()
+            i = self.sel_rule()
+            if i is None:
+                self._roles = Rule(cur).shape_roles()
+            else:                              # a sheet rule is selected: ITS reading
+                part = Rule(rules_of(cur)[self._expanded_index(cur, i)])
+                self._roles = {s.get("name", ""): "not part of this rule" for s in self.shapes}
+                self._roles.update(part.shape_roles())
         except Exception:                      # e.g. a half-typed constraint
             self._roles = {}
+
+    # ---- sheet rules (one drawn scene, many rules) ----
+    def sheet_rules(self):
+        return self.meta.get("rules") if isinstance(self.meta.get("rules"), list) else None
+
+    def sel_rule(self):
+        """Index of the selected sheet rule, or None."""
+        if isinstance(self.sel, str) and self.sel.startswith("rule:") and self.sheet_rules():
+            i = int(self.sel[5:])
+            return i if 0 <= i < len(self.sheet_rules()) else None
+        return None
+
+    @staticmethod
+    def _expanded_index(cur, i):
+        """Where sheet rule `i` starts among the expanded rules (a table rule expands
+        into one rule per column)."""
+        return sum(max(1, len(r.get("values") or {})) for r in cur["rules"][:i])
+
+    def add_rule(self):
+        """Add a rule to the scene. The first one turns a single drawing into a sheet:
+        its check constraints become that rule; the layer facts stay with the scene."""
+        rules = self.sheet_rules()
+        if rules is None:
+            mine = [c for c in self.constraints if c["kind"] == "check"]
+            self.constraints = [c for c in self.constraints if c["kind"] != "check"]
+            first = {"name": self.meta.pop("name", None) or "R1", "desc": self.meta.pop("desc", ""),
+                     "constraints": [dict(c) for c in mine]}
+            rules = self.meta["rules"] = [first] if mine else []
+        used = {r.get("name") for r in rules}
+        k = len(rules) + 1
+        while f"R{k}" in used:
+            k += 1
+        rules.append({"name": f"R{k}", "desc": "", "constraints": [{"kind": "check", "expr": ""}]})
+        self.sel = f"rule:{len(rules) - 1}"
+        self.redraw()
+
+    def del_rule(self, i):
+        rules = self.sheet_rules()
+        if rules is not None and 0 <= i < len(rules):
+            del rules[i]
+            self.sel = None
+            self.redraw()
 
     def role_of(self, s):
         if s.get("cut"):
@@ -435,10 +539,19 @@ class Editor:
             for v in sh["verts"]:
                 x, y = self.px(v)
                 xs.append(x); ys.append(y)
+        at = (m.get("extra") or {}).get("at")       # where the arrow was put, if anywhere
         if v1 and v2:                              # vertical edges -> horizontal dim line
             s, c1, c2 = self._place((a1[1], b1[1]), (a2[1], b2[1]), min(ys), max(ys))
+            if at is not None:
+                s = self.px((0, at))[1]
+                c1 = min(max(s, min(a1[1], b1[1])), max(a1[1], b1[1]))
+                c2 = min(max(s, min(a2[1], b2[1])), max(a2[1], b2[1]))
             return (a1[0], s), (a2[0], s), (a1[0], c1), (a2[0], c2)
         s, c1, c2 = self._place((a1[0], b1[0]), (a2[0], b2[0]), min(xs), max(xs))
+        if at is not None:
+            s = self.px((at, 0))[0]
+            c1 = min(max(s, min(a1[0], b1[0])), max(a1[0], b1[0]))
+            c2 = min(max(s, min(a2[0], b2[0])), max(a2[0], b2[0]))
         return (s, a1[1]), (s, a2[1]), (c1, a1[1]), (c2, a2[1])
 
     @staticmethod
@@ -601,6 +714,12 @@ class Editor:
                            "g0": g}
         elif r and r[0] == "measure":
             self.sel = r[1]
+            m = self.find_measure(r[1])
+            gg = self._measure_geom(m)
+            if gg and gg[2] is not None and not self.is_relation(m):
+                # drag a dimension arrow along its edges: where it sits is what it measures
+                self.moving = {"kind": "arrow", "mid_id": m["id"],
+                               "axis": "y" if abs(gg[0][1] - gg[1][1]) < 0.5 else "x"}
         elif r and r[0] == "shape":
             # cycle through overlapping shapes: repeated clicks step down the stack
             stack = [s for s in self.shapes
@@ -639,6 +758,10 @@ class Editor:
                 sh = self.find_shape(mv["sid"])
                 if sh:
                     sh["verts"][mv["vi"]] = [g[0], g[1]]
+            elif mv["kind"] == "arrow":                    # slide the arrow along its two edges
+                m = self.find_measure(mv["mid_id"])
+                if m:
+                    m.setdefault("extra", {})["at"] = g[1] if mv["axis"] == "y" else g[0]
             elif mv["kind"] == "label":                    # free along the line; side flips across it
                 m = self.find_measure(mv["mid_id"])
                 if m:
@@ -988,6 +1111,12 @@ class Editor:
         cc = t.insert("", "end", "cat_constraints", text="Constraints", open=True)
         for i, c in enumerate(self.constraints):
             t.insert(cc, "end", f"con{i}", text=f"[{c['kind']}] {c['expr']}")
+        if self.sheet_rules() is not None:             # a sheet: the rules on this scene
+            cr = t.insert("", "end", "cat_rules", text="Rules", open=True)
+            for i, r in enumerate(self.sheet_rules()):
+                what = "; ".join(c.get("expr", "") for c in r.get("constraints", [])) or \
+                    " ".join(["✗"] + list(r.get("cross", []) + r.get("measures", [])))
+                t.insert(cr, "end", f"rule:{i}", text=f"{r.get('name', '')}   {what}")
         # reflect self.sel; for @constraints keep the specific constraint node if one was
         # selected (avoids the build-time-trace jump), else the group header.
         if self.sel == "@constraints":
@@ -1005,7 +1134,9 @@ class Editor:
         if not sel:
             return
         iid = sel[0]
-        if iid == "cat_constraints" or iid.startswith("con"):   # the constraints table
+        if iid.startswith("rule:"):                             # a rule of the sheet
+            new = iid
+        elif iid == "cat_constraints" or iid.startswith("con"):   # the constraints table
             new = "@constraints"
         elif iid.startswith("cat_"):                            # Shapes / Measures group nodes
             return
@@ -1080,6 +1211,48 @@ class Editor:
         if self.sel == "@constraints":
             self._build_constraints_table(p)
             return
+        ri = self.sel_rule()
+        if ri is not None:                                     # a rule of the sheet
+            r = self.sheet_rules()[ri]
+
+            def set_expr(txt):                                 # its check, in one line
+                if txt.strip():
+                    r["constraints"] = [{"kind": "check", "expr": txt.strip()}]
+                else:
+                    r.pop("constraints", None)
+
+            def set_list(key):
+                def f(txt):
+                    v = parse_names(txt)
+                    r.__setitem__(key, v) if v else r.pop(key, None)
+                return f
+
+            def set_values(txt):
+                v = parse_values(txt)
+                r.__setitem__("values", v) if v else r.pop("values", None)
+            name(0, "rule"); ent(0, r.get("name", ""), lambda x: r.__setitem__("name", x))
+            name(1, "description"); ent(1, r.get("desc", ""), lambda x: r.__setitem__("desc", x))
+            name(2, "check")
+            ent(2, "; ".join(c.get("expr", "") for c in r.get("constraints", [])), set_expr)
+            name(3, "values"); ent(3, format_values(r.get("values")), set_values)
+            def set_cross(txt):                                # shapes, or crossed measures
+                words = parse_names(txt)
+                picked = (("cross", [w for w in words if any(x.get("name") == w for x in self.shapes)]),
+                          ("measures", [w for w in words if any(m["var"] == w for m in self.measures)]))
+                for key, v in picked:
+                    r.__setitem__(key, v) if v else r.pop(key, None)
+            name(4, "cross (✗)"); ent(4, " ".join(r.get("cross", []) + r.get("measures", [])), set_cross)
+            name(5, "except"); ent(5, " ".join(r.get("except", [])), set_list("except"))
+            name(6, "also with"); ent(6, " ".join(r.get("with", [])), set_list("with"))
+            name(7, "without"); ent(7, " ".join(r.get("without", [])), set_list("without"))
+            tk.Label(p, text="check: e.g.  E4 >= 0.22   (or  E4 >= ?  with values  3.3V=0.22, 5V=0.3)\n"
+                             "cross: shapes or measures that are forbidden in this rule\n"
+                             "the tree shows how THIS rule reads each shape",
+                     bg=PANEL, fg="#8b93a7", wraplength=260, justify="left").grid(
+                row=8, column=0, columnspan=2, sticky="w", pady=(6, 2))
+            tk.Button(p, text="delete rule", command=lambda: self.del_rule(ri)).grid(
+                row=9, column=1, sticky="w")
+            return
         s, i = self.find_side(self.sel) if self.sel else (None, None)
         if s:                                                  # an edge
             a, b = s["verts"][i], s["verts"][(i + 1) % len(s["verts"])]
@@ -1105,9 +1278,16 @@ class Editor:
             # the CROSS: this measure is the rule's check with the bound "never" -- the
             # drawn relation (or, across one shape, its region) must not exist
             name(2, "cross")
-            opt(2, "never (forbidden)" if ex.get("crossed") else "no",
-                ["no", "never (forbidden)"],
-                lambda x: (flag("crossed", x != "no"), self.show_props()))
+            CROSS = {"no": None, "never (forbidden)": True,
+                     "never straddle (inside is fine)": "straddle"}
+
+            def set_cross_kind(x):
+                ex.pop("crossed", None)
+                if CROSS[x]:
+                    ex["crossed"] = CROSS[x]
+                self.show_props()
+            opt(2, next(k for k, v in CROSS.items() if v == (ex.get("crossed") or None)),
+                list(CROSS) if rel else list(CROSS)[:2], set_cross_kind)
             if not rel:
                 name(3, "metric")
                 opt(3, ex.get("metric") or METRICS[0], METRICS,
@@ -1115,11 +1295,25 @@ class Editor:
                 name(4, "between")
                 opt(4, "edges" if ex.get("edges") else "shapes", ["shapes", "edges"],
                     lambda x: flag("edges", x == "edges"))
+                # an enclosure margin: may the inner shape also lie ACROSS the outer's
+                # edge? "within" (a manual's "overlap of ...") says no.
+                name(5, "enclosure")
+                opt(5, "within: no straddling" if ex.get("within") else "margin only",
+                    ["margin only", "within: no straddling"],
+                    lambda x: flag("within", x.startswith("within")))
+            if not rel:
+                def set_at(txt):
+                    try:
+                        ex["at"] = float(txt)
+                    except ValueError:
+                        ex.pop("at", None)             # blank = where the edges face each other
+                name(6, "arrow at")
+                ent(6, "" if ex.get("at") is None else f"{ex['at']:g}", set_at)
             hint = ("cross = the check; no constraint needed" if ex.get("crossed") else
                     "a link: this relation, as drawn, is a filter (no constraint needed)" if rel else
                     f"check: add  ! {m['var']} >= value")
             tk.Label(p, text=hint, bg=PANEL, fg="#8b93a7", anchor="w", wraplength=260,
-                     justify="left").grid(row=5, column=0, columnspan=2, sticky="w", pady=(6, 0))
+                     justify="left").grid(row=8, column=0, columnspan=2, sticky="w", pady=(6, 0))
             return
         sh = self.find_shape(self.sel) if self.sel else None
         if sh:                                                 # a shape
@@ -1171,9 +1365,22 @@ class Editor:
         meta = self.rule_meta()                                # nothing selected: the rule itself
         name(0, "rule"); ent(0, meta.get("name") or "", lambda x: meta.__setitem__("name", x))
         name(1, "description"); ent(1, meta.get("desc") or "", lambda x: meta.__setitem__("desc", x))
-        tk.Label(p, text="pick a shape / edge / measure, or Constraints in the tree",
+        def set_json(key, parse):
+            def f(txt):
+                v = parse(txt)
+                self.meta.__setitem__(key, v) if v else self.meta.pop(key, None)
+            return f
+        # what a manual puts around its figures: the legend, the table's columns, notes
+        name(2, "legend"); ent(2, format_legend(self.meta.get("layers")), set_json("layers", parse_legend))
+        name(3, "columns"); ent(3, format_columns(self.meta.get("domains")), set_json("domains", parse_columns))
+        name(4, "except"); ent(4, " ".join(self.meta.get("except", [])), set_json("except", parse_names))
+        tk.Label(p, text="legend:  pcomp = comp and pplus; gate = poly2 and comp\n"
+                         "columns:  3.3V: not_interacting dualgate | 5V: overlapping dualgate\n"
+                         "except:  layers the rules do not apply under\n\n"
+                         "pick a shape / edge / measure, or Constraints in the tree;\n"
+                         "'+ rule' adds another rule to this drawing",
                  bg=PANEL, fg="#8b93a7", wraplength=260, justify="left").grid(
-            row=2, column=0, columnspan=3, sticky="w", pady=(6, 0))
+            row=5, column=0, columnspan=3, sticky="w", pady=(6, 0))
 
     def _color_swatch(self, p, sh):
         """A color chip showing the shape's current color; click -> palette picker."""
