@@ -27,7 +27,8 @@ class Writer {
             std::int64_t value = 0, std::uint8_t kind = kViolation);
 
   /// Serialize to `path`.
-  void write(const std::string& path) const;
+  /// False if the file could not be created or fully written.
+  [[nodiscard]] bool write(const std::string& path) const;
 
  private:
   struct Set {

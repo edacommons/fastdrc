@@ -26,7 +26,15 @@ int main() {
     w.begin_set("M2.W.candidates", "narrow-metal candidates", "info");
     w.zone(0, 0, 100, 100, /*value=*/0, zones::kInterest);
 
-    w.write(path);
+    {
+
+      const bool written = w.write(path);
+
+      assert(written);
+
+      (void)written;
+
+    }
   }
 
   zones::Reader r(path);

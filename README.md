@@ -7,11 +7,14 @@ A fast **design-rule-check (DRC)** toolkit for IC/PCB layout, in two parts:
 2. a **rule compiler** that lets you author DRC rules by **drawing an example** of
    the geometry — *geometry-by-example* — instead of writing layer algebra by hand.
 
-> Status: pre-alpha. The C++ core is a minimum-spacing check with an O(n²)
-> reference implementation (the spatial-index fast path is the next milestone).
-> The rule compiler has a working **KLayout `.drc` backend** (the bootstrap
-> target, validated rule-by-rule against a production foundry deck) and is
-> structured so the C++ engine becomes a second, swappable backend.
+> Status: pre-alpha. The C++ core today is the **geometry layer**: it merges a
+> layer's polygons (any straight angle) into a disjoint tiling, stores it in the
+> compiled `.tiles` format, and does layer algebra on it (`or` / `and` / `sub` /
+> `xor`, grow / shrink). The checks themselves are not in the core yet
+> (`Layout::check` is a stub). The rule compiler has a working **KLayout `.drc`
+> backend** (the bootstrap target, validated rule-by-rule against a production
+> foundry deck) and is structured so the C++ engine becomes a second, swappable
+> backend.
 
 ## Authoring rules by drawing
 
@@ -32,7 +35,7 @@ The pieces (Python):
 
 ```
 python/fastdrc/topology.py        spatial relations off geometry (inside/overlap/…)
-python/fastdrc/constraint.py      the constraint DSL (a Python-expression subset)
+python/fastdrc/constraint.py      the constraint DSL (a Python-expression subset, parsed with `ast`)
 python/fastdrc/rule.py            the analyzed-rule API the backends work against
 python/fastdrc/backend.py         backend registry (swappable targets)
 python/fastdrc/backend_klayout.py compile a drawn rule -> a KLayout .drc deck
@@ -40,6 +43,13 @@ tools/validate_klayout.py         round-trip each deck rule (draw -> recompile -
 tools/behavioral_validate.py      run both decks in KLayout, compare violations
 tools/audit_corpus.py             load the drawn-rule corpus and validate it
 ```
+
+The `tools/` scripts read a reference deck and drawn-rule corpus from
+`docs/gf180mcu/`, which is not part of this repository; place them there to run
+the validation.
+
+`fastdrc gui [rule.json]` opens the visual rule editor (Tkinter); its bottom pane
+shows the drawn rule compiled live by the selected backend.
 
 ## Layout
 
@@ -58,31 +68,45 @@ examples/          usage examples
 
 ```bash
 cmake -S . -B build              # configure (tests on by default)
-cmake --build build              # build fastdrc_core + test_drc
+cmake --build build              # build fastdrc_core + the test executables
 ctest --test-dir build --output-on-failure
 ```
 
 To consume the library from another CMake project, link `fastdrc::core` and
-include `<fastdrc/drc.hpp>`.
+include the headers you need from `<fastdrc/...>` (e.g. `design.hpp`,
+`sweep.hpp`, `layer_ops.hpp`).
 
 ## Build the Python module
 
-Requires network access on first build (the build fetches `nanobind` and
-`scikit-build-core` in an isolated environment).
+Requires Python 3.11+ and network access on first build (the build fetches
+`nanobind` and `scikit-build-core` in an isolated environment).
 
 ```bash
-pip install -e .                 # editable install of the `fastdrc` package
+pip install -e '.[gds]' pytest   # editable install; [gds] adds the GDS reader (rawast)
 pytest                           # run the Python tests
 python examples/basic.py
 ```
 
+With [uv](https://docs.astral.sh/uv/): `uv sync` then `uv run pytest`.
+
 ```python
 import fastdrc
 
-shapes = [fastdrc.Rect(0, 0, 10, 10), fastdrc.Rect(12, 0, 22, 10)]
-for v in fastdrc.check_min_spacing(shapes, min_spacing=3.0):
-    print(v)
+d = fastdrc.Design(dbu_per_micron=1000)
+m1 = d.add_layer(gds_layer=10, gds_datatype=0, name="metal1")
+m1.add_rect(0, 0, 10, 10)
+m1.add_rect(5, 5, 15, 15)                  # overlaps -> merged into one region
+via = d.add_layer(gds_layer=11, gds_datatype=0, name="via1")
+via.add_rect(2, 2, 8, 8)
+
+fastdrc.write_split(d, "out")              # out/metal1.tiles, out/via1.tiles, out/index.json
+fastdrc.boolean("out/metal1.tiles", "out/via1.tiles", "sub", "out/m1_not_via.tiles")
+fastdrc.inflate("out/via1.tiles", 2, "out/via_halo.tiles")   # d < 0 shrinks
 ```
+
+The same from the command line: `fastdrc compose config.toml` (GDS -> `.tiles`),
+`fastdrc boolean`, `fastdrc inflate`, and `fastdrc run deck.toml` (a DAG of such
+steps).
 
 ## Compiling a drawn rule
 

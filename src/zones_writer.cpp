@@ -62,7 +62,7 @@ void Writer::zone(std::int32_t x0, std::int32_t y0, std::int32_t x1,
   s.kind.push_back(kind);
 }
 
-void Writer::write(const std::string& path) const {
+bool Writer::write(const std::string& path) const {
   Buf b;
 
   Header h{};
@@ -179,7 +179,10 @@ void Writer::write(const std::string& path) const {
   assert(b.size() == ft.file_size);
 
   std::ofstream f(path, std::ios::binary | std::ios::trunc);
+  if (!f) return false;
   f.write(b.d.data(), static_cast<std::streamsize>(b.d.size()));
+  f.close();
+  return !f.fail();
 }
 
 }  // namespace fastdrc::zones

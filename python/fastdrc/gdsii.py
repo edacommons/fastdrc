@@ -81,8 +81,11 @@ def _xform(t, pts):
 def _stroke_path(el):
     """A PATH element -> list of polygon rings (centerline coords, untransformed).
 
-    Each segment becomes an oriented rectangle offset by half the width;
-    overlapping segment rectangles let the later union fill the joints. End caps:
+    Each segment becomes an oriented rectangle offset by half the width. At an
+    interior vertex both segments are extended past it by the MITER length
+    (half * tan(turn/2)), so their union fills the outer corner of the bend --
+    exactly, for turns up to 90 degrees (every Manhattan / 45-degree path); a
+    sharper turn is capped at half the width, i.e. a beveled-short miter. End caps:
     pathtype 0 = flush, 1 = round (semicircle, approximated), 2 = square (extend
     by half width), 4 = custom (begin_ext / end_ext).
     """
@@ -96,21 +99,33 @@ def _stroke_path(el):
     bext = float(el.get("begin_ext") or 0)
     eext = float(el.get("end_ext") or 0)
 
+    pts = [p for i, p in enumerate(pts) if i == 0 or p != pts[i - 1]]   # drop repeats
+    if len(pts) < 2:
+        return []
+
+    def joint(a, b, c):
+        """Extension past vertex b for the bend a->b->c: the miter length, capped."""
+        v1 = (b[0] - a[0], b[1] - a[1])
+        v2 = (c[0] - b[0], c[1] - b[1])
+        turn = abs(math.atan2(v1[0] * v2[1] - v1[1] * v2[0], v1[0] * v2[0] + v1[1] * v2[1]))
+        return half * min(1.0, math.tan(turn / 2)) if turn < math.pi else half
+
     polys = []
     n = len(pts)
     for k in range(n - 1):
         (x0, y0), (x1, y1) = pts[k], pts[k + 1]
         dx, dy = x1 - x0, y1 - y0
         length = math.hypot(dx, dy)
-        if length == 0:
-            continue
         ux, uy = dx / length, dy / length      # unit direction
         px, py = -uy, ux                        # unit perpendicular
-        s_ext = e_ext = 0.0
         if k == 0:
             s_ext = half if ptype == 2 else (bext if ptype == 4 else 0.0)
+        else:
+            s_ext = joint(pts[k - 1], pts[k], pts[k + 1])
         if k == n - 2:
             e_ext = half if ptype == 2 else (eext if ptype == 4 else 0.0)
+        else:
+            e_ext = joint(pts[k], pts[k + 1], pts[k + 2])
         sx, sy = x0 - ux * s_ext, y0 - uy * s_ext
         ex, ey = x1 + ux * e_ext, y1 + uy * e_ext
         polys.append([

@@ -26,8 +26,9 @@ class Writer {
   void tile(std::int32_t x0, std::int32_t y0, std::int32_t x1, std::int32_t y1,
             std::int32_t cut_left, std::int32_t cut_right);
 
-  /// Serialize to `path`.
-  void write(const std::string& path) const;
+  /// Serialize to `path`. False if the file could not be created or fully
+  /// written (missing directory, no permission, disk full).
+  [[nodiscard]] bool write(const std::string& path) const;
 
  private:
   std::vector<std::int32_t> x0_, y0_, x1_, y1_, cl_, cr_;

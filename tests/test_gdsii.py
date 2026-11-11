@@ -91,3 +91,39 @@ def test_undefined_and_cyclic_refs_warn_not_crash():
     assert flat == []
     assert any("undefined" in w for w in warns)
     assert any("cyclic" in w for w in warns)
+
+
+
+def _covers(xy, width, pt, pathtype=0):
+    """Is `pt` inside the stroked path (the union of its segment polygons)?"""
+    from fastdrc import topology
+    tree = {"structures": [{"name": "TOP", "elements": [
+        {"type": "path", "layer": 1, "datatype": 0, "width": width,
+         "pathtype": pathtype, "xy": xy}]}]}
+    return any(topology.contains([(float(x), float(y)) for x, y in pts], pt)
+               for _l, _dt, pts in gdsii.flatten(tree, top="TOP"))
+
+
+def test_path_bend_has_no_corner_notch():
+    # An L-shaped flush path, width 10: (0,0)->(100,0)->(100,100). Its outline
+    # includes the 5x5 OUTER corner square [100,105]x[-5,0] at the bend, which
+    # neither arm's plain rectangle reaches.
+    L = [0, 0, 100, 0, 100, 100]
+    assert _covers(L, 10, (103, -3))            # inside the outer corner square
+    assert _covers(L, 10, (97, 3))              # the inner corner
+    assert not _covers(L, 10, (106, -3))        # no overshoot past the miter
+    assert not _covers(L, 10, (103, -6))
+    assert not _covers(L, 10, (-2, 0))          # flush ends stay flush
+    assert not _covers(L, 10, (100, 102))
+    # the opposite turn fills the opposite corner
+    R = [0, 0, 100, 0, 100, -100]
+    assert _covers(R, 10, (103, 3)) and not _covers(R, 10, (106, 3))
+    # a 45-degree bend is mitered, not squared off: (0,0)->(100,0)->(200,100).
+    # The outer miter point is (100 + 5*tan(22.5deg), -5) ~ (102.07, -5).
+    D = [0, 0, 100, 0, 200, 100]
+    assert _covers(D, 10, (101, -4.5))
+    assert not _covers(D, 10, (104, -4.9))
+    # a repeated point does not break the stroke
+    assert _covers([0, 0, 100, 0, 100, 0, 100, 100], 10, (103, -3))
+    # square ends still extend only the true ends
+    assert _covers(L, 10, (-3, 0), pathtype=2) and _covers(L, 10, (100, 103), pathtype=2)

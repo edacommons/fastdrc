@@ -68,8 +68,14 @@ NB_MODULE(_fastdrc, m) {
            "Add a layer; returns its Region to compose geometry into.")
       .def("dbu", &Design::dbu, "Database units per micron.");
 
-  m.def("write_split", &fastdrc::write_split, "design"_a, "dir"_a,
-        "index_name"_a = "index.json",
+  m.def(
+      "write_split",
+      [](const Design& design, const std::string& dir,
+         const std::string& index_name) {
+        if (!fastdrc::write_split(design, dir, index_name))
+          throw std::runtime_error("cannot write design to " + dir);
+      },
+      "design"_a, "dir"_a, "index_name"_a = "index.json",
         "Serialize a Design to one pure single-layer FDCG file per layer in "
         "`dir`, plus a JSON index (id -> file + source mapping, dbu/bbox).");
 
@@ -89,6 +95,7 @@ NB_MODULE(_fastdrc, m) {
         else
           throw std::invalid_argument("op must be one of or/and/sub/xor");
         const long n = boolean_files(a, b, o, out);
+        if (n == -2) throw std::runtime_error("cannot write " + out);
         if (n < 0) throw std::runtime_error("cannot read input layer file(s)");
         return n;
       },
@@ -100,10 +107,12 @@ NB_MODULE(_fastdrc, m) {
       "inflate",
       [](const std::string& in, int d, const std::string& out) {
         const long n = inflate_file(in, static_cast<Coord1D>(d), out);
+        if (n == -2) throw std::runtime_error("cannot write " + out);
         if (n < 0) throw std::runtime_error("cannot read input layer file");
         return n;
       },
       "in_path"_a, "d"_a, "out"_a,
-      "Grow a .tiles layer by `d` on all sides (a halo) -> a new .tiles. "
+      "Grow (d > 0) or shrink (d < 0) a .tiles layer by `d` on all sides -> a "
+      "new .tiles. "
       "Returns the tile count.");
 }

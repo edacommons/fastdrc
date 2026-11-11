@@ -47,7 +47,9 @@ class Design {
 /// recompute, explicit per-file DAG dependencies, and boolean ops between layer
 /// files. `dir` is created if needed. External to Design: the holder carries no
 /// knowledge of the byte format.
-void write_split(const Design& design, const std::string& dir,
-                 const std::string& index_name = "index.json");
+/// Returns false if the directory, any layer file, or the index could not be
+/// written.
+[[nodiscard]] bool write_split(const Design& design, const std::string& dir,
+                               const std::string& index_name = "index.json");
 
 }  // namespace fastdrc

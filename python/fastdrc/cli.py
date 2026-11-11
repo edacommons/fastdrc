@@ -51,7 +51,11 @@ def _load_gdsii_grammar():
     cwd-relative path, so we load while chdir'd to the directory that contains
     ``grammars/``.
     """
-    import rawast
+    try:
+        import rawast
+    except ImportError:
+        raise SystemExit("fastdrc compose reads GDS through rawast, which is not "
+                         "installed: pip install 'fastdrc[gds]'") from None
 
     base = os.path.dirname(rawast.GRAMMAR_DIR)  # the dir that holds grammars/
     with _chdir(base):
@@ -157,9 +161,10 @@ def main(argv=None):
     bool_p.add_argument("--out", required=True, help="output layer (.tiles)")
 
     inf_p = sub.add_parser(
-        "inflate", help="Grow a layer by d on all sides (a halo) -> a new .tiles.")
+        "inflate", help="Grow (d > 0) or shrink (d < 0) a layer by d on all sides "
+                        "-> a new .tiles.")
     inf_p.add_argument("--in", dest="infile", required=True, help="input (.tiles)")
-    inf_p.add_argument("--d", type=int, required=True, help="grow distance (DBU)")
+    inf_p.add_argument("--d", type=int, required=True, help="distance in DBU: > 0 grows (a halo), < 0 shrinks")
     inf_p.add_argument("--out", required=True, help="output layer (.tiles)")
 
     gui_p = sub.add_parser(

@@ -54,7 +54,15 @@ int main() {
     diff.add_polygon({{0, 0}, {10, 0}, {10, 10}, {0, 10}});
     diff.cut_polygon({{3, 3}, {7, 3}, {7, 7}, {3, 7}});
 
-    write_split(d, dir);
+    {
+
+      const bool written = write_split(d, dir);
+
+      assert(written);
+
+      (void)written;
+
+    }
   }
 
   // Each layer is its own pure single-layer FDCG file.

@@ -50,9 +50,9 @@ std::vector<Rect> sweep_manhattan(const std::vector<TaggedRect>& input);
 /// extend-while-unchanged grows each tile in y so an angled wire is ONE tile.
 /// Off-grid edge positions (from non-45 slopes) are snapped to the DBU grid.
 ///
-/// Correct for single polygons and non-overlapping / abutting unions; overlapping
-/// shapes whose edges CROSS inside a slab are not yet split (needs intersection
-/// events).
+/// Edges that CROSS inside a slab split it at the crossing (snapped to the DBU
+/// grid; a crossing that falls between grid lines is exact to within one unit).
+/// Collinear edges count as one boundary, so abutting shapes merge into one tile.
 std::vector<Tile> sweep_polygons(const std::vector<TaggedRing>& rings);
 
 /// The polygon ring (CCW, 4 vertices) of a tile, reconstructed from its bbox +
@@ -63,17 +63,17 @@ std::vector<Coord2D> tile_ring(const Tile& t);
 ///   Or  = A ∪ B (union)    And = A ∩ B (intersection)
 ///   Sub = A − B            (for B − A, just swap the operands)
 ///   Xor = (A − B) ∪ (B − A) (symmetric difference)
-/// One sweep, parameterized by a per-operand winding predicate. Same correctness
-/// scope as sweep_polygons (overlapping crossing edges not yet split).
+/// One sweep, parameterized by a per-operand winding predicate (same sweep, and
+/// the same crossing handling, as sweep_polygons).
 enum class BoolOp { Or, And, Sub, Xor };
 std::vector<Tile> boolean(const std::vector<Tile>& a, const std::vector<Tile>& b,
                           BoolOp op);
 
-/// Grow every tile's bbox by `d` on all sides, then union — a conservative
-/// dilation. Exact for rectilinear input; the over-cover at angled corners is
-/// fine for a halo (which only needs to over-include). Use to add a halo around
-/// a scope/changed region. (d may be negative for a per-tile bbox shrink; a true
-/// erosion is a later refinement.)
+/// Grow (d > 0) or shrink (d < 0) a region by `d` on all sides, with square
+/// corners: the dilation / erosion by the square [-|d|, |d|]^2. Angled sides
+/// move out (or in) keeping their slope. Use d > 0 to add a halo around a
+/// scope/changed region; d < 0 is a true erosion of the merged region, not a
+/// per-tile shrink.
 std::vector<Tile> inflate(const std::vector<Tile>& tiles, Coord1D d);
 
 }  // namespace fastdrc

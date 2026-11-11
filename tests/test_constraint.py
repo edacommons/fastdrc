@@ -1,4 +1,4 @@
-"""Tests for fastdrc.constraint: parse + lower to the uniform {op, args[]} AST.
+"""Tests for fastdrc.constraint: parse to the uniform {op, args[]} AST.
 
 The strong check is a differential oracle against Python's own `ast`: since the
 constraint DSL is a strict subset of Python expression syntax, parsing a formula
@@ -81,6 +81,45 @@ def test_matches_python_ast():
         ours = parse(f)
         theirs = from_py(ast.parse(f, mode="eval"))
         assert ours == theirs, f"\n  formula: {f}\n  ours:   {ours}\n  python: {theirs}"
+
+
+def test_expected_trees():
+    # Pinned independently of any parser, so the lowering itself is checked.
+    assert parse("A.layer == metal5") == {
+        "op": "==", "args": [{"ref": "A.layer"}, {"ref": "metal5"}]}
+    assert parse("X == -45") == {"op": "==", "args": [{"ref": "X"}, {"num": -45}]}
+    assert parse("0.28 <= W") == {"op": "<=", "args": [{"num": 0.28}, {"ref": "W"}]}
+    assert parse("A.holes.area >= 0.35") == {
+        "op": ">=", "args": [{"ref": "A.holes.area"}, {"num": 0.35}]}
+    assert parse("A.layer in {m1, m2}") == {
+        "op": "in", "args": [{"ref": "A.layer"}, {"set": [{"ref": "m1"}, {"ref": "m2"}]}]}
+    assert parse("X == 1 or Y == 2 or Z == 3")["op"] == "or"
+    assert len(parse("X == 1 or Y == 2 or Z == 3")["args"]) == 3
+    assert parse("not (A.x == 5) and B.y != 0") == {"op": "and", "args": [
+        {"op": "not", "args": [{"op": "==", "args": [{"ref": "A.x"}, {"num": 5}]}]},
+        {"op": "!=", "args": [{"ref": "B.y"}, {"num": 0}]}]}
+
+
+def test_outside_the_subset_is_rejected():
+    import pytest
+    from fastdrc.constraint import ConstraintError
+    for bad in ["W >", "", "f(X) > 2", "X > 'a'", "1 < X < 3", "X ** 2 > 1",
+                "A.layer == {m1}", "A.layer in {1, 2}", "X is Y", "X not in {a}",
+                "X[0] > 1", "X == True", "~X", "x = 1", "W >= 2; Y >= 1"]:
+        with pytest.raises(ConstraintError):
+            parse(bad)
+
+
+def test_rawast_grammar_agrees():
+    # grammars/constraint.rawast defines the same language as a PEG grammar. When
+    # rawast is installed, the two parsers must build identical trees.
+    import pytest
+    rawast = pytest.importorskip("rawast")
+    path = os.path.join(os.path.dirname(__file__), "..", "python", "fastdrc",
+                        "grammars", "constraint.rawast")
+    grammar = rawast.Grammar.from_dict(rawast.Grammar("rawast").parse_file(path))
+    for f in FORMULAS:
+        assert grammar.parse_string(f) == parse(f), f
 
 
 def test_uniform_shape():

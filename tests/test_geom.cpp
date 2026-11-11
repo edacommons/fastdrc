@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <cstring>
 #include <fstream>
+#include <iterator>
 #include <string>
 #include <vector>
 
@@ -24,7 +25,11 @@ int main() {
     w.rect(0, 0, 100, 100);
     w.rect(200, 0, 300, 50);
     w.tile(50, 50, 60, 60, /*cut_left=*/10, /*cut_right=*/0);  // a half-rect
-    w.write(path);
+    {
+      const bool written = w.write(path);
+      assert(written);
+      (void)written;
+    }
   }
 
   // --- read the whole file ---
@@ -110,7 +115,11 @@ int main() {
       w.rect(0, 0, 100, 100);
       w.rect(200, 0, 300, 50);
       w.tile(50, 50, 60, 60, 10, 0);
-      w.write(p2);
+      {
+        const bool written = w.write(p2);
+        assert(written);
+        (void)written;
+      }
     }
     Reader r2(p2);
     assert(r2.content_hash() == h);
@@ -119,13 +128,53 @@ int main() {
     {
       Writer w(1000);  // different geometry -> different hash
       w.rect(0, 0, 100, 100);
-      w.write(p3);
+      {
+        const bool written = w.write(p3);
+        assert(written);
+        (void)written;
+      }
     }
     Reader r3(p3);
     assert(r3.content_hash() != h);
 
     std::remove(p2.c_str());
     std::remove(p3.c_str());
+  }
+
+  // --- a failed write is reported, not swallowed ---
+  {
+    Writer w(1000);
+    w.rect(0, 0, 1, 1);
+    const bool written = w.write("no_such_dir_fastdrc/sub/out.bin");
+    assert(!written);
+    (void)written;
+  }
+
+  // --- a file whose section table points outside the file is rejected ---
+  {
+    std::ifstream in(path, std::ios::binary);
+    std::vector<char> good((std::istreambuf_iterator<char>(in)),
+                           std::istreambuf_iterator<char>());
+    const std::size_t foot = good.size() - sizeof(Footer);
+    auto corrupt = [&](auto&& edit) {
+      std::vector<char> bad = good;
+      Footer f;
+      std::memcpy(&f, bad.data() + foot, sizeof(f));
+      edit(f);
+      std::memcpy(bad.data() + foot, &f, sizeof(f));
+      const std::string pc = "test_geom_v0_corrupt.bin";
+      std::ofstream(pc, std::ios::binary).write(
+          bad.data(), static_cast<std::streamsize>(bad.size()));
+      const bool valid = Reader(pc).valid();
+      std::remove(pc.c_str());
+      return valid;
+    };
+    assert(corrupt([](Footer&) {}));  // untouched copy still reads
+    assert(!corrupt([](Footer& f) { f.span_count = 1u << 30; }));
+    assert(!corrupt([](Footer& f) { f.span_count = ~0ull; }));
+    assert(!corrupt([&](Footer& f) { f.span_off = good.size() + 64; }));
+    assert(!corrupt([&](Footer& f) { f.manifest_off = good.size(); }));
+    assert(!corrupt([&](Footer& f) { f.manifest_off = foot - 4; }));
   }
 
   std::remove(path.c_str());

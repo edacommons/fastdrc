@@ -46,7 +46,7 @@ set_target_properties(fastdrc_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # Python module (nanobind) — enabled by scikit-build-core during `pip install`
 # ---------------------------------------------------------------------------
 if(FASTDRC_BUILD_PYTHON)
-  find_package(Python 3.9 REQUIRED COMPONENTS Interpreter Development.Module)
+  find_package(Python 3.11 REQUIRED COMPONENTS Interpreter Development.Module)
 
   # Locate the nanobind CMake package shipped inside the installed wheel.
   execute_process(

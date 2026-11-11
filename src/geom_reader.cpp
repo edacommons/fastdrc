@@ -29,8 +29,27 @@ Reader::Reader(const std::string& path) {
   const char* b = static_cast<const char*>(p);
   const auto* h = reinterpret_cast<const Header*>(b);
   const auto* f = reinterpret_cast<const Footer*>(b + sz - sizeof(Footer));
-  if (std::memcmp(h->magic, kMagic, 4) != 0 ||
-      std::memcmp(f->end_magic, kEndMagic, 8) != 0 || f->file_size != sz) {
+  bool ok = std::memcmp(h->magic, kMagic, 4) == 0 &&
+            std::memcmp(f->end_magic, kEndMagic, 8) == 0 && f->file_size == sz;
+  // The section table is file content, not a promise: every offset/count the
+  // accessors follow must land inside the body (between header and footer).
+  const std::uint64_t body_end = sz - sizeof(Footer);
+  if (ok && f->span_count != 0) {
+    const std::uint64_t per = 6 * sizeof(std::int32_t);
+    ok = f->span_off >= sizeof(Header) && f->span_off <= body_end &&
+         f->span_off % alignof(std::int32_t) == 0 &&
+         f->span_count <= (body_end - f->span_off) / per;
+  }
+  if (ok && f->manifest_off != 0) {
+    ok = f->manifest_off >= sizeof(Header) &&
+         f->manifest_off <= body_end - sizeof(std::uint64_t);
+    if (ok) {
+      std::uint64_t len = 0;
+      std::memcpy(&len, b + f->manifest_off, sizeof(len));
+      ok = len <= body_end - f->manifest_off - sizeof(len);
+    }
+  }
+  if (!ok) {
     ::munmap(p, sz);
     return;
   }

@@ -65,6 +65,57 @@ int main() {
     assert(area2(g) == 2 * 14 * 14 * 2);
   }
 
+  // Edges that CROSS between vertex heights: two right triangles whose
+  // hypotenuses cross at (10,10). Each has area 200, they share 100.
+  {
+    const std::vector<Tile> t1 = {{0, 0, 20, 20, 0, -20}};  // (0,0)(20,0)(0,20)
+    const std::vector<Tile> t2 = {{0, 0, 20, 20, 0, 20}};   // (0,0)(20,20)(0,20)
+    assert(area2(t1) == 200 * 2 && area2(t2) == 200 * 2);
+    assert(area2(boolean(t1, t2, BoolOp::And)) == 100 * 2);
+    assert(area2(boolean(t1, t2, BoolOp::Or)) == 300 * 2);
+    assert(area2(boolean(t1, t2, BoolOp::Xor)) == 200 * 2);
+    assert(area2(boolean(t1, t2, BoolOp::Sub)) == 100 * 2);
+    assert(area2(boolean(t2, t1, BoolOp::Sub)) == 100 * 2);
+    // the union is a disjoint tiling: A or B == (A xor B) + (A and B) by area,
+    // and re-unioning it with itself changes nothing
+    const auto u = boolean(t1, t2, BoolOp::Or);
+    assert(area2(boolean(u, u, BoolOp::Or)) == 300 * 2);
+    assert(boolean(u, u, BoolOp::Xor).empty());
+  }
+
+  // A diagonal crossing a rectangle's vertical side: triangle (0,0)(20,0)(0,20)
+  // against the box [5,15]x[0,20]; the hypotenuse x+y=20 enters the box at
+  // y=5 and leaves at y=15. Intersection area = 5*10 + 10*10/2 = 100.
+  {
+    const std::vector<Tile> tri = {{0, 0, 20, 20, 0, -20}};
+    const std::vector<Tile> box = {{5, 0, 15, 20, 0, 0}};
+    assert(area2(boolean(tri, box, BoolOp::And)) == 100 * 2);
+    assert(area2(boolean(tri, box, BoolOp::Or)) == 300 * 2);
+    assert(area2(boolean(box, tri, BoolOp::Sub)) == 100 * 2);
+  }
+
+  // inflate grows an ANGLED tile by moving its sides out, not by its bbox: the
+  // triangle (0,0)(20,0)(0,20) dilated by the square of half-side 2 is the
+  // hexagon (-2,-2)(22,-2)(22,2)(2,22)(-2,22) -> 24*24 - 20*20/2 = 376.
+  {
+    const std::vector<Tile> tri = {{0, 0, 20, 20, 0, -20}};
+    assert(area2(inflate(tri, 2)) == 376 * 2);
+  }
+
+  // inflate with d < 0 is a true erosion of the MERGED region. An L made of two
+  // tiles shrunk by 2 stays one connected L: [2,8]x[2,8] + [2,18]x[7,8] = 46
+  // (shrinking each tile on its own would leave two slivers, area 22).
+  {
+    const std::vector<Tile> ell = {{0, 0, 10, 5, 0, 0}, {0, 5, 20, 10, 0, 0}};
+    const auto s = inflate(ell, -2);
+    assert(area2(s) == 46 * 2);
+    // grow then shrink a rectangle returns it; shrinking past half-width empties
+    const std::vector<Tile> sq = {{0, 0, 10, 10, 0, 0}};
+    assert(area2(inflate(inflate(sq, 3), -3)) == 100 * 2);
+    assert(inflate(sq, -5).empty());
+    assert(area2(inflate(sq, -2)) == 36 * 2);
+  }
+
   std::puts("all boolean tests passed");
   return 0;
 }

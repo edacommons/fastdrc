@@ -35,7 +35,7 @@ long boolean_files(const std::string& a_path, const std::string& b_path,
   for (const Tile& t : result) {
     w.tile(t.x0, t.y0, t.x1, t.y1, t.cut_left, t.cut_right);
   }
-  w.write(out_path);
+  if (!w.write(out_path)) return -2;
   return static_cast<long>(result.size());
 }
 
@@ -50,7 +50,7 @@ long inflate_file(const std::string& in_path, Coord1D d,
   for (const Tile& t : result) {
     w.tile(t.x0, t.y0, t.x1, t.y1, t.cut_left, t.cut_right);
   }
-  w.write(out_path);
+  if (!w.write(out_path)) return -2;
   return static_cast<long>(result.size());
 }
 

@@ -57,7 +57,7 @@ void Writer::tile(std::int32_t x0, std::int32_t y0, std::int32_t x1,
   cr_.push_back(cut_right);
 }
 
-void Writer::write(const std::string& path) const {
+bool Writer::write(const std::string& path) const {
   Buf b;
 
   Header h{};
@@ -151,7 +151,10 @@ void Writer::write(const std::string& path) const {
   std::memcpy(b.d.data() + 8, &hash, sizeof(hash));
 
   std::ofstream f(path, std::ios::binary | std::ios::trunc);
+  if (!f) return false;
   f.write(b.d.data(), static_cast<std::streamsize>(b.d.size()));
+  f.close();
+  return !f.fail();
 }
 
 }  // namespace fastdrc::geom

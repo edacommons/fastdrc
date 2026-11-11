@@ -16,6 +16,13 @@ std::string json_escape(const std::string& s) {
   std::string out;
   out.reserve(s.size() + 2);
   for (char c : s) {
+    if (static_cast<unsigned char>(c) < 0x20) {  // control chars are not legal raw
+      static const char* hex = "0123456789abcdef";
+      out += "\\u00";
+      out.push_back(hex[(c >> 4) & 0xF]);
+      out.push_back(hex[c & 0xF]);
+      continue;
+    }
     if (c == '"' || c == '\\') out.push_back('\\');
     out.push_back(c);
   }
@@ -45,10 +52,12 @@ Region& Design::add_layer(std::uint32_t gds_layer, std::uint32_t gds_datatype,
   return L.region;
 }
 
-void write_split(const Design& design, const std::string& dir,
+bool write_split(const Design& design, const std::string& dir,
                  const std::string& index_name) {
   namespace fs = std::filesystem;
-  fs::create_directories(dir);
+  std::error_code ec;
+  fs::create_directories(dir, ec);
+  if (ec) return false;
 
   // Union bbox across all layers (the design-wide extent for the index).
   std::int32_t bx0 = std::numeric_limits<std::int32_t>::max();
@@ -82,7 +91,7 @@ void write_split(const Design& design, const std::string& dir,
     for (const Tile& t : L.region.tiles()) {
       w.tile(t.x0, t.y0, t.x1, t.y1, t.cut_left, t.cut_right);
     }
-    w.write((fs::path(dir) / fname).string());
+    if (!w.write((fs::path(dir) / fname).string())) return false;
 
     if (id) idx += ",";
     idx += "{\"id\":" + std::to_string(id);
@@ -96,7 +105,10 @@ void write_split(const Design& design, const std::string& dir,
 
   std::ofstream f((fs::path(dir) / index_name).string(),
                   std::ios::binary | std::ios::trunc);
+  if (!f) return false;
   f.write(idx.data(), static_cast<std::streamsize>(idx.size()));
+  f.close();
+  return !f.fail();
 }
 
 }  // namespace fastdrc
