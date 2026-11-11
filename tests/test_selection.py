@@ -451,14 +451,14 @@ def test_or_of_variants_unions_subrule_checks():
 
 
 def test_drc_width_selector_from_max_bound():
-    # A MAX-bound intra-shape width (W <= V) is a narrow-region SELECTOR ->
-    # layer.drc(width <= V), distinct from the W >= V violation check. Entry to
+    # A width bound written as a FILTER (match W <= V) is a narrow-region SELECTOR ->
+    # layer.drc(width <= V), distinct from the check W >= V. Entry to
     # KLayout's .drc() predicate DSL; composes with selections via _check_expr.
     A = {"name": "A", "edges": _edges("a", 0, 0, 300, 5000, {1, 3})}
     rule = {"name": "narrow", "desc": "narrow metal1",
             "shapes": [A], "measures": [{"name": "W", "from": "a3", "to": "a1"}],
             "constraints": [{"kind": "match", "expr": "A.layer == metal1"},
-                            {"kind": "check", "expr": "W <= 0.34"}]}
+                            {"kind": "match", "expr": "W <= 0.34"}]}
     drc = get("klayout", layermap={"metal1": (34, 0)}).compile(Rule(rule))
     line = next(ln for ln in drc.splitlines() if ".drc(" in ln).split("=", 1)[1].strip()
     assert line == "metal1.drc(width <= 0.34.um)"
@@ -486,7 +486,7 @@ def test_drc_space_and_separation_selectors():
           "measures": [{"name": "S", "from": "a1", "to": "b3"}],
           "constraints": [{"kind": "match", "expr": "A.layer == metal1"},
                           {"kind": "match", "expr": "B.layer == metal1"},
-                          {"kind": "check", "expr": "S <= 0.3"}]}
+                          {"kind": "match", "expr": "S <= 0.3"}]}
     line = next(ln for ln in get("klayout", layermap={"metal1": (34, 0)}).compile(Rule(sp)).splitlines()
                 if ".drc(" in ln).split("=", 1)[1].strip()
     assert line == "metal1.drc(space <= 0.3.um)"
@@ -496,7 +496,7 @@ def test_drc_space_and_separation_selectors():
            "measures": [{"name": "S", "from": "a1", "to": "c3"}],
            "constraints": [{"kind": "match", "expr": "A.layer == metal1"},
                            {"kind": "match", "expr": "C.layer == comp"},
-                           {"kind": "check", "expr": "S <= 0.2"}]}
+                           {"kind": "match", "expr": "S <= 0.2"}]}
     line = next(ln for ln in get("klayout", layermap={"metal1": (34, 0), "comp": (22, 0)}).compile(Rule(sep)).splitlines()
                 if ".drc(" in ln).split("=", 1)[1].strip()
     assert line == "metal1.drc(separation(comp) <= 0.2.um)"
@@ -515,7 +515,7 @@ def test_drc_enclosed_and_range_predicates():
                 "measures": [{"name": "S", "from": "a0", "to": "b0"}],
                 "constraints": [{"kind": "match", "expr": "A.layer == via1"},
                                 {"kind": "match", "expr": "B.layer == metal1"},
-                                {"kind": "check", "expr": expr}]}
+                                {"kind": "match", "expr": expr}]}
         return next(ln for ln in get("klayout", layermap=lm).compile(Rule(rule)).splitlines()
                     if ".drc(" in ln).split("=", 1)[1].strip()
 
@@ -529,7 +529,7 @@ def test_drc_width_range():
     rule = {"name": "x", "desc": "x", "shapes": [A],
             "measures": [{"name": "W", "from": "a3", "to": "a1"}],
             "constraints": [{"kind": "match", "expr": "A.layer == metal1"},
-                            {"kind": "check", "expr": "W >= 0.1 and W <= 0.5"}]}
+                            {"kind": "match", "expr": "W >= 0.1 and W <= 0.5"}]}
     line = next(ln for ln in get("klayout", layermap={"metal1": (34, 0)}).compile(Rule(rule)).splitlines()
                 if ".drc(" in ln).split("=", 1)[1].strip()
     assert line == "metal1.drc(0.1.um <= width <= 0.5.um)"
@@ -552,3 +552,65 @@ def test_min_and_max_area():
     line = next(ln for ln in g.compile(rect("A", "fusetop", "A.area <= 0.2")).splitlines()
                 if "with_area" in ln)
     assert "with_area(0.2.um, nil)" in line
+
+
+def test_relation_link_needs_no_bound_and_layer_set_removes_each_member():
+    # A link drawn to a wavy edge states the relation as drawn -- no `G >= 0` needed.
+    # One cutout whose layer is a SET removes every member layer.
+    A = {"name": "A", "edges": _edges("a", 0, 0, 10, 4, {1, 3})}
+    X = {"name": "X", "edges": _edges("x", 4.7, 0.7, 5.3, 1.3, {0})}     # cutout off the measure
+    P = {"name": "P", "edges": _edges("p", 14, 0, 20, 4, set())}         # drawn apart
+    rule = {"name": "PL.1", "desc": "d", "shapes": [A, X, P],
+            "measures": [{"name": "W", "from": "a1", "to": "a3"},
+                         {"name": "G", "from": "a0", "to": "p0"}],        # the link: no constraint
+            "constraints": [{"kind": "match", "expr": "A.layer == poly2"},
+                            {"kind": "match", "expr": "X.layer in {ymtp_mk, otp_mk}"},
+                            {"kind": "match", "expr": "P.layer == plfuse"},
+                            {"kind": "check", "expr": "W >= 0.18"}]}
+    lm = {"poly2": (30, 0), "ymtp_mk": (86, 17), "otp_mk": (173, 5), "plfuse": (125, 5)}
+    drc = get("klayout", layermap=lm).compile(Rule(rule))
+    assert ("poly2.not(otp_mk).not(ymtp_mk).outside(plfuse).width(0.18.um, euclidian)"
+            ".polygons(0.001)") in drc
+    en = get("docs").compile(Rule(rule))
+    assert "poly2 (excluding otp_mk and ymtp_mk) that lies outside plfuse must be at least 0.18" in en
+
+
+def test_layer_set_as_a_context_is_the_union():
+    A = {"name": "A", "edges": _edges("a", 0, 0, 10, 4, {1, 3})}
+    M = {"name": "M", "edges": _edges("m", 13, 3, 19, 7, set())}         # unlinked, apart: scope
+    rule = {"name": "R", "desc": "d", "shapes": [A, M],
+            "measures": [{"name": "W", "from": "a1", "to": "a3"}],
+            "constraints": [{"kind": "match", "expr": "A.layer == comp"},
+                            {"kind": "match", "expr": "M.layer in {dualgate, v5_xtor}"},
+                            {"kind": "check", "expr": "W >= 0.22"}]}
+    lm = {"comp": (22, 0), "dualgate": (55, 0), "v5_xtor": (112, 1)}
+    drc = get("klayout", layermap=lm).compile(Rule(rule))
+    assert "comp.width(0.22.um, euclidian).polygons(0.001).not_interacting(dualgate.or(v5_xtor))" in drc
+    assert "away from dualgate or v5_xtor" in get("docs").compile(Rule(rule))
+
+
+def test_distance_bound_kind_decides_the_reading():
+    # check = what must hold (flag where it fails); match = a filter (select what fits)
+    A = {"name": "A", "edges": _edges("a", 0, 0, 300, 5000, {1, 3})}
+
+    def line(kind, expr):
+        rule = {"name": "x", "desc": "x", "shapes": [A],
+                "measures": [{"name": "W", "from": "a3", "to": "a1"}],
+                "constraints": [{"kind": "match", "expr": "A.layer == metal1"},
+                                {"kind": kind, "expr": expr}]}
+        r = Rule(rule)
+        drc = get("klayout", layermap={"metal1": (34, 0)}).compile(r)
+        ops = [ln.split("=", 1)[1].strip() for ln in drc.splitlines() if "_l1 =" in ln]
+        import fastdrc.backend_docs  # noqa: F401
+        return ops, get("docs").compile(r)
+
+    ops, en = line("check", "W >= 0.34")                 # min width
+    assert ops == ["metal1.width(0.34.um, euclidian).polygons(0.001)"]
+    ops, en = line("check", "W <= 5")                    # MAX width: the wider ones fail
+    assert ops == ["metal1.drc(width > 5.um)"] and "metal1 must be at most 5 µm wide" in en
+    ops, en = line("check", "W >= 0.34 and W <= 5")      # both must hold: two checks
+    assert ops == ["metal1.width(0.34.um, euclidian).polygons(0.001)", "metal1.drc(width > 5.um)"]
+    ops, en = line("match", "W <= 0.34")                 # filter: the narrow regions
+    assert ops == ["metal1.drc(width <= 0.34.um)"] and "selects metal1 regions where width ≤ 0.34" in en
+    ops, en = line("match", "W >= 2")                    # filter: the wide regions
+    assert ops == ["metal1.drc(width >= 2.um)"]

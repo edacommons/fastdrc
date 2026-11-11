@@ -12,7 +12,11 @@ You build any orthogonal shape from a rect by editing it:
              the neighbour is collinear). Drag the interior to move the shape.
   * Rect   : drag a box = a material polygon (all sides wavy).
   * Split  : click a side to drop a vertex on it (divide into two sub-sides).
-  * Measure: click two sides = a dimension, tagged Match/Check, with a comparison.
+  * Measure: shift-click two sides. Two STRAIGHT sides = a distance (a variable you
+             bound in a constraint). With a WAVY side = a RELATION between the two
+             shapes (inside / overlapping / touching / apart, read off the drawing):
+             a filter as it stands, or -- with "cross" set -- the rule's check: that
+             relation must never exist.
 
 Sides have stable ids, so measures (which reference sides) survive edits.
 
@@ -27,6 +31,8 @@ import os
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk, colorchooser
 
+from . import topology
+
 CELL = 26
 COLORS = ["#3aa0ff", "#ff6b6b", "#5cd6a0", "#c792ea", "#ffd166", "#f78c6c"]
 CMPS = ["<", "<=", "=", ">=", ">"]
@@ -36,6 +42,7 @@ HATCH_ANGLES = [45, 135, 18, 108, 72, 162]  # per-layer hatch direction (see-thr
 SPLITCOL = "#c792ea"                         # split-dot color
 HOLECOL = "#9aa3b2"                          # hole (cutout) boundary color
 MEASURECOL = "#e8b84b"                        # measure (declared variable) color
+RELCOL = "#7fb6c9"                            # relation (a measure with a wavy end) color
 
 
 def seg_dist(px, py, x1, y1, x2, y2):
@@ -56,21 +63,142 @@ def point_in_poly(px, py, poly):
     return inside
 
 
+# Keys of the rule JSON the editor itself models. Everything else on a shape or a
+# measure (crossed / metric / edges, flagged / halo / hole_loops, ...) is carried in
+# an "extra" dict and written back unchanged, so opening and saving a rule never
+# loses part of it -- including keys this editor has no control for yet.
+_SHAPE_KEYS = ("name", "color", "cut", "edges")
+_MEASURE_KEYS = ("name", "from", "to", "label_offset", "label_side")
+METRICS = ["(default)", "euclidian", "projection", "square"]
+
+
+def model_from_json(o, nid, next_name):
+    """Rule JSON -> the editor's model ``(meta, shapes, measures, constraints)``."""
+    meta = {k: v for k, v in o.items() if k not in ("shapes", "measures", "constraints")}
+    shapes, measures = [], []
+
+    def loop(edges):
+        verts = [[e["start"][0], e["start"][1]] for e in edges]
+        sides = [{"id": e.get("id") or nid("e"),
+                  "kind": "straight" if e.get("edge") else "wavy"} for e in edges]
+        return verts, sides
+
+    for sh in o.get("shapes", []):
+        verts, sides = loop(sh.get("edges", []))
+        owner = {"id": nid("s"), "name": sh.get("name") or next_name(shapes),
+                 "color": sh.get("color", ""),
+                 "verts": verts, "sides": sides, "cut": bool(sh.get("cut")),
+                 "extra": {k: v for k, v in sh.items() if k not in _SHAPE_KEYS}}
+        shapes.append(owner)
+        # a drawn VOID (the hole of a donut) is edited as a hole shape of its own that
+        # sits inside its owner; it is written back as the owner's `hole_loops`
+        for k, hl in enumerate(owner["extra"].pop("hole_loops", None) or []):
+            hv, hs = loop(hl)
+            shapes.append({"id": nid("s"), "name": f"{owner['name']}.void{k + 1}", "color": "",
+                           "verts": hv, "sides": hs, "cut": True, "extra": {}})
+    for m in o.get("measures", []):
+        measures.append({"id": nid("m"), "var": m.get("name", "X"),
+                         "from": m.get("from"), "to": m.get("to"),
+                         "loff": m.get("label_offset", 0),
+                         "lside": m.get("label_side", -1),
+                         "extra": {k: v for k, v in m.items() if k not in _MEASURE_KEYS}})
+    constraints = [dict(c) if isinstance(c, dict) else {"kind": "check", "expr": c}
+                   for c in o.get("constraints", []) if c]
+    for c in constraints:
+        c.setdefault("kind", "check"); c.setdefault("expr", "")
+    return meta, shapes, measures, constraints
+
+
+def void_owner(hole, shapes):
+    """The material shape a hole shape is the VOID of: the smallest one it lies
+    inside (None if it lies in none)."""
+    best = None
+    for s in shapes:
+        if s.get("cut") or s is hole or len(s["verts"]) < 3 or len(hole["verts"]) < 3:
+            continue
+        if topology.relate(hole["verts"], s["verts"]) == "inside":
+            xs, ys = [v[0] for v in s["verts"]], [v[1] for v in s["verts"]]
+            size = (max(xs) - min(xs)) * (max(ys) - min(ys))
+            if best is None or size < best[0]:
+                best = (size, s)
+    return best[1] if best else None
+
+
+def model_to_json(meta, shapes, measures, constraints):
+    """The editor's model -> rule JSON. A shape is a LOOP OF EDGES, each
+    {id,start,end,edge:bool}; a measure references an edge by its stable id."""
+    def edges(s):
+        v, n = s["verts"], len(s["verts"])
+        return [{"id": sd["id"], "start": list(v[ei]), "end": list(v[(ei + 1) % n]),
+                 "edge": sd["kind"] == "straight"} for ei, sd in enumerate(s["sides"])]
+
+    out_shapes, by_id = [], {}
+    for s in shapes:
+        if s.get("cut") and void_owner(s, shapes):
+            continue                         # written below, as its owner's void
+        sh = {"name": s.get("name", "")}     # name only; layer/net go in constraints (A.layer, A.net)
+        if s.get("color"):
+            sh["color"] = s["color"]         # optional per-shape display color
+        if s.get("cut"):
+            sh["cut"] = True                 # a hole lying in no shape: kept as it is
+        sh["edges"] = edges(s)
+        sh.update(s.get("extra") or {})
+        out_shapes.append(sh)
+        by_id[s["id"]] = sh
+    for s in shapes:
+        owner = s.get("cut") and void_owner(s, shapes)
+        if owner:
+            by_id[owner["id"]].setdefault("hole_loops", []).append(edges(s))
+    out_measures = []
+    for m in measures:
+        md = {"name": m["var"], "from": m["from"], "to": m["to"]}
+        if m.get("loff"):
+            md["label_offset"] = round(m["loff"], 3)    # label offset along its line (grid units)
+        if m.get("lside", -1) == 1:                     # default side is -1 (above/left)
+            md["label_side"] = 1                        # flipped to below/right
+        md.update(m.get("extra") or {})
+        out_measures.append(md)
+    out = {**meta, "shapes": out_shapes, "measures": out_measures}
+    if constraints:
+        out["constraints"] = [{"kind": c["kind"], "expr": c["expr"]} for c in constraints]
+    return out
+
+
+def _backends():
+    """Names of the text backends, importing the modules that register them."""
+    from . import backend, backend_docs, backend_klayout   # noqa: F401
+    return backend.available()
+
+
 class Editor:
     def __init__(self, root):
         self.root = root
         root.title("FastDRC rule editor")
         self.shapes, self.measures, self.constraints = [], [], []
+        # view: pixel = grid * cell + (ox, oy). Default is CELL px per grid unit at the
+        # origin; opening a rule (or Fit) rescales/centres it in the canvas.
+        self.cell, self.ox, self.oy, self._fit_pending = CELL, 0, 0, False
+        self.meta = {}                         # non-drawing rule keys (name, desc, ...) kept across load/save
+        # a rule with several alternative CASES ("or": each a complete drawing): the
+        # canvas shows one case at a time; `cases` holds them all as rule JSON.
+        self.cases, self.case, self.top_meta = None, 0, {}
+        self._roles = {}                       # shape name -> how the compiler reads it
         self.sel, self._newk = None, "check"   # _newk = kind for the next new constraint
         self._dir = os.getcwd()                # Save/Open start in the launch dir, then last-used
         self.pending, self.drag, self.moving, self.ids = None, None, None, 1
         self._suppress_tree = False
         self._label_meta = {}                  # measure id -> (label bbox, axis) for label drag
 
-        # tree | canvas | side panel, separated by draggable sashes
-        paned = tk.PanedWindow(root, orient="horizontal", sashwidth=6,
+        # (tree | canvas | side panel) over a rule-text pane, separated by draggable sashes
+        outer = tk.PanedWindow(root, orient="vertical", sashwidth=6,
                                sashrelief="raised", bg="#2b313f", bd=0, opaqueresize=True)
-        paned.pack(fill="both", expand=True)
+        outer.pack(fill="both", expand=True)
+        paned = tk.PanedWindow(outer, orient="horizontal", sashwidth=6,
+                               sashrelief="raised", bg="#2b313f", bd=0, opaqueresize=True)
+        outer.add(paned, minsize=240, stretch="always")
+        text_frame = tk.Frame(outer, bg=PANEL)
+        outer.add(text_frame, minsize=60, height=150, stretch="never")
+        self._build_text(text_frame)
 
         tree_frame = tk.Frame(paned, bg=PANEL)
         style = ttk.Style()
@@ -125,13 +253,73 @@ class Editor:
     def _build_side(self, side):
         tb = tk.Frame(side, bg=PANEL)
         tb.pack(fill="x", padx=8, pady=6)
-        for txt, cmd in (("Open", self.open), ("Save", self.save), ("Clear", self.clear)):
+        for txt, cmd in (("Open", self.open), ("Save", self.save), ("Clear", self.clear),
+                         ("Fit", self.fit)):
             tk.Button(tb, text=txt, command=cmd).pack(side="left", padx=2)
+        self.case_bar = tk.Frame(side, bg=PANEL)
+        self.case_bar.pack(fill="x", padx=8, pady=(0, 4))
+        self._refresh_cases()
         tk.Label(side, text="PROPERTIES", bg=PANEL, fg="#8b93a7", anchor="w",
                  font=("TkDefaultFont", 9, "bold")).pack(fill="x", padx=10, pady=(6, 2))
         self.props = tk.Frame(side, bg=PANEL)
         self.props.pack(fill="both", expand=True, padx=10)
         self.props.columnconfigure(1, weight=1)
+
+    # ---- bottom pane: the drawn rule compiled to text by a backend, kept live ----
+    def _build_text(self, frame):
+        self._text_job, self._text_shown = None, None
+        bar = tk.Frame(frame, bg=PANEL)
+        bar.pack(fill="x", padx=8, pady=(4, 2))
+        tk.Label(bar, text="RULE TEXT", bg=PANEL, fg="#8b93a7",
+                 font=("TkDefaultFont", 9, "bold")).pack(side="left")
+        self._backend = tk.StringVar(value="docs")
+        try:
+            names = _backends()
+        except Exception:                      # reported in the pane by _update_text
+            names = ["docs"]
+        tk.OptionMenu(bar, self._backend, *names,
+                      command=lambda _: self._update_text()).pack(side="right")
+        tk.Label(bar, text="backend", bg=PANEL, fg="#8b93a7").pack(side="right", padx=(0, 4))
+        sb = tk.Scrollbar(frame, orient="vertical")
+        sb.pack(side="right", fill="y")
+        self.text = tk.Text(frame, height=6, wrap="word", bg="#0b0d12", fg=INK, bd=0,
+                            highlightthickness=0, padx=8, pady=4, font="TkFixedFont",
+                            state="disabled", yscrollcommand=sb.set)
+        self.text.pack(fill="both", expand=True)
+        sb.config(command=self.text.yview)
+        self.text.tag_configure("err", foreground=CHECK)
+        self.text.bind("<Button-1>", lambda e: self.text.focus_set())   # select + copy
+
+    def _schedule_text(self):
+        """Debounced: every model change funnels through draw_canvas / _refresh_tree,
+        which call this; drags and keystrokes collapse into one recompile."""
+        if getattr(self, "text", None) is None:
+            return
+        if self._text_job:
+            self.root.after_cancel(self._text_job)
+        self._text_job = self.root.after(150, self._update_text)
+
+    def _update_text(self):
+        self._text_job = None
+        try:
+            from .backend import get
+            from .rule import Rule
+            _backends()
+            data = self.serialize()
+            if not data["shapes"] and not data.get("or"):
+                out, tag = "(nothing drawn yet)", ""
+            else:
+                out, tag = get(self._backend.get()).compile(Rule(data)).rstrip(), ""
+        except Exception as ex:                # e.g. a half-typed constraint
+            out, tag = f"{type(ex).__name__}: {ex}", "err"
+        if (out, tag) == self._text_shown:     # unchanged -> keep scroll position / selection
+            return
+        self._text_shown = (out, tag)
+        t = self.text
+        t.config(state="normal")
+        t.delete("1.0", "end")
+        t.insert("1.0", out, tag)
+        t.config(state="disabled")
 
     # ---- model helpers ----
     def nid(self, p):
@@ -157,13 +345,64 @@ class Editor:
 
     def next_var(self):
         used = {m["var"] for m in self.measures}
-        return next((c for c in "XYZWUV" if c not in used), "X")
+        k = 0
+        while f"X{k}" in used:
+            k += 1
+        return next((c for c in "XYZWUV" if c not in used), f"X{k}")
 
-    @staticmethod
-    def side_pts_px(shape, i):
+    def _compute_roles(self):
+        """How the compiler reads each shape of the drawing on the canvas."""
+        try:
+            from .rule import Rule
+            cur = model_to_json(self.meta, self.shapes, self.measures, self.constraints)
+            self._roles = Rule(cur).shape_roles()
+        except Exception:                      # e.g. a half-typed constraint
+            self._roles = {}
+
+    def role_of(self, s):
+        if s.get("cut"):
+            owner = void_owner(s, self.shapes)
+            return (f"void: a hole in {owner.get('name', '')}" if owner
+                    else "hole lying in no shape (ignored)")
+        return self._roles.get(s.get("name", ""), "")
+
+    def _side_kind(self, sid):
+        s, i = self.find_side(sid)
+        return s["sides"][i]["kind"] if s else None
+
+    def is_relation(self, m):
+        """A measure with a WAVY end is not a distance but a relation between shapes."""
+        return not (self._side_kind(m["from"]) == "straight" == self._side_kind(m["to"]))
+
+    # ---- view transform (grid units <-> canvas pixels) ----
+    def px(self, v):
+        return (v[0] * self.cell + self.ox, v[1] * self.cell + self.oy)
+
+    def grid(self, e):
+        return (round((e.x - self.ox) / self.cell), round((e.y - self.oy) / self.cell))
+
+    def fit(self):
+        """Ask for the drawing to be scaled (down only) and centred in the canvas;
+        applied at the next draw, once the canvas has a real size."""
+        self._fit_pending = True
+        self.redraw()
+
+    def _apply_fit(self, W, H):
+        pts = [v for s in self.shapes for v in s["verts"]]
+        if not pts:
+            self.cell, self.ox, self.oy = CELL, 0, 0
+            return
+        x0, x1 = min(p[0] for p in pts), max(p[0] for p in pts)
+        y0, y1 = min(p[1] for p in pts), max(p[1] for p in pts)
+        pad = 48                               # room for wavy bumps, dimension lines, labels
+        self.cell = max(2.0, min(CELL, (W - 2 * pad) / max(x1 - x0, 1e-9),
+                                 (H - 2 * pad) / max(y1 - y0, 1e-9)))
+        self.ox = round(W / 2 - (x0 + x1) / 2 * self.cell)
+        self.oy = round(H / 2 - (y0 + y1) / 2 * self.cell)
+
+    def side_pts_px(self, shape, i):
         v = shape["verts"]; n = len(v)
-        a, b = v[i], v[(i + 1) % n]
-        return (a[0] * CELL, a[1] * CELL), (b[0] * CELL, b[1] * CELL)
+        return self.px(v[i]), self.px(v[(i + 1) % n])
 
     def ref_point(self, sid):
         s, i = self.find_side(sid)
@@ -194,7 +433,8 @@ class Editor:
                 continue
             seen.add(sh["id"])
             for v in sh["verts"]:
-                xs.append(v[0] * CELL); ys.append(v[1] * CELL)
+                x, y = self.px(v)
+                xs.append(x); ys.append(y)
         if v1 and v2:                              # vertical edges -> horizontal dim line
             s, c1, c2 = self._place((a1[1], b1[1]), (a2[1], b2[1]), min(ys), max(ys))
             return (a1[0], s), (a2[0], s), (a1[0], c1), (a2[0], c2)
@@ -227,7 +467,8 @@ class Editor:
     def hit_vertex(self, px, py):
         for s in reversed(self.shapes):
             for i, v in enumerate(s["verts"]):
-                if abs(v[0] * CELL - px) <= 7 and abs(v[1] * CELL - py) <= 7:
+                vx, vy = self.px(v)
+                if abs(vx - px) <= 7 and abs(vy - py) <= 7:
                     return s, i
         return None, None
 
@@ -249,7 +490,7 @@ class Editor:
         if s:
             return ("side", s, i)
         for s in reversed(self.shapes):
-            if point_in_poly(px, py, [(v[0] * CELL, v[1] * CELL) for v in s["verts"]]):
+            if point_in_poly(px, py, [self.px(v) for v in s["verts"]]):
                 return ("shape", s["id"])
         return None
 
@@ -322,11 +563,12 @@ class Editor:
         out_v += [list(p) for p in rv[4:]]
         out_s += [dict(s) for s in rs[3:]]
         return {"id": snap["id"], "name": snap.get("name", ""), "color": snap.get("color", ""),
-                "verts": out_v, "sides": out_s, "cut": snap.get("cut", False)}
+                "verts": out_v, "sides": out_s, "cut": snap.get("cut", False),
+                "extra": snap.get("extra", {})}
 
     # ---- mouse (single direct-manipulation mode) ----
     def on_down(self, e):
-        g = (round(e.x / CELL), round(e.y / CELL))
+        g = self.grid(e)
         self.moving = None
         for m in self.measures:                            # grab a measure label -> drag along its line
             box, axis = self._label_meta.get(m["id"], (None, None))
@@ -362,20 +604,23 @@ class Editor:
         elif r and r[0] == "shape":
             # cycle through overlapping shapes: repeated clicks step down the stack
             stack = [s for s in self.shapes
-                     if point_in_poly(e.x, e.y, [(v[0] * CELL, v[1] * CELL) for v in s["verts"]])]
+                     if point_in_poly(e.x, e.y, [self.px(v) for v in s["verts"]])]
             stack.reverse()                                # topmost first
             cur = next((k for k, s in enumerate(stack) if s["id"] == self.sel), -1)
             pick = stack[(cur + 1) % len(stack)] if cur >= 0 else stack[0]
             self.sel = pick["id"]
             self.moving = {"kind": "shape", "id": pick["id"], "g0": g,
-                           "orig": [list(v) for v in pick["verts"]]}
+                           "orig": [list(v) for v in pick["verts"]],
+                           # its voids travel with it
+                           "voids": [(h["id"], [list(v) for v in h["verts"]]) for h in self.shapes
+                                     if h.get("cut") and void_owner(h, self.shapes) is pick]}
         else:                                              # empty -> deselect + start a rect drag
             self.sel = None
             self.drag = [g[0], g[1], g[0], g[1]]
         self.redraw()
 
     def on_move(self, e):
-        g = (round(e.x / CELL), round(e.y / CELL))
+        g = self.grid(e)
         if self.drag:
             self.drag[2], self.drag[3] = g
             self.redraw()
@@ -386,6 +631,10 @@ class Editor:
                 sh = self.find_shape(mv["id"])
                 if sh:
                     sh["verts"] = [[o[0] + ddx, o[1] + ddy] for o in mv["orig"]]
+                for hid, horig in mv.get("voids", []):
+                    h = self.find_shape(hid)
+                    if h:
+                        h["verts"] = [[o[0] + ddx, o[1] + ddy] for o in horig]
             elif mv["kind"] == "vertex":                   # drag a corner -> free angle (snapped)
                 sh = self.find_shape(mv["sid"])
                 if sh:
@@ -394,10 +643,10 @@ class Editor:
                 m = self.find_measure(mv["mid_id"])
                 if m:
                     if mv["axis"] == "x":                  # horizontal line
-                        m["loff"] = mv["o0a"] + (e.x - mv["e0"][0]) / CELL
+                        m["loff"] = mv["o0a"] + (e.x - mv["e0"][0]) / self.cell
                         m["lside"] = -1 if e.y < mv["mid"][1] else 1   # above / below
                     else:                                  # vertical line
-                        m["loff"] = mv["o0a"] + (e.y - mv["e0"][1]) / CELL
+                        m["loff"] = mv["o0a"] + (e.y - mv["e0"][1]) / self.cell
                         m["lside"] = -1 if e.x < mv["mid"][0] else 1   # left / right
             else:  # side
                 ddx = 0 if mv["horiz"] else g[0] - mv["g0"][0]
@@ -415,7 +664,8 @@ class Editor:
             if w and h:                                    # a real drag -> new rect
                 s = {"id": self.nid("s"), "name": self.next_name(),
                      "verts": [[x, y], [x + w, y], [x + w, y + h], [x, y + h]],
-                     "sides": [{"id": self.nid("e"), "kind": "wavy"} for _ in range(4)]}
+                     "sides": [{"id": self.nid("e"), "kind": "wavy"} for _ in range(4)],
+                     "extra": {}}
                 self.shapes.append(s)
                 self.sel = s["id"]
             self.drag = None
@@ -435,7 +685,7 @@ class Editor:
         # right-click / ctrl-click an edge -> split it at the click point
         s, i = self.hit_side(e.x, e.y)
         if s:
-            g = (round(e.x / CELL), round(e.y / CELL))
+            g = self.grid(e)
             a, b = s["verts"][i], s["verts"][(i + 1) % len(s["verts"])]
             m = ([min(max(g[0], min(a[0], b[0])), max(a[0], b[0])), a[1]]
                  if a[1] == b[1] else
@@ -445,18 +695,22 @@ class Editor:
         return "break"
 
     def on_measure(self, e):
-        # shift-click two STRAIGHT edges -> declare a distance VARIABLE between them
+        # shift-click two edges -> declare a measure between them. Between STRAIGHT edges
+        # it is a real distance (a dimensional variable); with a WAVY end it is a
+        # RELATION between the two shapes (a filter as it stands, or the check when crossed).
         s, i = self.hit_side(e.x, e.y)
-        if not s or s["sides"][i]["kind"] != "straight":
+        if not s:
             self.pending = None
         else:
             ref = s["sides"][i]["id"]
             if not self.pending:
                 self.pending = {"side": ref}
             elif self.pending["side"] != ref:
-                self.measures.append({"id": self.nid("m"), "var": self.next_var(),
-                                      "from": self.pending["side"], "to": ref})
+                m = {"id": self.nid("m"), "var": self.next_var(),
+                     "from": self.pending["side"], "to": ref, "extra": {}}
+                self.measures.append(m)
                 self.pending = None
+                self.sel = m["id"]                 # show its properties (cross, metric)
         self.redraw()
         return "break"
 
@@ -522,17 +776,24 @@ class Editor:
 
     # ---- render ----
     def draw_canvas(self):
+        self._schedule_text()
         c = self.canvas
         c.delete("all")
         W, H = c.winfo_width(), c.winfo_height()
-        for x in range(0, W, CELL):
-            for y in range(0, H, CELL):
+        if self._fit_pending and W > 1 and H > 1:      # canvas has a real size now
+            self._fit_pending = False
+            self._apply_fit(W, H)
+        cell, ox, oy = self.cell, self.ox, self.oy
+        step = max(1, math.ceil(12 / cell))            # thin the dot grid when zoomed out
+        for i in range(math.ceil(-ox / cell / step) * step, math.floor((W - ox) / cell) + 1, step):
+            for j in range(math.ceil(-oy / cell / step) * step, math.floor((H - oy) / cell) + 1, step):
+                x, y = i * cell + ox, j * cell + oy
                 c.create_oval(x - 1, y - 1, x + 1, y + 1, fill="#2b313f", outline="")
 
         # precompute geometry + scalloped outline for every shape
         geo = []
         for s in self.shapes:
-            vpx = [(v[0] * CELL, v[1] * CELL) for v in s["verts"]]
+            vpx = [self.px(v) for v in s["verts"]]
             n = len(vpx)
             cx = sum(p[0] for p in vpx) / n
             cy = sum(p[1] for p in vpx) / n
@@ -553,7 +814,17 @@ class Editor:
                 flat = [coord for p in outline for coord in p]
                 c.create_polygon(flat, fill="", outline=ACCENT, width=2, dash=(4, 3))
             self._draw_edges(c, s, vpx, cx, cy, INK, col, ())
-            c.create_text(vpx[0][0] + 5, vpx[0][1] + 4, text=s.get("name", ""), fill=col,
+            ex = s.get("extra") or {}
+            tag = s.get("name", "")
+            if ex.get("crossed"):                              # forbidden: an X over the shape
+                xs, ys = [q[0] for q in vpx], [q[1] for q in vpx]
+                c.create_line(min(xs), min(ys), max(xs), max(ys), fill=CHECK, width=3)
+                c.create_line(min(xs), max(ys), max(xs), min(ys), fill=CHECK, width=3)
+            if ex.get("flagged") is False:                     # a counter-example: NOT a violation
+                tag += "  ✓"
+            if ex.get("halo"):
+                tag += f"  halo {ex['halo']:+g}"
+            c.create_text(vpx[0][0] + 5, vpx[0][1] + 4, text=tag, fill=col,
                           anchor="nw", font=("TkDefaultFont", 11, "bold"))
             self._draw_verts(c, s, vpx)
 
@@ -573,15 +844,26 @@ class Editor:
                 continue
             p1, p2, e1, e2 = g
             sel = self.sel == m["id"]
-            col = ACCENT if sel else MEASURECOL          # highlight whole measure when selected
+            crossed = bool(m.get("extra", {}).get("crossed"))
+            relation = self.is_relation(m)
+            # a distance is a solid arrowed dimension; a relation is a thin dashed link;
+            # a CROSS (the rule's check: "never") is red with an X on it
+            col = ACCENT if sel else CHECK if crossed else RELCOL if relation else MEASURECOL
             for pe, pp in ((e1, p1), (e2, p2)):          # witness/extension lines
                 if pe and (abs(pe[0] - pp[0]) > 0.5 or abs(pe[1] - pp[1]) > 0.5):
                     c.create_line(*pe, *pp, fill=col, width=1, dash=(2, 2))
-            c.create_line(*p1, *p2, fill=col, width=3 if sel else 2,
-                          arrow=tk.BOTH, arrowshape=(9, 11, 4))
+            if relation:
+                c.create_line(*p1, *p2, fill=col, width=2 if sel else 1.4, dash=(5, 3))
+            else:
+                c.create_line(*p1, *p2, fill=col, width=3 if sel else 2,
+                              arrow=tk.BOTH, arrowshape=(9, 11, 4))
             mx, my = (p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2
+            if crossed:
+                r = 7
+                c.create_line(mx - r, my - r, mx + r, my + r, fill=col, width=3)
+                c.create_line(mx - r, my + r, mx + r, my - r, fill=col, width=3)
             axis = "x" if abs(p1[1] - p2[1]) < 0.5 else "y"   # dim-line direction
-            along = m.get("loff", 0) * CELL                   # free offset along the line
+            along = m.get("loff", 0) * self.cell                  # free offset along the line
             side = m.get("lside", -1)                         # which side, at a fixed gap
             GAP = 6
             if axis == "x":                                   # horizontal: slide x, side = above/below
@@ -600,8 +882,8 @@ class Editor:
                 a, b = self.side_pts_px(s, i)
                 c.create_line(*a, *b, fill=ACCENT, width=4)
         if self.drag:
-            x0, y0 = min(self.drag[0], self.drag[2]) * CELL, min(self.drag[1], self.drag[3]) * CELL
-            x1, y1 = max(self.drag[0], self.drag[2]) * CELL, max(self.drag[1], self.drag[3]) * CELL
+            x0, y0 = self.px((min(self.drag[0], self.drag[2]), min(self.drag[1], self.drag[3])))
+            x1, y1 = self.px((max(self.drag[0], self.drag[2]), max(self.drag[1], self.drag[3])))
             c.create_rectangle(x0, y0, x1, y1, outline=ACCENT, dash=(4, 3))
 
     def _draw_edges(self, c, s, vpx, cx, cy, edgecol, wavycol, dash):
@@ -666,8 +948,8 @@ class Editor:
         mx, my = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
         if (mx + nx - cx) ** 2 + (my + ny - cy) ** 2 < (mx - nx - cx) ** 2 + (my - ny - cy) ** 2:
             nx, ny = -nx, -ny
-        amp = 8.0
-        bumps = max(1, round(ln / (2 * CELL)))
+        amp = 8.0 * self.cell / CELL                # bumps scale with the view
+        bumps = max(1, round(ln / (2 * self.cell)))
         steps = max(12, bumps * 8)
         pts = []
         for k in range(steps + 1 if end else steps):
@@ -684,21 +966,25 @@ class Editor:
 
     # ---- outline tree ----
     def _refresh_tree(self):
+        self._schedule_text()
         t = self.tree
         self._suppress_tree = True
         keep = t.selection()           # preserve the tree selection across the rebuild
         opened = {s["id"] for s in self.shapes if t.exists(s["id"]) and t.item(s["id"], "open")}
         t.delete(*t.get_children())
+        self._compute_roles()
         cs = t.insert("", "end", "cat_shapes", text="Shapes", open=True)
         for s in self.shapes:
-            role = "hole" if s.get("cut") else "material"
+            role = self.role_of(s).split(":")[0] or ("hole" if s.get("cut") else "material")
             n = t.insert(cs, "end", s["id"], open=(s["id"] in opened),
                          text=f"{'∅' if s.get('cut') else ''}{s.get('name', '')}  ({role})")
             for sd in s["sides"]:
                 t.insert(n, "end", sd["id"], text=f"{sd['id']}  {sd['kind']}")
         cm = t.insert("", "end", "cat_measures", text="Measures", open=True)
         for m in self.measures:
-            t.insert(cm, "end", m["id"], text=f"{m['var']} = dist({m['from']}, {m['to']})")
+            kind = ("never" if m.get("extra", {}).get("crossed") else
+                    "rel" if self.is_relation(m) else "dist")
+            t.insert(cm, "end", m["id"], text=f"{m['var']} = {kind}({m['from']}, {m['to']})")
         cc = t.insert("", "end", "cat_constraints", text="Constraints", open=True)
         for i, c in enumerate(self.constraints):
             t.insert(cc, "end", f"con{i}", text=f"[{c['kind']}] {c['expr']}")
@@ -805,26 +1091,89 @@ class Editor:
             return
         m = self.find_measure(self.sel) if self.sel else None
         if m:                                                  # a measure (= a variable)
+            ex = m.setdefault("extra", {})
+            rel = self.is_relation(m)
+
+            def flag(key, on):                                 # set / drop a boolean key
+                if on:
+                    ex[key] = True
+                else:
+                    ex.pop(key, None)
+
             name(0, "name"); ent(0, m["var"], lambda x: m.__setitem__("var", x))
-            name(1, "distance"); ro(1, f"{m['from']} → {m['to']}")
+            name(1, "relation" if rel else "distance"); ro(1, f"{m['from']} → {m['to']}")
+            # the CROSS: this measure is the rule's check with the bound "never" -- the
+            # drawn relation (or, across one shape, its region) must not exist
+            name(2, "cross")
+            opt(2, "never (forbidden)" if ex.get("crossed") else "no",
+                ["no", "never (forbidden)"],
+                lambda x: (flag("crossed", x != "no"), self.show_props()))
+            if not rel:
+                name(3, "metric")
+                opt(3, ex.get("metric") or METRICS[0], METRICS,
+                    lambda x: ex.pop("metric", None) if x == METRICS[0] else ex.__setitem__("metric", x))
+                name(4, "between")
+                opt(4, "edges" if ex.get("edges") else "shapes", ["shapes", "edges"],
+                    lambda x: flag("edges", x == "edges"))
+            hint = ("cross = the check; no constraint needed" if ex.get("crossed") else
+                    "a link: this relation, as drawn, is a filter (no constraint needed)" if rel else
+                    f"check: add  ! {m['var']} >= value")
+            tk.Label(p, text=hint, bg=PANEL, fg="#8b93a7", anchor="w", wraplength=260,
+                     justify="left").grid(row=5, column=0, columnspan=2, sticky="w", pady=(6, 0))
             return
         sh = self.find_shape(self.sel) if self.sel else None
         if sh:                                                 # a shape
             name(0, "name"); ent(0, sh.get("name", ""), lambda x: sh.__setitem__("name", x))
-            name(1, "role")
-            tk.Button(p, text="material" if not sh.get("cut") else "hole (cutout)",
+            name(1, "drawn as")
+            tk.Button(p, text="material" if not sh.get("cut") else "hole (a void)",
                       command=self.toggle_hole).grid(row=1, column=1, sticky="w", pady=2)
-            nr = 2
+            # how the compiler READS this shape -- derived from the drawing, not set here
+            name(2, "reads as")
+            tk.Label(p, text=self.role_of(sh) or "—", bg=PANEL, fg=ACCENT, anchor="w",
+                     wraplength=200, justify="left").grid(row=2, column=1, sticky="w", pady=2)
+            nr = 3
+            if sh.get("cut"):
+                return
             if not sh.get("cut"):                              # color only matters for material
                 name(nr, "color")
                 self._color_swatch(p, sh).grid(row=nr, column=1, sticky="w", pady=2)
                 nr += 1
             st = sum(1 for k in sh["sides"] if k["kind"] == "straight")
             name(nr, "sides"); ro(nr, f"{len(sh['sides'])}  ({st} straight)")
+            ex = sh.setdefault("extra", {})
+            # a counter-example is the same layer drawn in a relation that is ALLOWED,
+            # next to the flagged one -- how a negated selection is drawn
+            # the two marks a datasheet puts on a shape: X = this must not exist (the
+            # rule's check), a tick = this arrangement is allowed (a counter-example)
+            name(nr + 1, "mark")
+            cur = ("✗ forbidden" if ex.get("crossed") else
+                   "✓ allowed" if ex.get("flagged") is False else "none")
+
+            def set_mark(x):
+                ex.pop("crossed", None); ex.pop("flagged", None)
+                if x.startswith("✗"):
+                    ex["crossed"] = True
+                elif x.startswith("✓"):
+                    ex["flagged"] = False
+            opt(nr + 1, cur, ["none", "✗ forbidden", "✓ allowed"], set_mark)
+
+            def set_halo(txt):
+                try:
+                    v = float(txt)
+                except ValueError:
+                    return
+                if v:
+                    ex["halo"] = v
+                else:
+                    ex.pop("halo", None)
+            name(nr + 2, "halo (µm)"); ent(nr + 2, ex.get("halo", 0), set_halo)
             return
-        tk.Label(p, text="nothing selected — pick a shape/edge/measure, or Constraints in the tree",
+        meta = self.rule_meta()                                # nothing selected: the rule itself
+        name(0, "rule"); ent(0, meta.get("name") or "", lambda x: meta.__setitem__("name", x))
+        name(1, "description"); ent(1, meta.get("desc") or "", lambda x: meta.__setitem__("desc", x))
+        tk.Label(p, text="pick a shape / edge / measure, or Constraints in the tree",
                  bg=PANEL, fg="#8b93a7", wraplength=260, justify="left").grid(
-            row=0, column=0, columnspan=3, sticky="w")
+            row=2, column=0, columnspan=3, sticky="w", pady=(6, 0))
 
     def _color_swatch(self, p, sh):
         """A color chip showing the shape's current color; click -> palette picker."""
@@ -903,57 +1252,92 @@ class Editor:
     # references an edge by its stable id. Ids are persisted so measure links survive both
     # in-session edits AND save/reload (positional refs would shift on split/insert).
     def serialize(self):
-        shapes = []
-        for s in self.shapes:
-            v, n = s["verts"], len(s["verts"])
-            sh = {"name": s.get("name", "")}     # name only; layer/net go in constraints (A.layer, A.net)
-            if s.get("color"):
-                sh["color"] = s["color"]       # optional per-shape display color
-            if s.get("cut"):
-                sh["cut"] = True               # a hole / cutout (subtracts material)
-            sh["edges"] = [{"id": sd["id"], "start": list(v[ei]), "end": list(v[(ei + 1) % n]),
-                            "edge": sd["kind"] == "straight"} for ei, sd in enumerate(s["sides"])]
-            shapes.append(sh)
-        measures = []
-        for m in self.measures:
-            md = {"name": m["var"], "from": m["from"], "to": m["to"]}
-            if m.get("loff"):
-                md["label_offset"] = round(m["loff"], 3)    # label offset along its line (grid units)
-            if m.get("lside", -1) == 1:                     # default side is -1 (above/left)
-                md["label_side"] = 1                        # flipped to below/right
-            measures.append(md)
-        out = {"shapes": shapes, "measures": measures}
-        if self.constraints:
-            out["constraints"] = [{"kind": c["kind"], "expr": c["expr"]} for c in self.constraints]
-        return out
+        cur = model_to_json(self.meta, self.shapes, self.measures, self.constraints)
+        if self.cases is None:
+            return cur
+        self.cases[self.case] = cur
+        return {**self.top_meta, "or": list(self.cases)}
 
-    def load(self, o):
+    def _load_case(self, o):
         # seed the id counter above any edge id in the file so fresh ids never collide
         existing = [int(str(e.get("id", ""))[1:]) for sh in o.get("shapes", [])
                     for e in sh.get("edges", []) if str(e.get("id", ""))[1:].isdigit()]
         self.ids = max(self.ids, 1 + (max(existing) if existing else 0))
 
-        self.shapes, self.measures = [], []
-        for sh in o.get("shapes", []):
-            verts, sides = [], []
-            for e in sh.get("edges", []):
-                verts.append([e["start"][0], e["start"][1]])
-                sides.append({"id": e.get("id") or self.nid("e"),
-                              "kind": "straight" if e.get("edge") else "wavy"})
-            self.shapes.append({"id": self.nid("s"), "name": sh.get("name") or self.next_name(),
-                                "color": sh.get("color", ""),
-                                "verts": verts, "sides": sides, "cut": bool(sh.get("cut"))})
-        for m in o.get("measures", []):
-            self.measures.append({"id": self.nid("m"), "var": m.get("name", "X"),
-                                  "from": m.get("from"), "to": m.get("to"),
-                                  "loff": m.get("label_offset", 0),
-                                  "lside": m.get("label_side", -1)})
-        self.constraints = [c if isinstance(c, dict) else {"kind": "check", "expr": c}
-                            for c in o.get("constraints", []) if c]
-        for c in self.constraints:
-            c.setdefault("kind", "check"); c.setdefault("expr", "")
+        def next_name(shapes):
+            used = {x.get("name", "") for x in shapes}
+            return next((chr(65 + k) for k in range(26) if chr(65 + k) not in used), "A")
+        self.meta, self.shapes, self.measures, self.constraints = model_from_json(
+            o, self.nid, next_name)
         self.sel = self.pending = self.drag = self.moving = None
-        self.redraw()
+
+    def load(self, o):
+        if isinstance(o.get("or"), list) and o["or"]:      # alternatives: show the first
+            self.top_meta = {k: v for k, v in o.items() if k != "or"}
+            self.cases, self.case = [dict(c) for c in o["or"]], 0
+            self._load_case(self.cases[0])
+        else:
+            self.cases, self.case, self.top_meta = None, 0, {}
+            self._load_case(o)
+        self._refresh_cases()
+        self.fit()
+
+    # ---- alternative cases (a rule that is violated by ANY of several drawings) ----
+    def rule_meta(self):
+        """The dict holding the rule's own name / description."""
+        return self.top_meta if self.cases is not None else self.meta
+
+    def switch_case(self, i):
+        if self.cases is None or not 0 <= i < len(self.cases) or i == self.case:
+            return
+        self.serialize()                                   # keep the edits of the current case
+        self.case = i
+        self._load_case(self.cases[i])
+        self._refresh_cases()
+        self.fit()
+
+    def add_case(self):
+        cur = model_to_json(self.meta, self.shapes, self.measures, self.constraints)
+        if self.cases is None:                             # the single drawing becomes case 1
+            self.top_meta = {k: cur.pop(k) for k in list(cur)
+                             if k not in ("shapes", "measures", "constraints")}
+            self.cases = [cur]
+        else:
+            self.cases[self.case] = cur
+        self.cases.append({"shapes": [], "measures": [], "constraints": []})
+        self.case = len(self.cases) - 1
+        self._load_case(self.cases[self.case])
+        self._refresh_cases()
+        self.fit()
+
+    def remove_case(self):
+        if self.cases is None:
+            return
+        del self.cases[self.case]
+        self.case = min(self.case, len(self.cases) - 1)
+        if len(self.cases) == 1:                           # back to an ordinary single rule
+            only, self.cases = {**self.cases[0], **self.top_meta}, None   # the rule's own name wins
+            self.top_meta, self.case = {}, 0
+            self._load_case(only)
+        else:
+            self._load_case(self.cases[self.case])
+        self._refresh_cases()
+        self.fit()
+
+    def _refresh_cases(self):
+        bar = self.case_bar
+        for w in bar.winfo_children():
+            w.destroy()
+        if self.cases is None:
+            tk.Label(bar, text="one drawing", bg=PANEL, fg="#8b93a7").pack(side="left")
+            tk.Button(bar, text="+ alternative case", command=self.add_case).pack(side="left", padx=6)
+            return
+        tk.Label(bar, text="violated by ANY of:", bg=PANEL, fg="#8b93a7").pack(side="left")
+        for i in range(len(self.cases)):
+            tk.Button(bar, text=f"case {i + 1}", relief="sunken" if i == self.case else "raised",
+                      command=lambda i=i: self.switch_case(i)).pack(side="left", padx=1)
+        tk.Button(bar, text="+", command=self.add_case).pack(side="left", padx=(6, 1))
+        tk.Button(bar, text="−", command=self.remove_case).pack(side="left", padx=1)
 
     def save(self):
         path = filedialog.asksaveasfilename(initialdir=self._dir, defaultextension=".json",
@@ -971,9 +1355,11 @@ class Editor:
                 self.load(json.load(f))
 
     def clear(self):
-        self.shapes, self.measures, self.constraints = [], [], []
+        self.shapes, self.measures, self.constraints, self.meta = [], [], [], {}
+        self.cases, self.case, self.top_meta = None, 0, {}
         self.sel = self.pending = self.drag = self.moving = None
-        self.redraw()
+        self._refresh_cases()
+        self.fit()
 
 
 def run(path=None):

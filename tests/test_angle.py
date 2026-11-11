@@ -90,12 +90,12 @@ def _square(name, layer, o=0):
     return {"name": "comp_corner", "desc": "flag 90-degree comp corners",
             "shapes": [{"name": name, "edges": edges}], "measures": [],
             "constraints": [{"kind": "match", "expr": f"{name}.layer == {layer}"},
-                            {"kind": "check", "expr": "a1.corner == 90"}]}
+                            {"kind": "check", "expr": "a1.corner != 90"}]}
 
 
 def test_corner_bounds_and_native_eval():
     r = Rule(_square("A", "comp"))
-    assert r.corner_bounds() == [("a1", 90)]              # magnitude
+    assert r.corner_bounds() == [("a1", 90, False)]       # the 90-degree corners are flagged
     assert abs(r.corner_angle("a1")) == 90                # native, sign-agnostic
 
 
@@ -126,7 +126,7 @@ def test_complete_pl6_corner_with_scope_wrap():
             "measures": [],
             "constraints": [{"kind": "match", "expr": "A.layer == poly2"},
                             {"kind": "match", "expr": "C.layer == comp"},
-                            {"kind": "check", "expr": "a1.corner == 90"}]}
+                            {"kind": "check", "expr": "a1.corner != 90"}]}
     drc = get("klayout", layermap={"poly2": (30, 0), "comp": (22, 0),
                                    "ymtp_mk": (86, 17)}).compile(Rule(rule))
     line = next(ln for ln in drc.splitlines() if "corners" in ln).split("=", 1)[1].strip()
@@ -146,57 +146,89 @@ def test_corner_magnitude_is_winding_independent():
     assert ca == cb
 
 
-def test_edge_length_with_length():
+def _length_rule(kind, expr, layer="comp"):
+    return Rule({"name": "x", "desc": "x",
+                 "shapes": [{"name": "A", "edges": [
+                     edge("a0", 0, 0, 300, 0),    # the length-constrained edge -> straight
+                     edge("a1", 300, 0, 300, 500, straight=False),
+                     edge("a2", 300, 500, 0, 500, straight=False),
+                     edge("a3", 0, 500, 0, 0, straight=False)]}],
+                 "measures": [],
+                 "constraints": [{"kind": "match", "expr": f"A.layer == {layer}"},
+                                 {"kind": kind, "expr": expr}]})
+
+
+def _length_op(r, layer="comp"):
+    drc = get("klayout", layermap={layer: (22, 0)}).compile(r)
+    return next(ln for ln in drc.splitlines() if "_length" in ln).split("=", 1)[1].strip()
+
+
+def test_edge_length_filter_selects_what_matches():
+    # a MATCH is a filter: the edges that satisfy it are the ones selected (and, with
+    # no check in the rule, flagged).
     import fastdrc.topology as _t
     assert _t.edge_length(edge("h", 0, 0, 300, 0)) == 300.0
-    rule = {"name": "shortedge", "desc": "comp edges <= 0.34um",
-            "shapes": [{"name": "A", "edges": [
-                edge("a0", 0, 0, 300, 0),    # the length-constrained edge -> straight
-                edge("a1", 300, 0, 300, 5000, straight=False),
-                edge("a2", 300, 5000, 0, 5000, straight=False),
-                edge("a3", 0, 5000, 0, 0, straight=False)]}],
-            "measures": [],
-            "constraints": [{"kind": "match", "expr": "A.layer == comp"},
-                            {"kind": "check", "expr": "a0.length <= 0.34"}]}
-    r = Rule(rule)
+    r = _length_rule("match", "a0.length <= 0.34")
     assert r.length_bounds() == [("a0", "with", None, 0.34)]
     assert r.edge_length("a0") == 300.0
-    drc = get("klayout", layermap={"comp": (22, 0)}).compile(r)
-    line = next(ln for ln in drc.splitlines() if "with_length" in ln).split("=", 1)[1].strip()
-    assert line == "comp.edges.with_length(nil, 0.34.um)"
+    assert _length_op(r) == "comp.edges.with_length(nil, 0.34.um)"
+    assert _length_op(_length_rule("match", "a0.length == 0.22")) == "comp.edges.with_length(0.22.um)"
+    assert _length_op(_length_rule("match", "a0.length >= 0.1 and a0.length <= 0.5")) == \
+        "comp.edges.with_length(0.1.um, 0.5.um)"
+    assert _length_op(_length_rule("match", "a0.length != 0.22")) == "comp.edges.without_length(0.22.um)"
 
 
-def test_edge_length_exact_and_range():
-    base = {"name": "x", "desc": "x",
-            "shapes": [{"name": "A", "edges": [
-                edge("a0", 0, 0, 300, 0),    # length-constrained -> straight; rest wavy
-                edge("a1", 300, 0, 300, 500, straight=False),
-                edge("a2", 300, 500, 0, 500, straight=False),
-                edge("a3", 0, 500, 0, 0, straight=False)]}],
-            "measures": []}
-    # exact length (==) -> single arg
-    r = Rule({**base, "constraints": [{"kind": "match", "expr": "A.layer == comp"},
-                                      {"kind": "check", "expr": "a0.length == 0.22"}]})
-    drc = get("klayout", layermap={"comp": (22, 0)}).compile(r)
-    assert "edges.with_length(0.22.um)" in drc
-    # range (>= and <=) -> two args
-    r = Rule({**base, "constraints": [{"kind": "match", "expr": "A.layer == comp"},
-                                      {"kind": "check", "expr": "a0.length >= 0.1 and a0.length <= 0.5"}]})
-    drc = get("klayout", layermap={"comp": (22, 0)}).compile(r)
-    assert "edges.with_length(0.1.um, 0.5.um)" in drc
-
-
-def test_edge_without_length():
-    # `!= L` -> without_length(L): edges NOT of that length (CO.1 pattern).
-    r = Rule({"name": "x", "desc": "x",
-              "shapes": [{"name": "A", "edges": [
-                  edge("a0", 0, 0, 300, 0),    # length-constrained -> straight; rest wavy
-                  edge("a1", 300, 0, 300, 500, straight=False),
-                  edge("a2", 300, 500, 0, 500, straight=False),
-                  edge("a3", 0, 500, 0, 0, straight=False)]}],
-              "measures": [],
-              "constraints": [{"kind": "match", "expr": "A.layer == contact"},
-                              {"kind": "check", "expr": "a0.length != 0.22"}]})
+def test_edge_length_check_flags_what_fails():
+    # a CHECK is the assertion that must hold; the edges that FAIL it are flagged --
+    # the same reading as `W >= 0.28` (flags the narrower) or `A.area >= v`.
+    r = _length_rule("check", "a0.length == 0.22", "contact")          # CO.1: exact size
     assert r.length_bounds() == [("a0", "without", 0.22, 0.22)]
-    drc = get("klayout", layermap={"contact": (33, 0)}).compile(r)
-    assert "contact.edges.without_length(0.22.um)" in drc
+    assert _length_op(r, "contact") == "contact.edges.without_length(0.22.um)"
+    assert _length_op(_length_rule("check", "a0.length != 0.22")) == "comp.edges.with_length(0.22.um)"
+    assert _length_op(_length_rule("check", "a0.length >= 0.34")) == "comp.edges.with_length(nil, 0.34.um)"
+    assert _length_op(_length_rule("check", "a0.length <= 0.5")) == "comp.edges.with_length(0.5.um, nil)"
+    assert _length_op(_length_rule("check", "a0.length >= 0.1 and a0.length <= 0.5")) == \
+        "comp.edges.without_length(0.1.um, 0.5.um)"
+
+
+def _corner_rule(kind, expr):
+    r = _square("A", "comp")
+    r["constraints"][-1] = {"kind": kind, "expr": expr}
+    return Rule(r)
+
+
+def _corner_line(r, word="corners"):
+    drc = get("klayout", layermap={"comp": (22, 0)}).compile(r)
+    return next(ln for ln in drc.splitlines() if word in ln).split("=", 1)[1].strip()
+
+
+def test_corner_kind_decides_the_reading():
+    right = "comp.corners(90).sized(0.1).or(comp.corners(-90).sized(0.1))"
+    # a FILTER selects the corners that satisfy it; a CHECK flags the ones that fail it
+    assert _corner_line(_corner_rule("match", "a1.corner == 90")) == right
+    assert _corner_line(_corner_rule("check", "a1.corner != 90")) == right
+    assert _corner_line(_corner_rule("check", "a1.corner == 90")) == (
+        "comp.corners.sized(0.1).not(comp.corners(90).sized(0.1))"
+        ".not(comp.corners(-90).sized(0.1))")
+    # the angle is the one BETWEEN the edges: a 45-degree corner is a 135-degree turn
+    assert _corner_line(_corner_rule("match", "a1.corner == 45")) == (
+        "comp.corners(135).sized(0.1).or(comp.corners(-135).sized(0.1))")
+
+
+def test_acute_corner_rule_is_an_ordinary_check():
+    # "no acute angles": every corner must be at least 45 degrees -> the sharper ones
+    # fail -> the deck's comp.with_angle(0 .. 45), which selects CORNERS by the angle
+    # their two edges enclose.
+    r = _corner_rule("check", "a1.corner >= 45")
+    assert r.corner_ranges() == [("a1", 0.0, 45)]
+    assert _corner_line(r, "with_angle") == "comp.with_angle(0 .. 45)"
+    assert _corner_line(_corner_rule("match", "a1.corner > 0 and a1.corner < 45"),
+                        "with_angle") == "comp.with_angle(0 .. 45)"
+    import fastdrc.backend_docs  # noqa: F401
+    en = get("docs").compile(r)
+    assert "every comp corner must be at least 45°" in en
+
+
+def test_max_corner_check_does_not_flag_the_limit_itself():
+    # `corner <= 90` holds for a right angle; only the wider corners fail it
+    assert _corner_rule("check", "a1.corner <= 90").corner_ranges() == [("a1", 90.001, 180.0)]

@@ -21,12 +21,16 @@ geometry relation from `rule.relation`. `input` uses a layermap (name ->
 
 from __future__ import annotations
 
+import re
+
 from .backend import register, Backend
 from .rule import Rule, rel_to_sel as _rel_to_sel   # selection classification lives on the Rule
 
 # flip a comparison so the value can move to the left of a .drc() range predicate
 # (e.g. `S >= 0.04` -> `0.04 <= S`): used to build `lo <= pred < hi`.
 _FLIPOP = {">": "<", ">=": "<=", "<": ">", "<=": ">="}
+# what FAILS a max check: `W <= v` is violated by `W > v`
+_BEYOND = {"<=": ">", "<": ">="}
 
 
 @register
@@ -44,32 +48,35 @@ class KLayoutBackend(Backend):
         #   so incremental DRC is scope_all=("interacting", "changed.sized({value}.um)")
         #   -- restrict each rule to violations near a change, inflated by its halo.
         self.scope_all = scope_all
+        self._used = {}       # ruby var -> layer name (reset per compile)
 
     def compile(self, rule: Rule) -> str:
         self._layers = {}     # layer name -> ruby var (insertion-ordered)
         self._decls = []      # `layer = polygons(...)` lines
         self._checks = []     # check + output + forget lines
+        self._used = {}       # ruby var -> layer name (keeps two layers off one var)
+        self._defs = dict(getattr(rule, "layer_defs", {}))   # legend: derived layer names
         if rule.data.get("or"):           # OR-of-variants: union alternative sub-rules
             self._emit_union(rule, rule.data["or"])
             return self._assemble()
-        # Straight-edge measures are dimensional, grouped per measure: a MIN bound
-        # -> violation check (width/space/sep/enclosing); a MAX bound (optionally
-        # WITH a min = a two-sided range) -> a .drc(...) narrow-gap / range
-        # SELECTOR. Wavy measures are topological selections (in _check_expr).
+        # Straight-edge measures are distances. A CHECK bound flags where it fails
+        # (min -> width/space/sep/enclosing; max -> .drc(pred > v)); a MATCH bound or
+        # band is a .drc(...) SELECTOR of what satisfies it (rule.distance_rules).
+        # Links to wavy edges are topological selections (in _check_expr).
         eols = rule.eol_measures()                       # [(var, cap, side)] from GEOMETRY
         eol_vars = {v for v, _, _ in eols}
-        eol_edges = {e for _, c, s in eols for e in (c, s)}   # length bounds the EOL claims
-        checks = [c for c in self._group_bounds(rule) if c[0] not in eol_vars]
+        eol_edges = rule.eol_edges()                     # length bounds the EOL claims
+        checks = [c for c in rule.distance_rules() if c[0] not in eol_vars]
         areas = rule.area_bounds()                       # both min (>=) and max (<=)
-        angles = rule.angle_bounds()
+        angles = rule.angle_bounds() + rule.corner_ranges()   # both -> with_angle(lo .. hi)
         corners = rule.corner_bounds()
         lengths = [lb for lb in rule.length_bounds() if lb[0] not in eol_edges]
         crosses = [v for v, mm in rule.measures.items() if mm.get("crossed")]  # presence
         total = (len(checks) + len(areas) + len(angles) + len(corners) + len(lengths)
                  + len(crosses) + len(eols))
         off = 0
-        for i, (var, (lo, hi)) in enumerate(checks):
-            self._emit_check(rule, var, lo, hi, i, total)
+        for i, (var, lo, hi, select) in enumerate(checks):
+            self._emit_check(rule, var, lo, hi, i, total, select)
         off += len(checks)
         for j, (shape, op, value, on_holes) in enumerate(areas):
             self._emit_area(rule, shape, op, value, off + j, total, on_holes)
@@ -77,8 +84,8 @@ class KLayoutBackend(Backend):
         for k, (edge, lo, hi) in enumerate(angles):
             self._emit_angle(rule, edge, lo, hi, off + k, total)
         off += len(angles)
-        for k, (edge, angle) in enumerate(corners):
-            self._emit_corner(rule, edge, angle, off + k, total)
+        for k, (edge, angle, others) in enumerate(corners):
+            self._emit_corner(rule, edge, angle, off + k, total, others)
         off += len(corners)
         for k, (edge, kind, lo, hi) in enumerate(lengths):
             self._emit_length(rule, edge, kind, lo, hi, off + k, total)
@@ -99,15 +106,18 @@ class KLayoutBackend(Backend):
         out += self._checks
         return "\n".join(out) + "\n"
 
-    def _check_expr(self, rule, var, lo, hi):
-        """Full KLayout check expression for a measure's bounds (derived layer +
-        selections + op + scope), WITHOUT output/forget. A MIN bound -> violation
-        check (width/space/sep/enclosing); a MAX bound (optionally WITH a min) ->
-        a .drc(...) narrow-gap / range SELECTOR. None if unsupported."""
+    def _check_expr(self, rule, var, lo, hi, select=False):
+        """Full KLayout expression for one entry of `rule.distance_rules` (derived
+        layer + selections + op + scope), WITHOUT output/forget. Not `select`: a CHECK
+        -- a MIN bound is the violation check (width/space/sep/enclosing), a MAX bound
+        flags what exceeds it (.drc(pred > v)). `select`: a FILTER -- a .drc(...)
+        selector of what satisfies the bound(s). None if unsupported."""
         m = rule.measures.get(var)
         if m is None:
             return None
         sf, st = rule.shape_of_edge(m["from"]), rule.shape_of_edge(m["to"])
+        if rule.crossed_relation(var):        # a cross BETWEEN two shapes: the forbidden
+            st = sf                           # relation is one of the subject's selections
         mt = m.get("metric") or self.metric   # the metric is a property of the measure
         measured = {sf, st}
         # The DERIVED-LAYER analysis (cover->and, cutout->not, wavy-measure->selection
@@ -115,6 +125,7 @@ class KLayoutBackend(Backend):
         # analyzed view -- the SINGLE source of truth both backends format, never
         # re-derive. We only RENDER it to KLayout syntax here (`_fmt_deriv`).
         deriv_sf, deriv_st, consumed = rule.check_derivations(sf, st)
+        scope_from = sf                       # the shape scope markers are read against
         derivs = {sf: deriv_sf, st: deriv_st}
 
         def dl(shape):                          # derived layer string, from the shared analysis
@@ -135,7 +146,8 @@ class KLayoutBackend(Backend):
                     self._layer_var(rule.layer_of(c)))
             gate = base + "".join(f".and({c})" for c in sorted(gate_covers))
             core = f"{base}.edges.and({gate}.edges)"
-            for r in sorted(self._layer_var(rule.layer_of(c)) for c in rule.removed(shape)):
+            for r in sorted(self._layer_var(l) for c in rule.removed(shape)
+                            for l in rule.layer_of(c).split("|")):
                 core += f".not({r})"
             for f in sorted(filters):           # mask region the gate edges sit inside
                 core += f".and({f})"
@@ -146,16 +158,19 @@ class KLayoutBackend(Backend):
             # crossed config's RELATION picks the op, exactly like a selection (a cross
             # is a selection whose selected set is output, not measured): overlap ->
             # overlapping ("must not overlap"), disjoint -> outside ("must overlap"),
-            # inside -> inside, touch -> interacting. sf==st -> the subject's own
-            # derived region (its selections already encode the relation).
-            if sf == st:
-                core = dl(sf)
-            else:
-                core = f"{dl(sf)}.{_rel_to_sel(rule.relation(sf, st))}({dl(st)})"
-            body, v_scope = core, "0"
-        elif hi is None:                                   # MIN bound -> violation check
+            # inside -> inside, touch -> interacting. The crossed relation is carried
+            # by the subject's derivation like every other relation (rule.
+            # relation_selections), so the subject's derived region IS the violation.
+            body, v_scope = dl(sf), "0"
+        elif not select and hi is None:                    # MIN check -> violation check
             v = self._fmt(lo.value)
-            if m.get("edges"):                             # gate-EDGE width/space/separation
+            over = None if m.get("edges") else rule.overlap_reading(var)
+            if over:                                       # partly overlapping shapes
+                consumed, scope_from = over["consumed"], over["outer_shape"]
+                a, b = self._fmt_deriv(over["outer"]), self._fmt_deriv(over["inner"])
+                core = {"extension": f"{a}.enclosing({b}, {v}.um, {mt})",
+                        "overlap": f"{a}.overlap({b}, {v}.um, {mt})"}[over["kind"]]
+            elif m.get("edges"):                           # gate-EDGE width/space/separation
                 if sf == st:
                     core = f"{edge_dl(sf)}.width({v}.um, {mt})"
                 elif edge_dl(sf) == edge_dl(st):
@@ -174,11 +189,29 @@ class KLayoutBackend(Backend):
                     core = f"{dl(sf)}.space({v}.um, {mt})"
                 else:                                      # diff layers -> separation
                     core = f"{dl(sf)}.separation({dl(st)}, {v}.um, {mt})"
-            body, v_scope = f"{core}.polygons(0.001)", v
-        else:                                              # MAX present -> .drc() selector
+            # Edge pairs become markers 1 nm fat, so a violation of zero width still
+            # shows. The exception: an enclosed region that was CLIPPED by the enclosing
+            # layer (`sab.enclosing(poly2.and(sab))`) shares its clip edges with it --
+            # zero enclosure there is the clip itself, not a violation, so those
+            # zero-width pairs are dropped by converting without the 1 nm.
+            body, v_scope = f"{core}.polygons{'' if self._clipped_inner(core) else '(0.001)'}", v
+        elif not select:                                   # MAX check -> flag what exceeds it
             subject, pred = self._drc_predicate(rule, sf, st, dl)
             if subject is None:
                 return None
+            hv = self._fmt(hi.value)
+            body, v_scope = f"{subject}.drc({pred} {_BEYOND[hi.op]} {hv}.um)", hv
+        else:                                              # a filter -> .drc() selector
+            subject, pred = self._drc_predicate(rule, sf, st, dl)
+            if subject is None:
+                return None
+            if hi is None:                                 # one-sided min: pred >= lo
+                lv = self._fmt(lo.value)
+                suffix = "".join(f".{op}({mk})" for op, mk in self._scope(rule, consumed, sf))
+                if self.scope_all:
+                    sop, region = self.scope_all
+                    suffix += f".{sop}({region.format(value=lv)})"
+                return f"{subject}.drc({pred} {lo.op} {lv}.um){suffix}"
             hv = self._fmt(hi.value)
             if lo is None:                                 # one-sided: pred <op> hi
                 inner = f"{pred} {hi.op} {hv}.um"
@@ -186,11 +219,22 @@ class KLayoutBackend(Backend):
                 inner = f"{self._fmt(lo.value)}.um {_FLIPOP[lo.op]} {pred} {hi.op} {hv}.um"
             body, v_scope = f"{subject}.drc({inner})", hv
 
-        suffix = "".join(f".{op}({mk})" for op, mk in self._scope(rule, consumed, sf))
+        suffix = "".join(f".{op}({mk})" for op, mk in self._scope(rule, consumed, scope_from))
         if self.scope_all:                                # deck-level / computed scope
             sop, region = self.scope_all
             suffix += f".{sop}({region.format(value=v_scope)})"
         return f"{body}{suffix}"
+
+    @staticmethod
+    def _clipped_inner(core):
+        """Is `core` an `OUTER.enclosing(INNER, ...)` whose INNER is and-ed with OUTER's
+        own base layer (so INNER's boundary partly IS OUTER's)?"""
+        m = re.match(r"(\w+)((?:\.\w+\([^()]*\))*)\.enclosing\((\w+)((?:\.\w+\([^()]*\))*)", core)
+        if not m:
+            return False
+        outer, inner_base, inner_chain = m.group(1), m.group(3), m.group(4)
+        return outer in [inner_base] + re.findall(r"\.and\((\w+)\)", inner_chain) and (
+            ".and(" in inner_chain)
 
     def _drc_predicate(self, rule, sf, st, dl):
         """(subject_expr, predicate) for a .drc() selector: width / space /
@@ -206,29 +250,18 @@ class KLayoutBackend(Backend):
             return dl(sf), "space"
         return dl(sf), f"separation({dl(st)})"
 
-    def _emit_check(self, rule, var, lo, hi, idx, total):
-        expr = self._check_expr(rule, var, lo, hi)
+    def _emit_check(self, rule, var, lo, hi, idx, total, select=False):
+        expr = self._check_expr(rule, var, lo, hi, select)
         if expr is not None:
             b = lo or hi
             rid = rule.name or (f"{var} {b.op} {self._fmt(b.value)}" if b else f"cross {var}")
             self._emit(rule, expr, idx, total, rid)
 
-    @staticmethod
-    def _group_bounds(rule):
-        """Straight-edge measure -> [min_bound, max_bound] (either may be None).
-        A measure with both is a two-sided range (-> .drc range selector)."""
-        groups = {}
-        for b in rule.bounds():
-            if rule.measure_is_straight(b.var):
-                lh = groups.setdefault(b.var, [None, None])
-                lh[0 if b.is_min else 1] = b
-        return list(groups.items())
-
     def _emit(self, rule, expr, idx, total, rid):
         desc = rule.desc or rid
         var = self._result_var(rid, idx, total)
         self._checks.append(f"{var} = {expr}")
-        self._checks.append(f'{var}.output("{rid}", "{desc}")')
+        self._checks.append(self._output(var, rid, desc))
         self._checks.append(f"{var}.forget")
 
     def _emit_union(self, rule, alts):
@@ -239,8 +272,9 @@ class KLayoutBackend(Backend):
         exprs = []
         for sub in alts:
             sr = Rule(sub)
-            for var, (lo, hi) in self._group_bounds(sr):
-                e = self._check_expr(sr, var, lo, hi)
+            self._defs.update(sr.layer_defs)
+            for var, lo, hi, select in sr.distance_rules():
+                e = self._check_expr(sr, var, lo, hi, select)
                 if e:
                     exprs.append(e)
             for var in [v for v, mm in sr.measures.items() if mm.get("crossed")]:
@@ -289,13 +323,14 @@ class KLayoutBackend(Backend):
         # with_area returns polygons directly -- no .polygons(0.001) (that needs
         # an edge-pair layer; appending it errors in KLayout).
         self._checks.append(f"{var} = {core}{suffix}")
-        self._checks.append(f'{var}.output("{rid}", "{desc}")')
+        self._checks.append(self._output(var, rid, desc))
         self._checks.append(f"{var}.forget")
 
     def _emit_angle(self, rule, edge, lo, hi, idx, total):
-        """Edge-orientation check on a layer -> with_angle(lo .. hi). The drawn
-        edge's angle is an EXAMPLE in the forbidden range; the range itself comes
-        from the constraint. with_angle returns edges, so no .polygons(0.001)."""
+        """Corner-angle RANGE on a layer -> with_angle(lo .. hi): on a polygon layer it
+        selects the corners whose two edges enclose an angle in the range (the acute-
+        angle rule). The range comes from the constraint; the drawn corner is an
+        example. The result is edge pairs output as they are, like the deck."""
         shape = rule.shape_of_edge(edge)
         layer = self._layer_var(rule.layer_of(shape) or f"_{shape}")
         core = f"{layer}.with_angle({self._fmt(lo)} .. {self._fmt(hi)})"
@@ -304,7 +339,7 @@ class KLayoutBackend(Backend):
         desc = rule.desc or rid
         var = self._result_var(rid, idx, total)
         self._checks.append(f"{var} = {core}{suffix}")
-        self._checks.append(f'{var}.output("{rid}", "{desc}")')
+        self._checks.append(self._output(var, rid, desc))
         self._checks.append(f"{var}.forget")
 
     def _emit_length(self, rule, edge, kind, lo, hi, idx, total):
@@ -315,7 +350,8 @@ class KLayoutBackend(Backend):
         layer = self._layer_var(rule.layer_of(shape) or f"_{shape}")
         nm = lambda x: "nil" if x is None else f"{self._fmt(x)}.um"
         if kind == "without":
-            core = f"{layer}.edges.without_length({nm(lo)})"
+            args = nm(lo) if lo == hi else f"{nm(lo)}, {nm(hi)}"
+            core = f"{layer}.edges.without_length({args})"
         elif lo is not None and lo == hi:
             core = f"{layer}.edges.with_length({nm(lo)})"      # exact length
         else:
@@ -327,7 +363,7 @@ class KLayoutBackend(Backend):
         desc = rule.desc or rid
         var = self._result_var(rid, idx, total)
         self._checks.append(f"{var} = {core}{suffix}")
-        self._checks.append(f'{var}.output("{rid}", "{desc}")')
+        self._checks.append(self._output(var, rid, desc))
         self._checks.append(f"{var}.forget")
 
     # corners() returns degenerate points; the deck sizes them to a small box so
@@ -337,16 +373,21 @@ class KLayoutBackend(Backend):
     # a fixed convention (the edge analogue of CORNER_SIZE), matching the GF180 deck.
     EDGE_EXTEND = "0, 0, 0.001, 0.001"
 
-    def _emit_corner(self, rule, edge, angle, idx, total):
-        """Corner-angle check -> corners(a).sized(S).or(corners(-a).sized(S)).
-        Both signs because the rule is on the MAGNITUDE |angle| (convex OR
-        concave), matching the deck's `corners(90).or(corners(-90))`. KLayout's
-        sign is the negative of ours, but emitting both makes that moot."""
+    def _emit_corner(self, rule, edge, angle, idx, total, others=False):
+        """Exact corner-angle rule -> corners(t).sized(S).or(corners(-t).sized(S)).
+        `angle` is the angle BETWEEN the two edges; KLayout's corners() takes the TURN
+        (180 - angle), and both signs are emitted because the rule is on the magnitude
+        (convex OR concave), matching the deck's `corners(90).or(corners(-90))`.
+        `others` flags every corner that is NOT of that angle instead."""
         shape = rule.shape_of_edge(edge)
         layer = self._layer_var(rule.layer_of(shape) or f"_{shape}")
-        a, na, sz = self._fmt(angle), self._fmt(-angle), self.CORNER_SIZE
-        core = (f"{layer}.corners({a}).sized({sz})"
-                f".or({layer}.corners({na}).sized({sz}))")
+        a, na, sz = self._fmt(180 - angle), self._fmt(angle - 180), self.CORNER_SIZE
+        if others:
+            core = (f"{layer}.corners.sized({sz}).not({layer}.corners({a}).sized({sz}))"
+                    f".not({layer}.corners({na}).sized({sz}))")
+        else:
+            core = (f"{layer}.corners({a}).sized({sz})"
+                    f".or({layer}.corners({na}).sized({sz}))")
         # CONTAINMENT scope on the result: a shape that contains the subject means
         # the corner is only checked INSIDE it (.inside(ctx)); each hole layer of
         # such a context is also excluded from the result first (.not(H)) -- this
@@ -359,20 +400,23 @@ class KLayoutBackend(Backend):
         rscope = ("".join(f".not({h})" for h in excl)
                   + "".join(f".inside({d})" for d in insides))
         suffix = rscope + "".join(f".{op}({mk})" for op, mk in self._scope(rule, consumed, shape))
-        rid = rule.name or f"{edge}.corner == {angle}"
+        rid = rule.name or f"{edge}.corner {'!=' if others else '=='} {angle}"
         desc = rule.desc or rid
         var = self._result_var(rid, idx, total)
         self._checks.append(f"{var} = {core}{suffix}")
-        self._checks.append(f'{var}.output("{rid}", "{desc}")')
+        self._checks.append(self._output(var, rid, desc))
         self._checks.append(f"{var}.forget")
 
     def _fmt_deriv(self, d):
         """Render a Rule derivation {base, ands, nots, selections} to KLayout syntax.
-        AND-operands (base + covers) sorted (commute); then .not(cutouts); then each
-        selection .op(marker), the marker itself a rendered derivation. This is the
+        AND-operands (base + covers) sorted (commute); then the selections that must
+        precede the cutouts; then .not(cutouts); then each remaining selection
+        .op(marker), the marker itself a rendered derivation. This is the
         ONLY place the KLayout backend turns the shared analysis into op text."""
         expr = self._layer_var(d["base"]) + "".join(   # base first, then sorted AND-operands
             f".and({v})" for v in sorted(self._layer_var(a) for a in d["ands"]))
+        for op, marker in sorted((o, self._fmt_deriv(m)) for o, m in d.get("pre_selections", [])):
+            expr += f".{op}({marker})"      # a relation to a layer that is then cut out
         for n in sorted(self._layer_var(x) for x in d["nots"]):
             expr += f".not({n})"
         for op, marker in sorted((o, self._fmt_deriv(m)) for o, m in d["selections"]):
@@ -397,8 +441,8 @@ class KLayoutBackend(Backend):
         vs = sorted({self._layer_var(l) for l in layers})
         expr = vs[0] if len(vs) == 1 else vs[0] + "".join(f".and({v})" for v in vs[1:])
         # NOT each removed (cutout) layer; + any legacy tagged-hole layers
-        nots = {self._layer_var(rule.layer_of(s) or f"_{s}") for s in rule.removed(shape)
-                if s not in measured}
+        nots = {self._layer_var(l) for s in rule.removed(shape) if s not in measured
+                for l in (rule.layer_of(s) or f"_{s}").split("|")}
         nots |= {self._layer_var(h) for h in rule.hole_layers(shape)}
         for hl in sorted(nots):
             expr += f".not({hl})"
@@ -424,15 +468,51 @@ class KLayoutBackend(Backend):
         return sorted(out, key=lambda x: (x[1], x[0]))
 
     def _layer_var(self, layer):
+        if layer and "|" in layer:            # a layer SET: the union of its members
+            first, *more = [self._layer_var(l) for l in layer.split("|")]
+            return first + "".join(f".or({v})" for v in more)
         if layer not in self._layers:
-            var = self._var(layer)
-            if layer in self.layermap:
+            base = var = self._var(layer)
+            k = 2
+            while var in self._used:              # "a.b" and "a_b" must not share a var
+                var, k = f"{base}_{k}", k + 1
+            self._used[var] = layer
+            if layer in getattr(self, "_defs", {}):          # a legend name: built from its layers
+                self._decls.append(f"{var} = {self._layer_expr(self._defs[layer])}")
+            elif layer in self.layermap:
                 gl, dt = self.layermap[layer]
                 self._decls.append(f"{var} = polygons({gl}, {dt})")
             else:
-                self._decls.append(f'{var} = input("{layer}")')
+                self._decls.append(f'{var} = input("{self._q(layer)}")')
             self._layers[layer] = var
         return self._layers[layer]
+
+    def _layer_expr(self, ast):
+        """A legend definition (`comp and pplus`, `poly2 and not comp`, `a or b`) as a
+        KLayout layer expression."""
+        if "ref" in ast:
+            return self._layer_var(ast["ref"])
+        op, args = ast["op"], ast["args"]
+        if op == "or":
+            first, *rest = [self._layer_expr(a) for a in args]
+            return first + "".join(f".or({r})" for r in rest)
+        if op == "and":                                   # positives first, then the nots
+            pos = [a for a in args if a.get("op") != "not"]
+            neg = [a["args"][0] for a in args if a.get("op") == "not"]
+            expr = self._layer_expr(pos[0]) + "".join(f".and({self._layer_expr(a)})" for a in pos[1:])
+            return expr + "".join(f".not({self._layer_expr(a)})" for a in neg)
+        raise ValueError(f"a layer definition cannot use '{op}'")
+
+    @staticmethod
+    def _q(text):
+        """Escape text for a Ruby double-quoted string: backslash, the quote, and the
+        `#` of an interpolation (`#{..}`, `#$x`, `#@x`), so a rule's name/description
+        is always data, never code."""
+        s = str(text).replace("\\", "\\\\").replace('"', '\\"')
+        return re.sub(r"#(?=[{$@])", r"\\#", s)
+
+    def _output(self, var, rid, desc):
+        return f'{var}.output("{self._q(rid)}", "{self._q(desc)}")'
 
     def _emit_eol(self, rule, var, cap, side, idx, total):
         """END-OF-LINE. The CAP edge of a narrow wire (recovered geometrically) carries
@@ -444,7 +524,7 @@ class KLayoutBackend(Backend):
         sf, st = rule.shape_of_edge(m["from"]), rule.shape_of_edge(m["to"])
         L = self._layer_var(rule.layer_of(sf))
         mt = m.get("metric") or self.metric
-        lb = {e: (lo, hi) for e, k, lo, hi in rule.length_bounds() if k == "with"}
+        lb = rule.length_spans()
         weol, slen = f"{self._fmt(lb[cap][1])}.um", f"{self._fmt(lb[side][0])}.um"
         v = f"{self._fmt(next(b.value for b in rule.bounds() if b.var == var and b.is_min))}.um"
         rid = rule.name or f"{var}.eol"
@@ -459,7 +539,7 @@ class KLayoutBackend(Backend):
         arg = f"{self._layer_var(rule.layer_of(st))}.edges"
         res = self._result_var(rid, idx, total)
         self._checks.append(f"{res} = {eol}.{op}({arg}, {v}, {mt}).polygons(0.001)")
-        self._checks.append(f'{res}.output("{rid}", "{desc}")')
+        self._checks.append(self._output(res, rid, desc))
         for fv in (res, eol, cond):
             self._checks.append(f"{fv}.forget")
 
@@ -469,7 +549,8 @@ class KLayoutBackend(Backend):
 
     @staticmethod
     def _var(layer):
-        return "".join(c if (c.isalnum() or c == "_") else "_" for c in str(layer))
+        v = "".join(c if (c.isascii() and c.isalnum() or c == "_") else "_" for c in str(layer))
+        return v if v and not v[0].isdigit() else "_" + v      # a Ruby local can't start with a digit
 
     @staticmethod
     def _fmt(v):

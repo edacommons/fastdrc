@@ -42,13 +42,15 @@ def test_separation_description():
 
 
 def test_presence_must_interact():
-    # disjoint + cross -> "must interact" (the relation is the rule)
+    # disjoint + cross -> "must overlap" (the crossed relation is the rule's check)
     A = {"name": "A", "edges": _edges("a", 0, 0, 6, 6, set())}
     B = {"name": "B", "edges": _edges("b", 20, 20, 26, 26, set())}        # disjoint from A
     r = {"name": "X.1", "desc": "must overlap", "shapes": [A, B],
          "measures": [{"name": "X", "from": "a1", "to": "b3", "crossed": True}],
          "constraints": [{"kind": "match", "expr": "A.layer == contact"}, {"kind": "match", "expr": "B.layer == metal1"}]}
-    assert "contact must interact with (touch or overlap) metal1" in _desc(r)
+    # the violation is contact.outside(metal1), which still keeps a contact that only
+    # touches -- so the requirement is a real overlap
+    assert "contact must overlap metal1" in _desc(r)
 
 
 def test_eol_construction():
@@ -65,8 +67,8 @@ def test_eol_construction():
          "measures": [{"name": "R", "from": "a3", "to": "b3", "metric": "projection"}],
          "constraints": [{"kind": "match", "expr": "A.layer == metal1"},
                          {"kind": "match", "expr": "B.layer == contact"},
-                         {"kind": "check", "expr": "a3.length <= 0.34"},   # = EOL width Weol
-                         {"kind": "check", "expr": "a0.length >= 0.24"},   # = min run length Slen
+                         {"kind": "match", "expr": "a3.length <= 0.34"},   # = EOL width Weol (a filter)
+                         {"kind": "match", "expr": "a0.length >= 0.24"},   # = min run length Slen (a filter)
                          {"kind": "check", "expr": "R >= 0.06"}]}
     drc = get("klayout", layermap={"metal1": (34, 0), "contact": (33, 0)}).compile(Rule(r))
     assert "metal1.drc(width <= 0.34.um).with_length(0.24.um, nil, both)" in drc
@@ -76,6 +78,9 @@ def test_eol_construction():
     assert "eol0.enclosing(contact.edges, 0.06.um, projection).polygons(0.001)" in drc
     d = get("docs").compile(Rule(r))
     assert "end-of-line edge of a narrow metal1 wire" in d and "must enclose contact" in d
+    # ONE rule, one sentence: the qualifying lengths and the measure are not restated
+    # as rules of their own
+    assert d.count("•") == 1
 
 
 def test_halo_primitive():
@@ -135,7 +140,7 @@ def test_both_backends_render_one_shared_analysis():
     assert layers(kl) == layers(en) == ["comp", "dualgate", "ncomp", "nplus", "pplus"]
     assert kl == "comp.and(pplus).not(nplus).inside(dualgate).interacting(ncomp)"
     assert "combined with pplus" in en and "excluding nplus" in en
-    assert "lies inside dualgate" in en and "touches ncomp" in en
+    assert "lies inside dualgate" in en and "touches or overlaps ncomp" in en
 
 
 def test_presence_must_not_overlap_with_selection():
@@ -149,3 +154,59 @@ def test_presence_must_not_overlap_with_selection():
                          {"kind": "match", "expr": "G >= 0"}]}
     d = _desc(r)
     assert "lvpwell that overlaps nwell" in d and "may exist" in d
+
+
+def test_cross_on_a_relation_is_the_check_and_the_rest_are_filters():
+    # NW.6-class: "an nwell resistor (nwell inside res_mk) must not touch dnwell". Two
+    # relations are drawn from the subject: a wavy `>= 0` one to res_mk (a FILTER: which
+    # nwell) and a CROSSED one to dnwell (the CHECK: the forbidden relation). The cross
+    # needs no `>= 0` constraint and no measure on the subject itself.
+    import fastdrc.backend_klayout  # noqa: F401
+    A = {"name": "A", "edges": _edges("a", 0, 0, 10, 4, set())}
+    R = {"name": "R", "edges": _edges("r", -5, -5, 30, 30, set())}       # contains A
+    D = {"name": "D", "edges": _edges("d", 0, 4, 10, 10, set())}         # touches A's top edge
+    r = {"name": "NW.6", "desc": "nwell resistor outside dnwell", "shapes": [A, R, D],
+         "measures": [{"name": "G", "from": "a0", "to": "r0"},
+                      {"name": "X", "from": "a2", "to": "d0", "crossed": True}],
+         "constraints": [{"kind": "match", "expr": "A.layer == nwell"},
+                         {"kind": "match", "expr": "R.layer == res_mk"},
+                         {"kind": "match", "expr": "D.layer == dnwell"},
+                         {"kind": "match", "expr": "G >= 0"}]}
+    lm = {"nwell": (21, 0), "res_mk": (110, 5), "dnwell": (12, 0)}
+    drc = get("klayout", layermap=lm).compile(Rule(r))
+    assert "nw_6_l1 = nwell.inside(res_mk).interacting(dnwell)" in drc
+    assert "nwell that lies inside res_mk must not touch or overlap dnwell." in _desc(r)
+
+
+def test_area_rule_states_its_scope():
+    # DF.9_5V-class: a marker drawn over the subject with no measure scopes the rule;
+    # the text must say so, as the KLayout line does.
+    import fastdrc.backend_klayout  # noqa: F401
+    A = {"name": "A", "edges": _edges("a", 0, 0, 10, 4, set())}
+    M = {"name": "M", "edges": _edges("m", -2, -2, 4, 5, set())}         # overlaps A, off its centre
+    r = {"name": "DF.9", "desc": "min area", "shapes": [A, M], "measures": [],
+         "constraints": [{"kind": "match", "expr": "A.layer == comp"},
+                         {"kind": "match", "expr": "M.layer == dualgate"},
+                         {"kind": "check", "expr": "A.area >= 0.2025"}]}
+    drc = get("klayout", layermap={"comp": (22, 0), "dualgate": (55, 0)}).compile(Rule(r))
+    assert "comp.with_area(nil, 0.2025.um).overlapping(dualgate)" in drc
+    assert "only where the geometry is overlapping dualgate" in _desc(r)
+
+
+def test_spacing_between_differently_derived_same_base_layers_names_both():
+    # SB.14a-class: both operands are poly2, but one is under nplus and the other under
+    # pplus -- a separation of two DIFFERENT derived layers, not "two shapes of" one.
+    import fastdrc.backend_klayout  # noqa: F401
+    A = {"name": "A", "edges": _edges("a", 0, 0, 4, 10, {1})}
+    B = {"name": "B", "edges": _edges("b", 6, 0, 10, 10, {3})}
+    CA = {"name": "CA", "edges": _edges("ca", -1, -1, 5, 11, set())}
+    CB = {"name": "CB", "edges": _edges("cb", 5.5, -1, 11, 11, set())}
+    r = {"name": "SB.14a", "desc": "n-poly to p-poly", "shapes": [A, B, CA, CB],
+         "measures": [{"name": "S", "from": "a1", "to": "b3"}],
+         "constraints": [{"kind": "match", "expr": "A.layer == poly2"},
+                         {"kind": "match", "expr": "B.layer == poly2"},
+                         {"kind": "match", "expr": "CA.layer == nplus"},
+                         {"kind": "match", "expr": "CB.layer == pplus"},
+                         {"kind": "check", "expr": "S >= 0.56"}]}
+    d = _desc(r)
+    assert "poly2 combined with nplus must be at least 0.56 µm from poly2 combined with pplus" in d

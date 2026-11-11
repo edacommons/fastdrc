@@ -144,18 +144,54 @@ def _boundary_contact(A, B) -> bool:
             any(_point_in_poly(v, A) == "on" for v in B))
 
 
+def _seg_param(p, a, b):
+    """Parameter t of point p along segment a->b (p assumed on the segment)."""
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    return ((p[0] - a[0]) / dx) if abs(dx) >= abs(dy) else ((p[1] - a[1]) / dy)
+
+
+def _boundary_samples(A, B) -> set:
+    """Where A's boundary lies relative to B: the set of 'in'/'on'/'out' over A's
+    vertices AND the midpoints of A's edges after splitting each edge wherever
+    B's boundary meets it. Vertices alone miss an edge that runs through B's
+    interior between two vertices that sit ON B's boundary (e.g. two equal-height
+    rectangles overlapping sideways -- no vertex is inside, no edges cross)."""
+    seen = {_point_in_poly(v, B) for v in A}
+    for a, b in _edges(A):
+        ts = {0.0, 1.0}
+        for c, d in _edges(B):
+            for v in (c, d):                        # B vertex on this edge
+                if _on_segment(v, a, b):
+                    ts.add(_seg_param(v, a, b))
+            den = (b[0] - a[0]) * (d[1] - c[1]) - (b[1] - a[1]) * (d[0] - c[0])
+            if abs(den) > EPS:                      # non-parallel: the single meeting point
+                t = ((c[0] - a[0]) * (d[1] - c[1]) - (c[1] - a[1]) * (d[0] - c[0])) / den
+                u = ((c[0] - a[0]) * (b[1] - a[1]) - (c[1] - a[1]) * (b[0] - a[0])) / den
+                if -EPS <= t <= 1 + EPS and -EPS <= u <= 1 + EPS:
+                    ts.add(min(1.0, max(0.0, t)))
+        ts = sorted(ts)
+        for t0, t1 in zip(ts, ts[1:]):
+            if t1 - t0 > EPS:
+                tm = (t0 + t1) / 2
+                seen.add(_point_in_poly((a[0] + (b[0] - a[0]) * tm,
+                                         a[1] + (b[1] - a[1]) * tm), B))
+    return seen
+
+
 def relate(A, B) -> str:
     """Classify the ordered pair of polygons A, B (A relative to B)."""
     if _any_proper_cross(A, B):
         return "overlap"
-    a_out = any(_point_in_poly(v, B) == "out" for v in A)
-    b_out = any(_point_in_poly(v, A) == "out" for v in B)
+    a_in_b, b_in_a = _boundary_samples(A, B), _boundary_samples(B, A)
+    a_out, b_out = "out" in a_in_b, "out" in b_in_a
     if not a_out and not b_out:
         return "equal"
-    if not a_out:           # every A vertex is in/on B, no crossing => A within B
+    if not a_out:           # all of A's boundary is in/on B, no crossing => A within B
         return "inside"
     if not b_out:
         return "contains"
+    if "in" in a_in_b or "in" in b_in_a:    # a boundary runs through the other's interior
+        return "overlap"
     return "touch" if _boundary_contact(A, B) else "disjoint"
 
 

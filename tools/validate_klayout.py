@@ -891,6 +891,7 @@ def _marker_pos(scope_op, i):
 
 def as_drawn(r):
     op, v, base, holes = r["op"], r["value"], r["base"], r["holes"]
+    keep_straight = set()        # edges a constraint talks about (a length) stay straight
     if op == "or":               # OR-of-variants -> a rule whose `or` is each variant's scene
         return {"name": r["id"], "desc": r["desc"],
                 "or": [as_drawn(v) for v in r["variants"]]}
@@ -898,11 +899,13 @@ def as_drawn(r):
     # markers); the single `check` is the assertion verified (a violation is a
     # matched configuration where the check fails).
     if op == "presence":
-        # the region IS the violation (a cross). Subject A + an intra-A CROSSED
-        # measure -> the rule outputs dl(A) (A plus its selections/cutouts). The
-        # selection/cover/hole loops below draw the contexts as usual.
+        # a FORBIDDEN configuration: the cross is the rule's check ("never"). When the
+        # subject has a relation to a context, the cross sits ON that relation (the
+        # last one drawn -- see the selection loop below); a subject with no relation
+        # (only covers / cutouts: the REGION itself is forbidden) carries it across
+        # its own two parallel edges, like a width whose bound is "never".
         shapes = [_rect("A", 0, 0, 10, 4, "a")]
-        meas = [{"name": "X", "from": "a0", "to": "a1", "crossed": True}]
+        meas = [{"name": "X", "from": "a1", "to": "a3", "crossed": True}]
         cons = [_match(f"A.layer == {base}")]
     elif op == "edge_width":
         # gate WIDTH: poly A. The GATE active layer(s) are drawn CROSSING A (a partial
@@ -931,24 +934,35 @@ def as_drawn(r):
                 e["edge"] = True                      # sides + cap straight; a1 (right) wavy
         shapes = [A, _rect("B", 1, 1, 3, 3, "b")]     # arg inside the wire end
         meas = [{"name": "R", "from": "a3", "to": "b3", "metric": r["mode"]}]
+        # the two lengths say WHICH wire ends the rule is about (filters -> match);
+        # the one assertion verified there is the enclosure/spacing R (the check).
         cons = [_match(f"A.layer == {base}"), _match(f"B.layer == {r['arg'][0]}"),
-                _check(f"a3.length <= {r['weol']}"), _check(f"a0.length >= {r['slen']}"),
+                _match(f"a3.length <= {r['weol']}"), _match(f"a0.length >= {r['slen']}"),
                 _check(f"R >= {v}")]
+        keep_straight = {"a0", "a2", "a3"}
     elif op == "edge_length":
-        # min/max SIZE: the EDGE a0's length is the violation. A length constraint
-        # (!= for without_length, == / range for with_length) -> the backend emits
-        # base.edges.(with|without)_length(...). .extended renders edges as polygons.
+        # min/max SIZE: the straight edge a0 carries a length CHECK -- the assertion
+        # that must hold; the edges that FAIL it are the violation. The deck's
+        # without_length(L) flags "not L" -> the check is `== L`; with_length(L) flags
+        # "exactly L" -> `!= L`; with_length(nil, H) flags the short ones -> `>= H`;
+        # with_length(L, nil) the long ones -> `<= L`. Only a two-sided with_length(L, H)
+        # has no single assertion: it stays a FILTER (match) whose matches are flagged.
+        # .extended renders the flagged edges as polygons.
         shapes = [_rect("A", 0, 0, 10, 4, "a")]
         meas = []
         lo, hi, k = r["lo"], r["hi"], r["kind"]
         if k == "without":
-            cexpr = f"a0.length != {lo}"
+            lcon = _check(f"a0.length == {lo}")
         elif lo == hi:
-            cexpr = f"a0.length == {lo}"
+            lcon = _check(f"a0.length != {lo}")
+        elif not lo:
+            lcon = _check(f"a0.length >= {hi}")
+        elif not hi:
+            lcon = _check(f"a0.length <= {lo}")
         else:
-            cexpr = " and ".join(c for c in (f"a0.length >= {lo}" if lo else None,
-                                             f"a0.length <= {hi}" if hi else None) if c)
-        cons = [_match(f"A.layer == {base}"), _check(cexpr)]
+            lcon = _match(f"a0.length >= {lo} and a0.length <= {hi}")
+        cons = [_match(f"A.layer == {base}"), lcon]
+        keep_straight = {"a0"}
     elif op == "with_area" and r.get("void"):
         # min-VOID-area: a DONUT of `base` (outer loop + an inner hole_loops void),
         # measured by `A.holes.area`. The backend recovers `.holes` from the drawn
@@ -998,13 +1012,13 @@ def as_drawn(r):
     # the cutout sits relative to the measurement. (Replaces the old tagged hole.)
     cut_straight = set()
     for si, ss in enumerate(subj):
-        for k, hl in enumerate(holes):
-            nm = f"X{k}{si}"
-            cut = _rect(nm, *_cut_box(ss["edges"], k, len(holes)), nm.lower())
+        if holes:                                   # ONE cutout per subject shape; several
+            nm = f"X0{si}"                          # removed layers are a layer SET on it
+            cut = _rect(nm, *_cut_box(ss["edges"], 0, 1), nm.lower())
             cut["edges"][0]["edge"] = True          # the cutting boundary is real
             cut_straight.add(cut["edges"][0]["id"])
             shapes.append(cut)
-            cons.append(_match(f"{nm}.layer == {hl}"))
+            cons.append(_match(_layer_is(nm, holes)))
     for k, cl in enumerate(r["covers"]):
         shapes.append(_rect(f"C{k}", bx0 - 1 - k, by0 - 1 - k, bx1 + 1 + k, by1 + 1 + k, f"c{k}"))
         cons.append(_match(f"C{k}.layer == {cl}"))
@@ -1017,12 +1031,12 @@ def as_drawn(r):
         for k, cl in enumerate(r["arg_covers"]):
             shapes.append(_rect(f"AC{k}", ax0 - 1 - k, ay0 - 1 - k, ax1 + 1 + k, ay1 + 1 + k, f"ac{k}"))
             cons.append(_match(f"AC{k}.layer == {cl}"))
-        for k, hl in enumerate(r["arg_holes"]):
-            cut = _rect(f"AX{k}", *_cut_box(bb, k, len(r["arg_holes"])), f"ax{k}")
+        if r["arg_holes"]:
+            cut = _rect("AX0", *_cut_box(bb, 0, 1), "ax0")
             cut["edges"][0]["edge"] = True
             cut_straight.add(cut["edges"][0]["id"])
             shapes.append(cut)
-            cons.append(_match(f"AX{k}.layer == {hl}"))
+            cons.append(_match(_layer_is("AX0", r["arg_holes"])))
     for k, (so, mk) in enumerate(r["scope"]):
         shapes.append(_rect(f"M{k}", *_marker_pos(so, k), f"m{k}"))
         cons.append(_match(f"M{k}.layer == {mk}"))
@@ -1041,12 +1055,18 @@ def as_drawn(r):
         # interacting markers TOUCH a different edge of A per k (right/top/left/bottom)
         # so several SAME-LAYER interacting markers don't merge into one polygon.
         touch = [(bx1, by0, bx1 + 6, by1), (bx0, by1, bx1, by1 + 6),
-                 (bx0 - 6, by0, bx0, by1), (bx0, by0 - 6, bx1, by0)][k % 4]
+                 (bx0 - 6, by0, bx0, by1), (bx0, by0 - 6, bx1, by0)]
+        if len(shapes) > 1 and op in ("space", "separation"):
+            touch = touch[1:] + touch[:1]     # the right-hand side is where operand B sits
+        touch = touch[k % 4]
+        # an overlapping context crosses only the subject's CORNER: it must not reach the
+        # point the subject is checked at, nor run its edge through it.
+        corner = (bx0 - 3 - 2 * k, by0 - 3 - 2 * k, bx0 + 1, by0 + 1)
         box = {"inside": (-5 - 3 * k, -5 - 3 * k, 30 + 3 * k, 30 + 3 * k),  # contains A
                "outside": (14 + 8 * k, 0, 20 + 8 * k, 4),                  # beside, disjoint
                "interacting": touch,                                       # touch a perimeter edge
-               "overlapping": (-3 - 2 * k, -3 - 2 * k, 5, 5),              # overlaps A
-               "not_outside": (-3 - 2 * k, -3 - 2 * k, 5, 5)}[sel_op]      # == overlapping
+               "overlapping": corner,                                      # overlaps A
+               "not_outside": corner}[sel_op]                              # == overlapping
         skshape = _rect(f"S{k}", *box, f"s{k}")
         shapes.append(skshape)
         # a NESTED marker (metal2.interacting(fusetop)) is drawn as its own device:
@@ -1055,20 +1075,29 @@ def as_drawn(r):
         # S{k}->FS{k}_j). The backend reads `mbase.and(dope).not(cut).subop(ctx)`.
         mp = parse_complex_subject(y)
         mbase, mands, mnots, msels = mp if mp else (y, [], [], [])
+        if mbase in _VARDEFS:
+            # a deck VARIABLE for a derived layer (pcomp = comp & pplus, tgate = poly2 &
+            # comp) is not something you can draw: draw the REAL layers -- one as the
+            # marker, the others wholly covering it (its doping).
+            dands, dnots = _VARDEFS[mbase]
+            mbase, *extra = sorted(dands)
+            mands = extra + [a for a in mands if a not in extra]
+            mnots = sorted(dnots) + [n for n in mnots if n not in dnots]
         cons.append(_match(f"S{k}.layer == {mbase}"))
         for j, pfx in enumerate(["a", "b"] if op == "space" else ["a"]):
             sel_meas.append({"name": f"GS{k}_{j}", "from": f"{pfx}0", "to": f"s{k}0"})
-            cons.append(_match(f"GS{k}_{j} >= 0"))
         sx0, sy0, sx1, sy1 = box
         for j, cl in enumerate(mands):                   # marker's OWN doping wholly covers S{k}
-            shapes.append(_rect(f"SD{k}_{j}", sx0 - 1 - j, sy0 - 1 - j, sx1 + 1 + j, sy1 + 1 + j, f"sd{k}_{j}"))
+            g = 0.5 + 0.25 * j                           # a tight margin: the doping is the
+            #   MARKER's, so it must not also cover the point the subject is checked at
+            shapes.append(_rect(f"SD{k}_{j}", sx0 - g, sy0 - g, sx1 + g, sy1 + g, f"sd{k}_{j}"))
             cons.append(_match(f"SD{k}_{j}.layer == {cl}"))
-        for j, nl in enumerate(mnots):                   # marker's OWN cutout -> .not(layer)
-            cut = _rect(f"SX{k}_{j}", *_cut_box(skshape["edges"], j, len(mnots)), f"sx{k}_{j}")
+        if mnots:                                        # marker's OWN cutout -> .not(layer..)
+            cut = _rect(f"SX{k}_0", *_cut_box(skshape["edges"], 0, 1), f"sx{k}_0")
             cut["edges"][0]["edge"] = True
             cut_straight.add(cut["edges"][0]["id"])
             shapes.append(cut)
-            cons.append(_match(f"SX{k}_{j}.layer == {nl}"))
+            cons.append(_match(_layer_is(f"SX{k}_0", mnots)))
         for j, (subop, subm) in enumerate(msels):        # marker's OWN selection context FS{k}_{j}
             cbox = {"inside": (sx0 - 2 - j, sy0 - 2 - j, sx1 + 2 + j, sy1 + 2 + j),  # contains S{k}
                     "outside": (sx1 + 6 + 5 * j, sy0, sx1 + 10 + 5 * j, sy1),       # beside S{k}
@@ -1079,7 +1108,21 @@ def as_drawn(r):
             cons.append(_match(f"FS{k}_{j}.layer == {sp[0] if sp else subm}"))
             shapes.append(_rect(f"FS{k}_{j}", *cbox, f"fs{k}_{j}"))
             sel_meas.append({"name": f"GF{k}_{j}", "from": f"s{k}0", "to": f"fs{k}_{j}0"})
-            cons.append(_match(f"GF{k}_{j} >= 0"))
+    if op == "presence" and sreg and not r["covers"]:
+        # the cross goes ON the forbidden relation: that context's relation measure
+        # becomes the crossed one (the check), so it needs no `>= 0` and A no measure
+        # of its own. Every other relation stays a filter. Which one is "the" forbidden
+        # relation is the author's statement; from a deck line we take the first that is
+        # not a plain containment (being inside a marker is usually the domain), else the
+        # last. A subject with a COVER is left with the cross on itself: there the
+        # forbidden thing is the overlap region, and its relations only say where.
+        pick = next((k for k, (o, _) in enumerate(sreg) if o != "inside"), len(sreg) - 1)
+        last = f"GS{pick}_0"
+        for mz in sel_meas:
+            if mz["name"] == last:
+                mz["crossed"] = True
+        cons = [c for c in cons if c["expr"] != f"{last} >= 0"]
+        meas = []
     # subject NOT_INTERACTING: two arrangements of the subject vs a marker, FAR away
     # (clear of the subject's regular contexts) -- measured A disjoint (flagged), a
     # CONTRAST (same layer + doping) TOUCHING the marker (not flagged). Derived marker
@@ -1102,9 +1145,7 @@ def as_drawn(r):
             shapes.append(_rect(f"SC{gi}{j}", gx + 4, gy + 2, gx + 9, gy + 8, f"scn{gi}{j}"))
             cons.append(_match(f"SC{gi}{j}.layer == {cl}"))
         sel_meas.append({"name": f"SNa{gi}", "from": "a0", "to": f"sp{gi}0"})
-        cons.append(_match(f"SNa{gi} >= 0"))
         sel_meas.append({"name": f"SNb{gi}", "from": f"sbn{gi}0", "to": f"sp{gi}1"})
-        cons.append(_match(f"SNb{gi} >= 0"))
     # arg selections (separation/enclosing): the ARG shape B is selected by how it
     # relates to its context T{k} -> ours emits separation(arg.outside(Y)) etc.
     # Contexts sit to the RIGHT/ABOVE B (6,0,10,10), clear of subject A (x in [0,4]).
@@ -1127,7 +1168,6 @@ def as_drawn(r):
         shapes.append(_rect(f"T{k}", *box, f"t{k}"))
         cons.append(_match(f"T{k}.layer == {y}"))
         sel_meas.append({"name": f"GT{k}", "from": "b2", "to": f"t{k}0"})
-        cons.append(_match(f"GT{k} >= 0"))
     # arg NOT_INTERACTING (select-first): two arrangements of the arg vs a marker,
     # FAR right (clear of subject/measured-arg). The measured arg B (shapes[1]) is
     # DISJOINT (flagged); a CONTRAST arrangement (same layer + same doping) TOUCHES
@@ -1153,14 +1193,13 @@ def as_drawn(r):
             shapes.append(_rect(f"GC{gi}{j}", gx + 4, gy + 2, gx + 9, gy + 8, f"gc{gi}{j}"))
             cons.append(_match(f"GC{gi}{j}.layer == {cl}"))
         sel_meas.append({"name": f"GNa{gi}", "from": "b0", "to": f"gp{gi}0"})    # measured arg -> marker
-        cons.append(_match(f"GNa{gi} >= 0"))
         sel_meas.append({"name": f"GNb{gi}", "from": f"gb{gi}0", "to": f"gp{gi}1"})  # contrast -> marker
-        cons.append(_match(f"GNb{gi} >= 0"))
     # only the MEASURED (dimensional) edges are straight (real, oriented); every
     # other edge is wavy = a don't-care boundary the rule doesn't constrain. A min-
     # area shape has NO measured edge (only the total area matters), so all its
     # edges are wavy -- the rect stands for "any polygon", and area is still defined.
-    straight = {mz["from"] for mz in meas} | {mz["to"] for mz in meas} | cut_straight
+    straight = ({mz["from"] for mz in meas} | {mz["to"] for mz in meas} | cut_straight
+                | keep_straight)
     for s in shapes:
         for e in s["edges"]:
             e["edge"] = e["id"] in straight
@@ -1169,6 +1208,13 @@ def as_drawn(r):
     if r.get("extended"):                  # edge-size: render flagged edges as thin polygons
         out["extended"] = r["extended"]
     return out
+
+
+def _layer_is(shape, layers):
+    """`A.layer == x`, or for several layers the SET form `A.layer in {x, y}`."""
+    layers = sorted(set(layers))
+    return (f"{shape}.layer == {layers[0]}" if len(layers) == 1
+            else f"{shape}.layer in {{{', '.join(layers)}}}")
 
 
 def _match(expr):
@@ -1197,8 +1243,8 @@ def _angle_sig(s):
 
 def validate_angle_rules(text, lm):
     """Round-trip the deck's `layer.with_angle(lo .. hi)` ACUTE rules: parse the
-    deck line, rebuild it as a drawn angle rule (a shape with an oriented edge +
-    `e.angle > lo and e.angle < hi`), recompile, and confirm the with_angle op
+    deck line, rebuild it as a drawn acute-corner rule (two straight edges meeting at
+    a sharp corner + the check `e.corner >= hi`), recompile, and confirm the with_angle op
     matches. Returns (matched, total, fails). Acute rules are inline one-liners
     (`LAYER.with_angle(0 .. 45).output(...)`); the `.edges.with_angle(45)` single-
     value sub-expressions don't match (need `..` and a real base layer)."""
@@ -1219,14 +1265,18 @@ def validate_angle_rules(text, lm):
         tot += 1
         fl = lambda x: int(x) if float(x).is_integer() else x
         tri = {"name": "A", "edges": [
-            # only a2 (the angle-constrained edge) is STRAIGHT/real -- it has a real
-            # orientation; a0/a1 just close the shape (don't-care boundary -> wavy).
-            {"id": "a0", "start": [0, 0], "end": [2000, 0], "edge": False},
+            # an ACUTE CORNER: a2 and a0 are STRAIGHT/real and meet at the origin, where
+            # a0 starts, enclosing ~27 degrees; a1 just closes the shape (wavy).
+            {"id": "a0", "start": [0, 0], "end": [2000, 0], "edge": True},
             {"id": "a1", "start": [2000, 0], "end": [2000, 1000], "edge": False},
             {"id": "a2", "start": [2000, 1000], "end": [0, 0], "edge": True}]}
+        # the CHECK is what must hold: every corner at least `hi` degrees (the sharper
+        # ones fail). A range that does not start at 0 has no single assertion and
+        # stays a filter whose matches are flagged.
+        acon = (_check(f"a0.corner >= {fl(hi)}") if lo == 0 else
+                _match(f"a0.corner >= {fl(lo)} and a0.corner <= {fl(hi)}"))
         rule = {"name": rid, "desc": desc, "shapes": [tri], "measures": [],
-                "constraints": [_match(f"A.layer == {layer}"),
-                                _check(f"a2.angle > {fl(lo)} and a2.angle < {fl(hi)}")]}
+                "constraints": [_match(f"A.layer == {layer}"), acon]}
         drc = get("klayout", layermap=lm).compile(Rule(rule))
         ours = next((ln for ln in drc.splitlines() if "with_angle" in ln), "")
         if _angle_sig(ours) == _angle_sig(line):

@@ -21,14 +21,18 @@ def _rel_to_sel(rel):                       # mirror of the KLayout backend's ma
             "overlap": "overlapping"}.get(rel, "outside")
 
 
-# how a CROSSED relation (a forbidden configuration) reads in English
-_CROSS = {"overlap": "must not overlap", "inside": "must not lie inside",
-          "contains": "must not contain", "touch": "must not touch",
-          "equal": "must not coincide with", "disjoint": "must interact with (touch or overlap)"}
-# how a SELECTION op reads as a restricting clause
-_SEL = {"inside": "lies inside", "outside": "lies outside",
-        "interacting": "touches", "overlapping": "overlaps",
-        "not_interacting": "is clear of", "not_inside": "does not lie inside"}
+# a CROSS on a relation forbids it: how the REQUIREMENT reads, per the selection op
+# the crossed relation compiles to (the op selects the violating shapes, so the
+# sentence states its opposite).
+_CROSS = {"overlapping": "must not overlap", "inside": "must not lie inside",
+          "interacting": "must not touch or overlap", "outside": "must overlap",
+          "not_interacting": "must touch or overlap", "not_inside": "must lie inside"}
+# how a SELECTION op reads as a restricting clause (singular, plural)
+_SEL = {"inside": ("lies inside", "lie inside"), "outside": ("lies outside", "lie outside"),
+        "interacting": ("touches or overlaps", "touch or overlap"),
+        "overlapping": ("overlaps", "overlap"),
+        "not_interacting": ("is clear of", "are clear of"),
+        "not_inside": ("does not lie inside", "do not lie inside")}
 
 
 def _fmt(v):
@@ -58,6 +62,8 @@ class DocsBackend(Backend):
         self.glossary = glossary or {}
 
     def _name(self, layer):
+        if layer and "|" in layer:            # a layer SET reads as "a or b"
+            return " or ".join(self._name(l) for l in layer.split("|"))
         return self.glossary.get(layer, layer)
 
     def compile(self, rule: Rule) -> str:
@@ -73,6 +79,8 @@ class DocsBackend(Backend):
             return "\n".join(lines) + "\n"
         for sent in self._sentences(rule):
             lines.append(f"  • {sent}")
+        for name, expr in (rule.data.get("layers") or {}).items():   # the legend, as drawn
+            lines.append(f"    where {name} = {expr}")
         if len(lines) == 1:
             lines.append("  • (no checkable assertion found)")
         return "\n".join(lines) + "\n"
@@ -80,45 +88,69 @@ class DocsBackend(Backend):
     # --- one English sentence per check the rule carries ---
     def _sentences(self, rule):
         out = []
-        for var, (lo, hi) in self._gb(rule):
-            out.append(self._dim(rule, var, lo, hi))
+        eol = rule.eol_measures()               # an end-of-line is ONE rule: its measure and
+        eol_vars = {v for v, _, _ in eol}       # the two qualifying edge lengths are not
+        eol_edges = rule.eol_edges()            # separate assertions
+        for var, lo, hi, select in rule.distance_rules():
+            if var not in eol_vars:
+                out.append(self._dim(rule, var, lo, hi, select))
         for shape, op, value, on_holes in rule.area_bounds():
-            kind = "at least" if op == ">=" else "at most"
-            subj = self._deriv_en(rule, shape)
+            kind = "at least" if op in (">", ">=") else "at most"
+            d, _, consumed = rule.check_derivations(shape, shape)
+            subj = self._fmt_deriv_en(d)
             if on_holes:
-                out.append(f"every enclosed void (hole) in {subj} must be {kind} "
-                           f"{_fmt(value)} µm² in area.")
+                core = (f"every enclosed void (hole) in {subj} must be {kind} "
+                        f"{_fmt(value)} µm² in area.")
             else:
-                out.append(f"{subj} must be {kind} {_fmt(value)} µm² in area.")
-        for edge, lo, hi in rule.angle_bounds():
-            sh = rule.shape_of_edge(edge)
-            out.append(f"{self._deriv_en(rule, sh)} must have no edge angled between "
-                       f"{_fmt(lo)}° and {_fmt(hi)}° (an acute/illegal angle).")
-        for edge, angle in rule.corner_bounds():
-            out.append(f"{self._deriv_en(rule, rule.shape_of_edge(edge))} must have no "
-                       f"{_fmt(angle)}° corner.")
-        for edge, kind, lo, hi in rule.length_bounds():
+                core = f"{subj} must be {kind} {_fmt(value)} µm² in area."
+            out.append(self._with_scope(core, self._scope(rule, shape, consumed)))
+        for edge, lo, hi in rule.angle_bounds() + rule.corner_ranges():
             subj = self._deriv_en(rule, rule.shape_of_edge(edge))
-            if kind == "without":
-                out.append(f"every {subj} edge must be exactly {_fmt(lo)} µm long "
-                           f"(any other length is flagged — a min/max size check).")
-            elif lo == hi:
-                out.append(f"{subj} edges {_fmt(lo)} µm long are flagged.")
+            if float(lo) == 0:
+                out.append(f"every {subj} corner must be at least {_fmt(hi)}° "
+                           f"(a sharper, acute corner is flagged).")
+            elif float(hi) == 180:
+                out.append(f"every {subj} corner must be at most {_fmt(lo)}°.")
             else:
-                rng = (f"between {_fmt(lo)} and {_fmt(hi)}" if lo and hi else
-                       f"at most {_fmt(hi)}" if lo is None else f"at least {_fmt(lo)}")
-                out.append(f"{subj} edges {rng} µm long are flagged.")
+                out.append(f"{subj} must have no corner between {_fmt(lo)}° and {_fmt(hi)}°.")
+        for edge, angle, others in rule.corner_bounds():
+            subj = self._deriv_en(rule, rule.shape_of_edge(edge))
+            out.append(f"every {subj} corner must be {_fmt(angle)}°." if others
+                       else f"{subj} must have no {_fmt(angle)}° corner.")
+        for edge, kind, form, lo, hi in rule.length_facts():
+            if edge not in eol_edges:
+                out.append(self._length(rule, edge, kind, form, lo, hi))
         for var in [v for v, mm in rule.measures.items() if mm.get("crossed")]:
             out.append(self._presence(rule, var))
-        for var, cap, side in rule.eol_measures():
+        for var, cap, side in eol:
             out.append(self._eol(rule, var, cap, side))
         return out
+
+    def _length(self, rule, edge, kind, form, lo, hi):
+        """One edge-length constraint. A CHECK states what every edge must satisfy (the
+        ones that fail are flagged); a MATCH only says which edges are picked out."""
+        subj = self._deriv_en(rule, rule.shape_of_edge(edge))
+        if form == "range":
+            rng = (f"between {_fmt(lo)} and {_fmt(hi)} µm" if lo is not None and hi is not None
+                   else f"at least {_fmt(lo)} µm" if lo is not None else f"at most {_fmt(hi)} µm")
+        if kind == "check":
+            if form == "exact":
+                return (f"every {subj} edge must be exactly {_fmt(lo)} µm long "
+                        f"(any other length is flagged — a min/max size check).")
+            if form == "not":
+                return f"no {subj} edge may be exactly {_fmt(lo)} µm long."
+            return f"every {subj} edge must be {rng} long."
+        if form == "exact":
+            return f"{subj} edges exactly {_fmt(lo)} µm long are flagged."
+        if form == "not":
+            return f"{subj} edges that are not {_fmt(lo)} µm long are flagged."
+        return f"{subj} edges {rng} long are flagged."
 
     def _eol(self, rule, var, cap, side):
         m = rule.measures[var]
         sf, st = rule.shape_of_edge(m["from"]), rule.shape_of_edge(m["to"])
         L, arg = self._name(rule.layer_of(sf)), self._name(rule.layer_of(st))
-        lb = {e: (lo, hi) for e, k, lo, hi in rule.length_bounds() if k == "with"}
+        lb = rule.length_spans()
         v = _fmt(next(b.value for b in rule.bounds() if b.var == var and b.is_min))
         verb = ("enclose" if rule.relation(sf, st) in ("contains", "inside")
                 else "be at least {} µm from".format(v))
@@ -126,20 +158,12 @@ class DocsBackend(Backend):
         return (f"the end-of-line edge of a narrow {L} wire (width ≤ {_fmt(lb[cap][1])} µm, "
                 f"length ≥ {_fmt(lb[side][0])} µm) must {verb} {tail}.")
 
-    def _gb(self, rule):                    # group straight-measure bounds (min, max) per var
-        from collections import defaultdict
-        g = defaultdict(lambda: [None, None])
-        for b in rule.bounds():
-            if rule.measure_is_straight(b.var):
-                g[b.var][1 if b.is_max else 0] = b
-        return list(g.items())
-
     # --- the SAME analyzed view the KLayout backend formats, rendered in English ---
     def _deriv_en(self, rule, shape):       # single-shape derivation (area / angle / length)
         d, _, _ = rule.check_derivations(shape, shape)
         return self._fmt_deriv_en(d)
 
-    def _dim(self, rule, var, lo, hi):
+    def _dim(self, rule, var, lo, hi, select=False):
         m = rule.measures[var]
         sf, st = rule.shape_of_edge(m["from"]), rule.shape_of_edge(m["to"])
         mt = m.get("metric") or "euclidian"
@@ -154,7 +178,27 @@ class DocsBackend(Backend):
         ds, dt, consumed = rule.check_derivations(sf, st)   # the shared analysis
         subj, arg = self._fmt_deriv_en(ds), self._fmt_deriv_en(dt)
         scope = self._scope(rule, sf, consumed)
-        if lo is not None and hi is None:               # MIN bound -> a violation check
+        if not select and hi is not None:               # MAX check -> must not exceed it
+            v = _fmt(hi.value)
+            if sf == st:
+                core = f"{subj} must be at most {v} µm wide"
+            elif rule.relation(sf, st) in ("inside", "contains"):
+                outer, inner = (arg, subj) if rule.relation(sf, st) == "inside" else (subj, arg)
+                core = f"{outer} must enclose {inner} by at most {v} µm"
+            elif subj == arg:
+                core = f"any two shapes of {subj} must be at most {v} µm apart"
+            else:
+                core = f"{subj} must be at most {v} µm from {arg}"
+            return self._with_scope(core + f" ({mt}).", scope)
+        over = None if select or hi is not None else rule.overlap_reading(var)
+        if over:                                        # partly overlapping shapes
+            v = _fmt(lo.value)
+            a, b = self._fmt_deriv_en(over["outer"]), self._fmt_deriv_en(over["inner"])
+            core = {"extension": f"{a} must extend at least {v} µm beyond {b}",
+                    "overlap": f"{a} must overlap {b} by at least {v} µm"}[over["kind"]]
+            return self._with_scope(core + f" ({mt}).",
+                                    self._scope(rule, over["outer_shape"], over["consumed"]))
+        if not select:                                  # MIN check -> a violation check
             v = _fmt(lo.value)
             if sf == st:
                 core = f"{subj} must be at least {v} µm wide"
@@ -163,27 +207,46 @@ class DocsBackend(Backend):
                 if rel in ("inside", "contains"):
                     outer, inner = (arg, subj) if rel == "inside" else (subj, arg)
                     core = f"{outer} must enclose {inner} by at least {v} µm"
-                elif self._layer(rule, sf) == self._layer(rule, st):
-                    core = f"two {subj} shapes must be at least {v} µm apart"
+                elif subj == arg:                   # the SAME derived layer on both sides
+                    core = f"any two shapes of {subj} must be at least {v} µm apart"
                 else:
                     core = f"{subj} must be at least {v} µm from {arg}"
             return self._with_scope(core + f" ({mt}).", scope)
-        pred = ("width" if sf == st else
-                "space" if self._layer(rule, sf) == self._layer(rule, st) else "separation")
-        cond = (f"{pred} ≤ {_fmt(hi.value)} µm" if lo is None
+        pred = "width" if sf == st else "space" if subj == arg else "separation"
+        cond = (f"{pred} ≥ {_fmt(lo.value)} µm" if hi is None
+                else f"{pred} ≤ {_fmt(hi.value)} µm" if lo is None
                 else f"{_fmt(lo.value)} µm ≤ {pred} < {_fmt(hi.value)} µm")
         return self._with_scope(f"selects {subj} regions where {cond}.", scope)
 
     def _presence(self, rule, var):
+        """A CROSS: a forbidden configuration. Drawn on a relation between two shapes
+        it forbids THAT relation -- everything else about the subject is the filter --
+        so the sentence states the requirement on it; drawn across the subject alone,
+        the subject's region itself must not exist."""
         m = rule.measures[var]
-        sf, st = rule.shape_of_edge(m["from"]), rule.shape_of_edge(m["to"])
-        ds, dt, consumed = rule.check_derivations(sf, st)
+        sf = rule.shape_of_edge(m["from"])
+        d, _, consumed = rule.check_derivations(sf, sf)
         scope = self._scope(rule, sf, consumed)
-        if sf == st:
-            return self._with_scope(f"no {self._fmt_deriv_en(ds)} may exist.", scope)
-        rel = rule.relation(sf, st)
-        return self._with_scope(f"{self._fmt_deriv_en(ds)} {_CROSS.get(rel, 'must not relate to')} "
-                                f"{self._fmt_deriv_en(dt)}.", scope)
+        pair = rule.crossed_relation(var)
+        hit = [(op, mk) for op, mk in d["selections"] if pair and mk.get("shape") == pair[1]]
+        pre = [(op, mk) for op, mk in d.get("pre_selections", [])
+               if pair and mk.get("shape") == pair[1]]
+        if pre:
+            # the crossed relation is to a layer that is also cut out of the subject: the
+            # violation is the part of the subject left outside it -- the subject
+            # STRADDLES that layer's edge.
+            op, marker = pre[0]
+            rest = dict(d, nots=[n for n in d["nots"] if n != marker["base"]],
+                        pre_selections=[x for x in d["pre_selections"] if x[1] is not marker])
+            return self._with_scope(
+                f"{self._fmt_deriv_en(rest)} that {_SEL.get(op, ('relates to',))[0]} "
+                f"{self._fmt_deriv_en(marker)} must not extend beyond it.", scope)
+        if not hit:
+            return self._with_scope(f"no {self._fmt_deriv_en(d)} may exist.", scope)
+        op, marker = hit[0]
+        rest = dict(d, selections=[x for x in d["selections"] if x[1] is not marker])
+        return self._with_scope(f"{self._fmt_deriv_en(rest)} {_CROSS.get(op, 'must not relate to')} "
+                                f"{self._fmt_deriv_en(marker)}.", scope)
 
     def _layer(self, rule, shape):
         return rule.layer_of(shape) or "?"
@@ -195,18 +258,24 @@ class DocsBackend(Backend):
         phrase = self._name(d["base"])
         if d["ands"]:
             phrase += " combined with " + _join(sorted(self._name(a) for a in d["ands"]))
+
+        def clauses(selections):
+            by_op, out = defaultdict(list), ""
+            for op, marker in selections:
+                by_op[op].append(self._fmt_deriv_en(marker))
+            for op in sorted(by_op):
+                ctxs = sorted(by_op[op])
+                # bracket only to delimit a MULTI-context list with compound parts; a single
+                # context (even a compound one) reads fine without brackets
+                multi = len(ctxs) > 1 and any(" " in c for c in ctxs)
+                wrap = (lambda p: f"[{p}]") if multi else (lambda p: p)
+                out += f" that {_SEL.get(op, ('relates to',))[0]} {_join([wrap(c) for c in ctxs])}"
+            return out
+
+        phrase += clauses(d.get("pre_selections", []))   # read before the cutouts, as compiled
         if d["nots"]:
             phrase += " (excluding " + _join(sorted(self._name(n) for n in d["nots"])) + ")"
-        by_op = defaultdict(list)
-        for op, marker in d["selections"]:
-            by_op[op].append(self._fmt_deriv_en(marker))
-        for op in sorted(by_op):
-            ctxs = sorted(by_op[op])
-            # bracket only to delimit a MULTI-context list with compound parts; a single
-            # context (even a compound one) reads fine without brackets
-            multi = len(ctxs) > 1 and any(" " in c for c in ctxs)
-            wrap = (lambda p: f"[{p}]") if multi else (lambda p: p)
-            phrase += f" that {_SEL.get(op, 'relates to')} {_join([wrap(c) for c in ctxs])}"
+        phrase += clauses(d["selections"])
         h = d.get("halo")
         if h:                                # the signed halo / margin (rounded reserved)
             phrase = (f"{phrase} grown by {_fmt(h)} µm" if h > 0
@@ -220,7 +289,8 @@ class DocsBackend(Backend):
             cl = rule.layer_of(c)
             if cl and cl != base:
                 (filt if rule.relation(shape, c) == "inside" else gate).append(cl)
-        cuts = sorted({self._name(rule.layer_of(c)) for c in rule.removed(shape)})
+        cuts = sorted({self._name(l) for c in rule.removed(shape)
+                       for l in (rule.layer_of(c) or "?").split("|")})
         phrase = (f"{self._name(base)} edges over the gate ({self._name(base)}"
                   + "".join(f" & {self._name(g)}" for g in sorted(set(gate))) + ")") if gate \
             else f"{self._name(base)} edges"

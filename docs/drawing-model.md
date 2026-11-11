@@ -60,29 +60,37 @@ means:**
 
 - between **straight** edges → a **real oriented distance** → a *dimensional
   check* (width / space / separation / enclosing).
-- between **wavy** edges → **not a distance at all**, but a **topological
-  assertion** about how two shapes relate. It picks an `inside` / `outside` /
+- to a **wavy** edge → **not a distance at all**, but a **link**: a topological
+  assertion about how two shapes relate. It picks an `inside` / `outside` /
   `interacting` / `overlapping` selection from the *relation you drew* (see
   *Restrict the subject…*): inside → `inside`, touch → `interacting`, overlap →
-  `overlapping`, disjoint → `outside`. For the disjoint case the operator carries
-  the touch semantics — `X >= 0` → "they don't overlap, but the gap may be **zero**
-  (may touch)" → an **`outside`** selection (KLayout `outside` keeps polygons that
-  merely touch). A *drawn* touch (coinciding edges), by contrast, is `interacting`.
+  `overlapping`, disjoint → `outside`. A link needs no bound. Drawn apart it means
+  "they don't overlap, but the gap may be **zero** (may touch)" → an **`outside`**
+  selection (KLayout `outside` keeps polygons that merely touch). A *drawn* touch
+  (coinciding edges), by contrast, is `interacting`.
 
-This is the single most important convention: **straight measure = check, wavy
-measure = relation.**
+This is the single most important convention: **straight measure = distance, a link to
+a wavy edge = relation.**
 
 ---
 
 ## Constraints: `match` vs `check`
 
-- **`match`** — identifies *which* geometry the rule is about: `A.layer == metal2`,
-  `M0.layer == dualgate`, a wavy `GS >= 0`. These are preconditions.
-- **`check`** — the *single* assertion that is verified. A violation is a matched
-  configuration where the `check` fails (e.g. `W >= 0.28`).
+- **`match`** — the **filter**: *which* geometry the rule is about: `A.layer == metal2`,
+  `M0.layer == dualgate`, a qualifying edge length (and every link, which needs no
+  constraint at all). A filter
+  **selects what satisfies it**.
+- **`check`** — the **check**: the *single* assertion that must hold on what was
+  matched. A violation is a matched configuration where the `check` **fails**
+  (`W >= 0.28` flags the narrower wires; `e.length == 0.22` flags every edge that is
+  not 0.22 long).
 
-Rule of thumb: layer/marker/relation facts are `match`; the one dimensional bound
-being enforced is `check`.
+A rule is therefore always *filters + one check*. The check is either a bound
+(`W >= 0.28`, `A.area >= 0.2`, `e.length == 0.22`) or a **cross** — the check whose
+bound is "never" (see *A configuration that must never exist*).
+
+Rule of thumb: layer/marker/relation facts and "which ones" qualifiers are `match`;
+the one thing being enforced is `check`.
 
 ---
 
@@ -111,6 +119,39 @@ Same as space, but `B` is a **different** layer.
 An **inner** rect inside an **outer** rect. A measure `E` from the outer edge to
 the matching inner edge (the margin).
 → `outer.enclosing(inner, 0.22)`
+
+(When the inner one only *crosses* the outer, see *Extension / overhang / end cap*.)
+
+### Extension / overhang / end cap (one layer crossing another)
+"Poly2 must extend 0.22 beyond COMP", "COMP must extend 0.24 beyond the gate",
+"salicide block must extend beyond unsalicided poly": draw the two layers the way
+they sit — a **bar** and a **band crossing it** — and **one measure** from the edge
+of one (where it lies inside the other) to the edge of the other. Nothing else.
+
+The compiler reads two things off that picture:
+
+- **where the measure lies** — inside `C` but outside `X` means "how far `C` reaches
+  past `X`";
+- **what covers each measured edge** — any other layer drawn over the stretch.
+
+| the measure runs | means | compiler derives |
+|---|---|---|
+| from the band's edge (inside the bar) to the bar's end | the bar reaches past the band | `bar.enclosing(band, v)` |
+| from the bar's edge (inside the band) to the band's end | the band reaches past the bar (an end cap) | `band.enclosing(bar, v)` |
+| from one layer's edge to the other's, **inside both** | how deep they overlap | `a.overlap(b, v)` |
+
+→ `comp.enclosing(sab, 0.22)` — "comp must extend at least 0.22 µm beyond sab".
+
+**Butted regions.** For "N+ part of a diffusion butted to its P+ part must be at
+least 0.22 long", draw **one** `comp`, `pplus` over one part, `nplus` butted against
+it over the rest, and measure from the butting edge to the end of the `comp`. The
+`nplus` covers the measured stretch but does not reach the `pplus` part, so it is
+not combined into the diffusion — it says *where* the extension is looked at:
+→ `comp.enclosing(pplus, 0.22).overlapping(nplus)` — "comp must extend at least
+0.22 µm beyond pplus — only where the geometry is overlapping nplus".
+
+A context **linked** to either shape still filters that shape
+(`sab.outside(otp_mk).enclosing(poly2, 0.22)`).
 
 ### Min area
 One closed rect with **all edges wavy** — it stands for "any polygon"; only the
@@ -141,6 +182,20 @@ it's a device layer, not an all-wavy domain — and put the measured geometry on
 *outside* `otp_mk` and derives the subtraction. (No tagged hole — a real cutout.)
 → compiler produces `comp.not(otp_mk)`
 
+**The part of a shape that sticks out of a layer (straddling).** When the layer you
+cut out is *also* one the shape has a relation to — `nat` drawn overlapping
+`dualgate`, with the `dualgate` part cut out of it — the relation is read on the
+shape **as drawn, before the cut** (what is left after removing `dualgate` can no
+longer overlap it). So the picture means "for a `nat` that overlaps `dualgate`, the
+part left outside it":
+→ `nat.overlapping(dualgate).not(dualgate)` — with a cross: "nat that overlaps
+dualgate must not extend beyond it".
+
+**Several layers at once (a layer set).** When the same shape stands for *any of*
+several layers, give it a set: `X.layer in {mvsd, otp_mk, ymtp_mk}`. One cutout with
+a set removes each member (`.not(mvsd).not(otp_mk).not(ymtp_mk)`); anywhere else the
+set is the union of its layers (`.not_interacting(dualgate.or(v5_xtor))`).
+
 > **Combine vs remove vs filter — read off the drawing, no special markup.** It
 > comes down to *where `B` sits relative to your measurement*, and — when it's off
 > the measurement — whether `B` is a device (a real edge) or a domain (all wavy):
@@ -158,14 +213,15 @@ it's a device layer, not an all-wavy domain — and put the measured geometry on
 > cut out (remove); all wavy = a domain marker (filter).
 
 ### Restrict the subject by a relationship to another layer
-Draw a **context shape** of that other layer and a **wavy measure `>= 0`** from the
-subject to it. The *relation* you draw is what the compiler reads — it derives the
+Draw a **context shape** of that other layer and a **link** from the subject to it:
+a measure drawn to a wavy edge. A link is not a distance, so it needs **no
+constraint** (an old-style `G >= 0` on it is accepted and adds nothing). The *relation* you draw is what the compiler reads — it derives the
 selection op:
 
 | what you draw (subject vs context) | compiler derives |
 |---|---|
 | subject **inside** the context | `X.inside(Y)` |
-| **disjoint** (drawn apart; the wavy `>= 0` allows a zero gap) | `X.outside(Y)` |
+| **disjoint** (drawn apart; the gap may be zero) | `X.outside(Y)` |
 | **touching** (coinciding edges — one shape's edge *is* the other's) | `X.interacting(Y)` |
 | **overlapping** (interiors cross) | `X.overlapping(Y)` ≡ `X.not_outside(Y)` |
 
@@ -173,25 +229,24 @@ The **exact relation you draw is the signal** — `touch` and `overlap` are diff
 pictures with different meanings. A *touch* (coinciding edges) counts as
 `interacting`; a genuine *area overlap* is `overlapping` (equivalently
 `not_outside` — "not wholly outside" = has overlap). To get `outside` you draw the
-shapes **apart** (disjoint); the wavy `>= 0` measure just says the gap *may* reach
-zero. This matches the scope table below exactly (touch→`interacting`,
+shapes **apart** (disjoint); a linked "apart" still allows the gap to reach zero. This matches the scope table below exactly (touch→`interacting`,
 overlap→`overlapping`) — selection and scope read relations the same way.
 
-The **wavy measure is the signal** that this is a *selection*: drawing one to a layer makes it a *selection*
+The **link is the signal** that this is a *selection*: drawing one to a layer makes it a *selection*
 (`X.inside(Y)`, keeping whole polygons). The *same* containing layer drawn with **no
 measure** — just covering — would instead be a *combine* (`X.and(Y)`, the
 overlap-of-two-layers recipe above). They're behaviourally close when the subject
-is inside `Y`, but the measure is what tells them apart. Apply the wavy measure to
+is inside `Y`, but the link is what tells them apart. Apply the link to
 **each** subject shape (both rects of a space rule), and you can chain several
 (`X.inside(A).inside(B)`). The separation **argument** can be selected the same
-way: a wavy measure from `B` to its context → `X.separation(Y.outside(Z))`.
+way: a link from `B` to its context → `X.separation(Y.outside(Z))`.
 
 ### A selected marker (the context has its own selection)
 The context shape itself can be a *selected* thing —
 `via1.interacting(metal2.interacting(fusetop))` = "a via1 touching a **metal2 that
 itself touches fusetop**". You draw it by giving the **context its own context**:
-draw the marker `metal2` in its relation to the subject (a wavy `>= 0`), then draw
-`fusetop` in its relation to the *marker* with **another wavy `>= 0` from the marker
+draw the marker `metal2` in its relation to the subject (a link), then draw
+`fusetop` in its relation to the *marker* with **another link from the marker
 to it**. The compiler reads the inner relation back onto the marker, producing the
 nested `metal2.interacting(fusetop)`. The marker can also be a **device** — give it
 a wholly-covering doping layer and the marker becomes `comp.and(pplus)` (a P+
@@ -244,19 +299,29 @@ separate). The compiler derives the scope op from the relation:
 | overlapping | `.overlapping(marker)`  (e.g. 5 V domain) |
 | touching | `.interacting(marker)` |
 
-> **Disjoint-with-no-measure vs disjoint-with-a-wavy-`>=0`-measure** is the
-> deliberate distinction between a strict **scope marker** (`not_interacting`,
-> drops touching) and an **`outside` selection** (keeps touching). Same picture,
-> different meaning — the measure is the signal.
+> **Unlinked vs linked** is the deliberate distinction between a **scope marker**
+> (it restricts where *violations* are reported: `not_interacting` drops touching)
+> and a **selection** (it restricts which *shapes* are checked: `outside` keeps
+> touching). The link is the signal, and the editor shows each shape's role.
 
-### Acute / non-45 angle
-A shape with a **straight** edge at an acute orientation. Constrain the edge's
-angle: `a2.angle > 0 and a2.angle < 45`.
+### Acute angle
+"No acute angles" is a rule about **corners**: two **straight** edges meeting at a
+sharp corner. Draw such a corner and write the check on it — what must hold:
+`a1.corner >= 45` (`<edge>.corner` is the angle **between** the two edges meeting
+where that edge starts: a right angle is 90, an acute corner less). The corners that
+fail it are flagged.
 → `comp.with_angle(0 .. 45)`
 
+(A forbidden *range* that has no single assertion — "no corner between 30° and 60°" —
+is written as a filter: match `a1.corner >= 30 and a1.corner <= 60`. The older
+spelling on an edge's direction, `a2.angle > 0 and a2.angle < 45`, still compiles to
+the same op.)
+
 ### Corner
-A shape with a corner (two adjacent straight edges). Constrain the corner's
-magnitude: `a1.corner == 90`.
+A shape with a corner (two adjacent straight edges) and a constraint on its angle.
+As everywhere, the kind decides: the check `a1.corner != 90` ("no right-angle
+corners here") flags the 90° corners; the check `a1.corner == 90` flags every corner
+that is *not* 90°; as a filter (match), `a1.corner == 90` selects the 90° ones.
 → `poly2.corners(90).sized(0.1).or(poly2.corners(-90).sized(0.1))`  (both convex
 and concave 90° corners).
 
@@ -267,22 +332,38 @@ backend constant (a marker-box size, matching the deck); it doesn't change *whic
 corners are flagged, only that they're outputtable.
 
 ### Edge length
-A shape with a **straight** edge; constrain its length:
+A shape with a **straight** edge; constrain its length. The constraint's **kind**
+decides the reading, exactly as for every other constraint:
 
-| constraint | compiles to |
-|---|---|
-| `e.length <= 0.34` | `layer.edges.with_length(nil, 0.34)` |
-| `e.length == 0.22` | `layer.edges.with_length(0.22)` |
-| `e.length != 0.22` | `layer.edges.without_length(0.22)` |
-| `e.length >= 0.1 and e.length <= 0.5` | `layer.edges.with_length(0.1, 0.5)` |
+As a **`check`** (what every edge must satisfy — the edges that *fail* are flagged):
+
+| check | flags | compiles to |
+|---|---|---|
+| `e.length == 0.22` | edges that are not 0.22 | `layer.edges.without_length(0.22)` |
+| `e.length != 0.22` | edges that are exactly 0.22 | `layer.edges.with_length(0.22)` |
+| `e.length >= 0.34` | the shorter edges | `layer.edges.with_length(nil, 0.34)` |
+| `e.length <= 0.5` | the longer edges | `layer.edges.with_length(0.5, nil)` |
+| `e.length >= 0.1 and e.length <= 0.5` | edges outside the range | `layer.edges.without_length(0.1, 0.5)` |
+
+As a **`match`** (a filter — the edges that *satisfy* it are selected):
+
+| match | selects | compiles to |
+|---|---|---|
+| `e.length <= 0.34` | edges up to 0.34 | `layer.edges.with_length(nil, 0.34)` |
+| `e.length == 0.22` | edges of exactly 0.22 | `layer.edges.with_length(0.22)` |
+| `e.length >= 0.1 and e.length <= 0.5` | edges in the range | `layer.edges.with_length(0.1, 0.5)` |
+
+A length filter usually qualifies another rule (an end-of-line, below). A rule that
+has only filters and no check flags what the filters select.
 
 ### End-of-line (a wire end)
 A min-width wire is *two straight sides + wavy ends*. An **end-of-line** rule is that
 same wire with **one end made real**: draw the **cap** (the short end edge) **straight**
 while the *other* end stays **wavy** ("the wire continues"), keep the two sides straight,
-and add two edge-length constraints — `cap.length <= Weol` (the EOL width) and
-`side.length >= Slen` (the min run length). Put the rule measure on the cap (e.g. an
-inner contact it must enclose). No new primitive, no to-scale drawing: the cap-opposite-
+and add two edge-length **filters** (`match`) — `cap.length <= Weol` (the EOL width) and
+`side.length >= Slen` (the min run length): they say *which* wire ends the rule is
+about. Put the rule measure on the cap (e.g. an inner contact it must enclose) — its
+bound (`R >= 0.06`) is the one **check**. No new primitive, no to-scale drawing: the cap-opposite-
 a-wavy-end geometry *is* the end-of-line, and the compiler emits KLayout's idiom:
 → `cond = metal1.drc(width <= Weol).with_length(Slen, nil, both)`
 → `eol = metal1.edges.with_length(nil, Weol).interacting(cond.first_edges).interacting(cond.second_edges).not(cond.first_edges).not(cond.second_edges)`
@@ -299,8 +380,9 @@ appends it to that shape's derived region:
 
 ### Min/max size (contact/via) — edges as the output
 A contact/via must be *exactly* the right size, so any edge of the **wrong length**
-is a violation. Draw the layer with a straight edge and `e.length != 0.22`; the
-flagged edges are rendered as thin polygons via `.extended` so they're outputtable:
+is a violation. Draw the layer with a straight edge and the check `e.length == 0.22`
+(what must hold); the edges that fail it are flagged, rendered as thin polygons via
+`.extended` so they're outputtable:
 → `contact.edges.without_length(0.22).extended(0, 0, 0.001, 0.001)`
 
 ### Gate width (poly over the gate) — a directional edge width
@@ -321,38 +403,64 @@ vs filter elsewhere:
 
 → `poly2.edges.and((poly2 & comp).edges).not(otp_mk).and(ymtp_mk).width(0.13)`
 
-### Narrow-region / range selector (`.drc`)
-A width/space/separation/enclosure measure with a **MAX** bound (or a two-sided
-range) — this **selects** the narrow region instead of **checking** for a
-violation:
+### Maximum bounds and narrow-region selectors (`.drc`)
+A bound on a distance reads by its **kind**, like every constraint.
 
-| constraint | compiles to |
+As a **`check`** (what must hold — where it fails is flagged):
+
+| check | flags | compiles to |
+|---|---|---|
+| `W >= 0.28` | the narrower | `metal1.width(0.28)` |
+| `W <= 5` | the wider (a *maximum* width) | `metal1.drc(width > 5)` |
+| `W >= 0.28 and W <= 5` | both | the two checks above |
+
+As a **`match`** (a filter — it *selects* the region that satisfies it; a rule with
+only filters flags what they select):
+
+| match | compiles to |
 |---|---|
 | `W <= 0.34` | `metal1.drc(width <= 0.34)` |
 | `S <= 0.3` (same layer) | `metal1.drc(space <= 0.3)` |
 | `S <= 0.2` (diff layers) | `metal1.drc(separation(comp) <= 0.2)` |
 | `E <= V` (inner inside outer) | `via.drc(enclosed(metal) <= V)` |
 | `0.04 <= E < 0.06` | `via1.drc(0.04 <= enclosed(metal1) < 0.06)` |
+| `W >= 2` | `metal1.drc(width >= 2)` |
 
-(`W >= V` checks for a violation; `W <= V` selects what is narrower than `V`.)
+(A "greater than" predicate is KLayout's: it returns the edges that have no partner
+within the distance.)
 
 ### A configuration that must never exist (the cross)
 Most rules check a *quantity* ("this distance is too small"). The other half of DRC
 forbids a *configuration outright* ("these two must never overlap"). You draw the
-forbidden picture and put a **cross** on the measure — a measure whose bound is
-**"never"** (not `>= V`). There's no threshold: the drawn **relation itself is the
-rule**, and the compiler reads it exactly like a selection (`_rel_to_sel`):
+forbidden picture and put a **cross** on it. The cross **is the rule's check**: a
+measure whose bound is **"never"** (not `>= V`), so it needs no constraint of its own.
 
-| what you draw (A vs B) | how you mark it | compiler derives | reads as |
+**A cross on a relation** — drawn between an edge of the subject `A` and an edge of
+another shape `B` — forbids *that relation*. The compiler reads the drawn relation
+exactly like a selection (`rel_to_sel`); the shapes selected are the violation:
+
+| what you draw (A vs B) | how you mark it | the violation | reads as |
 |---|---|---|---|
-| **disjoint** (a gap) | cross **in the gap** between the two edges | `A.outside(B)` is the violation | A must **interact** with B |
-| **touch** (edges coincide) | cross drawn **over the shared edge** (an X on it) | `A.interacting(B)` is the violation | A must **not touch** B |
-| **overlap** (interiors cross) | cross over the overlap | `A.overlapping(B)` is the violation | A must **not overlap** B (touching OK) |
-| **inside** | cross, A drawn inside B | `A.inside(B)` is the violation | A must **not be inside** B |
+| **disjoint** (a gap) | cross **in the gap** between the two edges | `A.outside(B)` | A must **overlap** B |
+| **touch** (edges coincide) | cross drawn **over the shared edge** (an X on it) | `A.interacting(B)` | A must **not touch or overlap** B |
+| **overlap** (interiors cross) | cross over the overlap | `A.overlapping(B)` | A must **not overlap** B (touching OK) |
+| **inside** | cross, A drawn inside B | `A.inside(B)` | A must **not be inside** B |
 
-The flagged region *is* the output (no `width`/`space` op, no threshold) — `outside(B)`
-keeps the A's with no contact, `interacting(B)` keeps the A's that touch-or-overlap,
-etc. So the violation is "every A in *this relation* to B."
+Every *other* relation of the subject stays an ordinary filter (a plain link), so a
+rule reads straight off the picture: **NW.6** "an Nwell resistor must stay out of
+DNWELL" is an `nwell` drawn inside `res_mk` (a link — *which* nwell) touching a
+`dnwell` with the **cross on that contact** (the check):
+→ `nwell.inside(res_mk).interacting(dnwell)` — "nwell that lies inside res_mk must not
+touch or overlap dnwell".
+
+**A cross on the subject alone** — across its own two parallel edges, like a width
+whose bound is "never" — forbids the subject's *region* itself: the layer as combined
+by its covers and cutouts, in whatever relations are drawn as filters. Use it when
+the forbidden thing is an overlap *region* rather than a relation: "salicide block
+over a contact" is `sab` drawn under a covering `contact`, crossed.
+→ `sab.and(contact)`
+
+The flagged region *is* the output (no `width`/`space` op, no threshold).
 
 > **Why the X sits on the edge for the touch case.** Start from the disjoint picture
 > (cross *in the gap* between A's edge and B's edge). Now slide B until those two
@@ -393,14 +501,36 @@ one; everything else above is a single drawing.
 
 ---
 
+## In the editor (`fastdrc gui`)
+
+- **Drag** on empty canvas: a new shape (all edges wavy). **Double-click** an edge:
+  straight ↔ wavy. **Right-click** an edge: split it.
+- **Shift-click two edges**: a measure. Two straight edges give a distance (bound it
+  with a constraint); a wavy end gives a **link** (a relation, no constraint). Select
+  the measure to set a **cross**, the metric, or edge-to-edge.
+- **`h`** on a shape: a hole. Lying inside a shape it is that shape's **void**
+  (`A.holes`) and moves with it.
+- Each shape shows how it **reads** — subject, operand, combined, cut out, filter,
+  forbidden, scope — in the tree and in its properties. This is derived from the
+  drawing; if it is not what you meant, the drawing says something else.
+- **Alternative cases**: "+ alternative case" turns the rule into several drawings,
+  any of which is a violation; switch between them with the case buttons.
+- With nothing selected the panel edits the rule's **name and description**. The
+  pane at the bottom shows the rule as text (or as the KLayout deck), live.
+
+---
+
 ## The subtle disambiguations (read these twice)
 
 | Two pictures that look alike | Distinguish by | Means |
 |---|---|---|
-| straight measure vs wavy measure | the edges it spans | a real distance (a *check*) vs a topological relation |
+| a measure between straight edges vs a link to a wavy edge | the edges it spans | a real distance (bounded by a constraint) vs a topological relation (no constraint) |
+| a plain link vs the same link **crossed** | the cross | a filter (*which* shapes) vs the check (this relation is forbidden) |
+| a length / corner constraint as `match` vs as `check` | the constraint's kind | selects what satisfies it vs flags what fails it |
+| a context **linked** to a shape vs an **unlinked** all-wavy one | is there a link (a measure to a wavy edge)? | filters that *shape* by the drawn relation vs scopes the *violations* to a region |
 | **touch** (coinciding edges) vs **overlap** (interiors cross) | the drawn relation | `interacting(Y)` (touch counts) vs `overlapping(Y)` ≡ `not_outside(Y)` (area overlap only) |
 | **one flagged instance** vs flagged + a **not-flagged counter-example** | is there a carve-out? | a positive selection vs a **negation** (`not_inside`) — the dropped relation labels which |
-| wavy `>= 0` vs no measure (both disjoint) | is there a measure? | `outside` selection (touch OK) vs `not_interacting` scope (strict) |
+| linked vs unlinked (both disjoint) | is there a link? | `outside` selection (touch OK) vs `not_interacting` scope (strict) |
 | a 2nd layer **covering** the measurement vs a **cutout off** it | where the measurement sits | combine (`.and`) vs remove (`.not`) |
 | a 2nd layer off the measurement: **real edge** vs **all wavy** | the layer's edges | a device cut out (remove, `.not`) vs a domain marker (filter/scope) |
 
@@ -410,8 +540,10 @@ one; everything else above is a single drawing.
 
 This model is validated against the GF180MCU deck by `tools/validate_klayout.py`
 (op-level round-trip: parse the deck rule → draw it via `as_drawn` → recompile →
-confirm the op matches) and `tools/behavioral_validate.py` (run both ops in
-KLayout, compare violations). The recipes above cover the declarative rule
+confirm the op matches) and `tools/differential_validate.py` (run our complete
+generated deck and the official statement in KLayout on many layouts per rule and
+compare the violation markers by XOR; `tools/behavioral_validate.py` is the older,
+weaker count-on-one-layout check). The recipes above cover the declarative rule
 families. **Not** geometry-by-example (separate, parameterized/universal forms):
 off-grid, density, antenna; and a small tail of **procedural** rules (multi-stage
 imperative layer algebra, e.g. via-3D enclosure) that are hand-coded algorithms
