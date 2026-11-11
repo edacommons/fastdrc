@@ -94,7 +94,13 @@ def rules_of(data) -> list:
     """The rules a file holds, each as a complete rule dict."""
     if not is_sheet(data):
         return [data]
-    scene = Rule({k: data.get(k, []) for k in ("shapes", "measures", "constraints")})
+    # the scene, knowing every rule's bounds: an arrow that ANY rule gives a number to is
+    # a distance for all of them, never a link another rule would follow
+    everything = list(data.get("constraints", [])) + [
+        dict(c, expr=c["expr"].replace("?", "1")) for r in data["rules"]
+        for c in r.get("constraints", []) if c.get("expr", "").strip()]
+    scene = Rule({"shapes": data.get("shapes", []), "measures": data.get("measures", []),
+                  "constraints": everything})
     shapes = {s["name"]: s for s in data.get("shapes", [])}
     measures = {m["name"]: m for m in data.get("measures", [])}
     edge_owner = {e["id"]: n for n, s in shapes.items() for e in s["edges"]}

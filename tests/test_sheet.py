@@ -216,3 +216,28 @@ def test_a_rule_without_a_number_can_still_hold_per_column():
     assert _ops(get("klayout").compile_data(sheet)) == {
         "df_12_3_3v_l1": "comp.not_inside(nplus.or(pplus)).not_interacting(dualgate)",
         "df_12_5v_l1": "comp.not_inside(nplus.or(pplus)).overlapping(dualgate)"}
+
+
+def test_an_arrow_one_rule_bounds_is_not_a_link_for_the_others():
+    # E8 has wavy ends, but a rule gives it a number: it is a distance. It must not be
+    # followed as a link that drags the tap into the well's other rules.
+    sheet = {"name": "S",
+             "shapes": [_rect("NW", 0, 0, 20, 14), _rect("PD", 4, 4, 9, 10), _rect("ND", 24, 4, 29, 10)],
+             "measures": [{"name": "E8", "from": "nw3", "to": "pd3"},
+                          {"name": "S9", "from": "nw1", "to": "nd3"}],
+             "constraints": [M("NW.layer == nwell"), M("PD.layer == pdiff"), M("ND.layer == ndiff")],
+             "rules": [{"name": "d.8", "constraints": [C("E8 >= 0.18")]},
+                       {"name": "d.9", "constraints": [C("S9 >= 0.34")]}]}
+    assert _ops(get("klayout").compile_data(sheet)) == {
+        "d_8_l1": "nwell.enclosing(pdiff, 0.18.um, euclidian).polygons(0.001)",
+        "d_9_l1": "nwell.separation(ndiff, 0.34.um, euclidian).polygons(0.001)"}
+
+
+def test_cli_warns_when_a_rule_checks_nothing(tmp_path, capsys):
+    import json
+    from fastdrc.cli import main
+    f = tmp_path / "r.json"
+    f.write_text(json.dumps({"name": "EMPTY.1", "shapes": [_rect("A", 0, 0, 4, 4)], "measures": [],
+                             "constraints": [M("A.layer == met1")]}))
+    main(["rules", str(f)])
+    assert "rule EMPTY.1 checks nothing" in capsys.readouterr().err

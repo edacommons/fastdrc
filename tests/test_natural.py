@@ -219,3 +219,65 @@ def test_crossed_out_shape_with_a_condition_is_one_rule():
     ops, _, _ = _rule([small], [{"kind": "match", "expr": "A.layer == comp"},
                                 {"kind": "match", "expr": "A.area < 0.2025"}])
     assert ops == ["comp.with_area(nil, 0.2025.um)"]
+
+
+def test_a_measure_given_a_number_is_a_distance_whatever_its_edges():
+    # forgetting to make a measured edge straight must not silently turn the rule into
+    # a relation: E >= 0.18 can only be a distance
+    well, tap = _rect("W", 0, 0, 20, 12), _rect("T", 12, 4, 16, 8)      # ALL edges left wavy
+    op, _, _ = _compile([well, tap], {"from": "w1", "to": "t1"}, {"W": "nwell", "T": "tap"},
+                        bound="E >= 0.18")
+    assert op == "nwell.enclosing(tap, 0.18.um, euclidian).polygons(0.001)"
+
+
+def test_width_of_a_or_b_is_each_of_them_and_spacing_is_between_any():
+    bar = _rect("A", 0, 0, 3, 10, {1, 3})
+    r = Rule({"name": "difftap.1", "desc": "d", "shapes": [bar],
+              "measures": [{"name": "W", "from": "a3", "to": "a1"}],
+              "constraints": [{"kind": "match", "expr": "A.layer in {diff, tap}"},
+                              {"kind": "check", "expr": "W >= 0.15"}]})
+    deck = get("klayout").compile(r)
+    assert ("diff.width(0.15.um, euclidian).polygons(0.001)"
+            ".or(tap.width(0.15.um, euclidian).polygons(0.001))") in deck
+    assert "each of diff or tap must be at least 0.15 µm wide" in get("docs").compile(r)
+    a, b = _rect("A", 0, 0, 3, 10, {1}), _rect("B", 5, 0, 8, 10, {3})
+    s = Rule({"name": "difftap.3", "desc": "d", "shapes": [a, b],
+              "measures": [{"name": "S", "from": "a1", "to": "b3"}],
+              "constraints": [{"kind": "match", "expr": "A.layer in {diff, tap}"},
+                              {"kind": "match", "expr": "B.layer in {diff, tap}"},
+                              {"kind": "check", "expr": "S >= 0.27"}]})
+    assert "diff.or(tap).space(0.27.um, euclidian).polygons(0.001)" in get("klayout").compile(s)
+
+
+def test_standalone_deck_reads_its_input_and_writes_a_report():
+    bar = _rect("A", 0, 0, 3, 10, {1, 3})
+    r = Rule({"name": "m1.1", "desc": 'width "min"', "shapes": [bar],
+              "measures": [{"name": "W", "from": "a3", "to": "a1"}],
+              "constraints": [{"kind": "match", "expr": "A.layer == met1"},
+                              {"kind": "check", "expr": "W >= 0.14"}]})
+    deck = get("klayout", layermap={"met1": (68, 20)}, standalone=True, title="demo").compile(r)
+    lines = deck.splitlines()
+    assert "  source($input)" in lines and 'report("demo", $report || "fastdrc_report.lyrdb")' in lines
+    assert lines.index("met1 = polygons(68, 20)") > lines.index("  source($input)")
+
+
+def test_spacing_to_a_wide_line_with_a_long_parallel_run():
+    # "Min. space of lines if at least one is wider than 0.3 and the parallel run is more
+    # than 1.0": the wide line carries a width FILTER, the spacing arrow a run-length
+    # filter, and the spacing bound is the one check.
+    wide, near = _rect("A", 0, 0, 8, 20, {1, 3}), _rect("B", 11, 0, 14, 20, {3})
+    r = Rule({"name": "M1.e", "desc": "wide metal spacing", "shapes": [wide, near],
+              "measures": [{"name": "Ww", "from": "a3", "to": "a1"},
+                           {"name": "S", "from": "a1", "to": "b3", "metric": "projection"}],
+              "constraints": [{"kind": "match", "expr": "A.layer == Metal1"},
+                              {"kind": "match", "expr": "B.layer == Metal1"},
+                              {"kind": "match", "expr": "Ww > 0.3"},
+                              {"kind": "match", "expr": "S.run > 1.0"},
+                              {"kind": "check", "expr": "S >= 0.22"}]})
+    ops = [ln.split("=", 1)[1].strip() for ln in get("klayout").compile(r).splitlines() if "_l1 =" in ln]
+    # one rule; the whole layer first, so its own edge does not hide the neighbour
+    assert ops == ["Metal1.separation(Metal1.sized(-0.15.um).sized(0.15.um), 0.22.um, projection, "
+                   "projecting > 1.um).polygons(0.001)"]
+    en = get("docs").compile(r)
+    assert "Metal1 at least 0.3 µm wide must be at least 0.22 µm from Metal1" in en
+    assert "where the edges run side by side for > 1 µm" in en

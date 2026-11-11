@@ -150,6 +150,18 @@ def _compile_rules(args):
     for path in args.files:
         with open(path) as f:
             rules += rules_of(json.load(f))
+    # a drawing that says nothing checkable must not pass silently
+    from .rule import Rule
+    silent = get("docs")
+    for r in rules:
+        try:
+            if "(no checkable assertion found)" in silent.compile(Rule(r)):
+                print(f"fastdrc: warning: rule {r.get('name') or '(unnamed)'} checks nothing "
+                      f"-- no bound, cross or 'in' applies to what is drawn", file=sys.stderr)
+        except Exception as ex:                      # noqa: BLE001
+            raise SystemExit(f"fastdrc: rule {r.get('name') or '(unnamed)'}: {ex}")
+    if args.to == "klayout":
+        kw.update(standalone=args.standalone, title=args.title)
     text = get(args.to, **(kw if args.to == "klayout" else {})).compile_all(rules)
     if args.out:
         with open(args.out, "w") as f:
@@ -200,6 +212,10 @@ def main(argv=None):
                          help="what to produce (default: a KLayout .drc deck)")
     rules_p.add_argument("--layermap", help="JSON file {layer name: [gds layer, datatype]}")
     rules_p.add_argument("-o", "--out", help="write here instead of standard output")
+    rules_p.add_argument("--standalone", action="store_true",
+                         help="a complete KLayout script (reads $input, writes $report): "
+                              "klayout -b -r deck.drc -rd input=layout.gds -rd report=out.lyrdb")
+    rules_p.add_argument("--title", default="FastDRC", help="report title (with --standalone)")
 
     gui_p = sub.add_parser(
         "gui", help="Launch the visual rule editor (Tkinter).")

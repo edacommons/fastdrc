@@ -213,7 +213,8 @@ class DocsBackend(Backend):
         if not select:                                  # MIN check -> a violation check
             v = _fmt(lo.value)
             if sf == st:
-                core = f"{subj} must be at least {v} µm wide"
+                core = (f"each of {subj} must be at least {v} µm wide" if "|" in (ds["base"] or "")
+                        else f"{subj} must be at least {v} µm wide")
             else:
                 rel = rule.relation(sf, st)
                 if rel in ("inside", "contains"):
@@ -295,6 +296,8 @@ class DocsBackend(Backend):
         if d["nots"]:
             phrase += " (excluding " + _join(sorted(self._name(n) for n in d["nots"])) + ")"
         phrase += clauses(d["selections"])
+        if d.get("wide"):
+            phrase += f" at least {_fmt(d['wide'])} µm wide"
         h = d.get("halo")
         if h:                                # the signed halo / margin (rounded reserved)
             phrase = (f"{phrase} grown by {_fmt(h)} µm" if h > 0

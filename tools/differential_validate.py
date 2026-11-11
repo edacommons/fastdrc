@@ -42,10 +42,20 @@ from fastdrc.backend import get                    # noqa: E402
 from fastdrc.rule import Rule                      # noqa: E402
 
 PITCH = 1_000_000
+# Another process: DECK=<its official KLayout deck>. Its layer table and statements may
+# not be in the form the GF180 parser reads, so a spec (validate.json) then carries the
+# layer map and, per rule, the official statement.
+if os.environ.get("DECK"):
+    vk.DECK = os.environ["DECK"]
 TEXT = open(vk.DECK, encoding="utf-8").read()
 LINES = TEXT.splitlines()
 LM = vk.parse_layermap(TEXT)
-RULES, _ = vk.parse_rules(TEXT, LM)
+try:
+    RULES, _ = vk.parse_rules(TEXT, LM) if not os.environ.get("DECK") else ([], None)
+except Exception:                                   # noqa: BLE001
+    RULES = []
+if os.environ.get("DECK"):
+    vk._VARDEFS.clear()
 CORPUS = os.path.join(REPO, "docs", "gf180mcu", "drawn_rules")
 
 
@@ -72,8 +82,12 @@ def spec_rule(name, sp):
     validation spec entry: {"official": output variable, "tag": text its output line
     contains (to pick one of several), "pre": [definitions], "like": {op, base, arg,
     value} (what kind of layout exercises it), "layouts": [[[layer, x0, y0, x1, y1]..]..]}."""
-    var, tag = sp["official"], sp.get("tag")
-    line = next(l for l in LINES if l.strip().startswith(var + ".output(") and (not tag or tag in l))
+    if sp.get("statement"):                         # the official expression, given directly
+        line = "__official = " + sp["statement"]
+    else:
+        var, tag = sp["official"], sp.get("tag")
+        line = next(l for l in LINES
+                    if l.strip().startswith(var + ".output(") and (not tag or tag in l))
     like = sp.get("like") or {}
     return {"id": name, "op": like.get("op", "width"), "base": like.get("base", "comp"),
             "arg": [like["arg"]] if like.get("arg") else [], "value": str(like.get("value", "")),
@@ -299,7 +313,9 @@ def main():
         from fastdrc.sheet import rules_of
         for f in sorted(glob.glob(os.path.join(cdir, "*.json"))):
             if os.path.basename(f) == "validate.json":   # how to check them, not a drawing
-                spec = json.load(open(f)).get("rules", {})
+                whole = json.load(open(f))
+                spec = whole.get("rules", {})
+                LM.update({k: tuple(v) for k, v in (whole.get("layermap") or {}).items()})
                 continue
             for j in rules_of(json.load(open(f))):      # a sheet holds many rules
                 cj.setdefault(j.get("name", os.path.basename(f)), []).append(j)
@@ -308,8 +324,12 @@ def main():
     for name in names:
         if ids and name not in ids:
             continue
-        if name in spec and spec[name].get("official"):  # a statement the parser can't read
-            r = spec_rule(name, spec[name])
+        if name in spec and (spec[name].get("official") or spec[name].get("statement")):
+            try:
+                r = spec_rule(name, spec[name])
+            except StopIteration:                     # the spec names a statement that isn't there
+                print(f"spec: no official statement {spec[name].get('official')!r} for {name}")
+                continue
         elif name in spec:                               # just realistic layouts for it
             r = dict(parsed[name], _layouts=spec[name].get("layouts"))
         else:

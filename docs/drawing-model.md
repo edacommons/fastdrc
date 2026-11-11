@@ -59,7 +59,9 @@ A measure is a named distance between two edges. **The edges' kind decides what 
 means:**
 
 - between **straight** edges → a **real oriented distance** → a *dimensional
-  check* (width / space / separation / enclosing).
+  check* (width / space / separation / enclosing). A measure that a constraint
+  gives a number to (`E >= 0.18`) is a distance too, however its edges were drawn —
+  a number cannot mean a relation.
 - to a **wavy** edge → **not a distance at all**, but a **link**: a topological
   assertion about how two shapes relate. It picks an `inside` / `outside` /
   `interacting` / `overlapping` selection from the *relation you drew* (see
@@ -524,6 +526,7 @@ And the phrases manuals use map onto drawings like this:
 |---|---|---|
 | *A width* / *A space* (notch included) | one shape / two shapes, an arrow | `A.width(v)` / `A.space(v)` |
 | *... with run length > x* | the same, plus the filter `S.run > x` | `A.space(v, projection, projecting > x)` |
+| *space to a line wider than w* | a width arrow on that line with the filter `Ww > w`, the spacing arrow with its check | `A.separation(A.sized(-w/2).sized(w/2), v)` |
 | *P space to Q, square check* / *projection check* | the measure's metric | `P.separation(Q, v, square)` |
 | *(P space to Q) checked over R* | R drawn over the measured stretch | `P.and(R).separation(Q.and(R), v)` |
 | *J overlap past K* / *J extension beyond K* | J and K crossing, an arrow from K's edge to J's end | `J.enclosing(K, v)` |
@@ -539,8 +542,14 @@ And the phrases manuals use map onto drawings like this:
 | *gate length*: poly edges over diffusion | poly crossing diffusion, an edge-to-edge width | `poly.edges.and((poly & diff).edges).width(v)` |
 | *minimum area* / *enclosed area* | `A.area >= v` / `A.holes.area >= v` | `A.with_area(nil, v)` / `A.holes.with_area(nil, v)` |
 
-Not drawn by example (yet): density, summed areas, counts ("must contain exactly n"),
-"span" (wide-line) conditions, and a required neighbour within a maximum distance.
+A layer **set** distributes the way the phrase does: "width of diff or tap" is the
+width of *each* (`diff.width(v)` or `tap.width(v)`), "spacing of diff or tap" is
+between *any* of them (`diff.or(tap).space(v)`). A zone "within x of" a layer is a
+legend entry: `"near_nwell": "nwell + 0.43"` (grown; `-` shrinks).
+
+Not drawn by example (yet): density, summed areas, counts ("must contain exactly n",
+contact arrays), shape-class filters ("square contacts only"), and a required
+neighbour within a maximum distance.
 
 ### Sheets — one figure, many rules
 
@@ -592,6 +601,21 @@ number that still holds per column lists them: `"columns": ["3.3V", "5V"]`.
 **A section note** — "these rules do not apply inside OTP_MK" — is `"except":
 ["otp_mk"]` on the sheet (every rule) or on one rule, instead of a cutout drawn into
 every shape.
+
+---
+
+## From drawings to a deck
+
+```
+fastdrc rules poly.sheet.json contact.sheet.json --layermap layers.json --standalone -o process.drc
+klayout -b -r process.drc -rd input=chip.gds -rd report=chip.lyrdb
+fastdrc rules poly.sheet.json --to docs          # the same rules as plain sentences
+```
+
+`layers.json` maps the layer names used in the drawings to GDS numbers:
+`{"poly": [66, 20], "diff": [65, 20]}`. Nothing in the compiler knows any process:
+layer names, values, columns and exemptions all come from the drawings. A rule that
+ends up checking nothing is reported as a warning rather than silently dropped.
 
 ---
 

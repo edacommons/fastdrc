@@ -158,11 +158,24 @@ class Rule:
         return False
 
     def measure_is_straight(self, mname):
-        """True if both endpoints of the measure are STRAIGHT edges -- a real,
-        oriented distance (a dimensional check). A measure across WAVY edges is
-        not a distance but a topological assertion (see relation_selections)."""
+        """True if the measure is a DISTANCE (a dimensional check): both its edges are
+        straight, or a constraint bounds it by a number. Otherwise it is a link -- a
+        topological assertion (see relation_selections)."""
         m = self.measures.get(mname)
-        return bool(m and self._edge_straight(m["from"]) and self._edge_straight(m["to"]))
+        if not m:
+            return False
+        if self._edge_straight(m["from"]) and self._edge_straight(m["to"]):
+            return True
+        # A measure that a constraint gives a real number to IS a distance, however its
+        # edges were drawn: `E >= 0.18` cannot mean a relation. (Only a bare measure,
+        # or the older `G >= 0`, is a link.) So forgetting to make a measured edge
+        # straight cannot silently turn a rule into something else.
+        return mname in self._bounded_measures()
+
+    def _bounded_measures(self):
+        if getattr(self, "_bounded", None) is None:
+            self._bounded = {b.var for b in self.bounds() if b.value != 0} | set(self.run_bounds())
+        return self._bounded
 
     def relation_selections(self):
         """A measure drawn to a WAVY edge is a LINK that asserts a topological relation,
@@ -533,6 +546,7 @@ class Rule:
             pre = [x for x in sel[shape] if x[1]["base"] in nots and not (
                 x[1]["ands"] or x[1]["nots"] or x[1]["selections"])]
             return {"base": self.layer_of(shape), "ands": ands, "nots": nots,
+                    "wide": self.wide_filters().get(shape),
                     "pre_selections": pre,
                     "selections": [x for x in sel[shape] if x not in pre],
                     "halo": self.halo(shape), "rounded": self.rounded(shape)}
@@ -696,7 +710,9 @@ class Rule:
                 continue
             if m.get("crossed"):
                 out.append((sf, sf, None))
-            elif self.measure_is_straight(name) and any(b.var == name for b in self.bounds()):
+            elif self.measure_is_straight(name) and any(
+                    b.var == name and (b.kind == "check" or sf != st or not b.is_min)
+                    for b in self.bounds()):
                 out.append((sf, st, name))
         out += [(sh, sh, None) for sh, *_ in self.area_bounds()]
         out += [(a, b, None) for a, b in self.inside_checks()]
@@ -847,6 +863,25 @@ class Rule:
                     out.append((a["ref"], b["ref"]))
         return out
 
+    def wide_filters(self) -> dict:
+        """``{shape: w}``: shapes that a FILTER says are wide -- a `match` minimum on a
+        width measured across the shape (``Ww > 0.3``) while the rule checks something
+        else about it ("space to a line wider than 0.3"). The shape then stands for
+        the parts of its layer at least that wide."""
+        pairs = [p for p in self.checked_pairs() if p[2]]
+        maxed = {b.var for b in self.bounds() if b.is_max}       # a band is a selector itself
+        out = {}
+        for b in self.bounds():
+            m = self.measures.get(b.var)
+            if not (m and b.kind != "check" and b.is_min and b.var not in maxed
+                    and self.measure_is_straight(b.var)):
+                continue
+            sf, st = self.shape_of_edge(m["from"]), self.shape_of_edge(m["to"])
+            # ... and some OTHER measure checks the shape
+            if sf == st and any(sf in (a, c) for a, c, var in pairs if var != b.var):
+                out[sf] = b.value
+        return out
+
     def distance_rules(self) -> list:
         """What each STRAIGHT (distance) measure's bounds ask for, as
         ``(var, lo, hi, select)`` with `lo` / `hi` the min / max `Bound` (or None).
@@ -857,9 +892,14 @@ class Rule:
         A ``match`` is a filter -- one entry (``select`` True) picking out what
         satisfies it: ``W <= v`` the narrow regions, ``v1 <= W < v2`` a band."""
         sel, out = {}, []
+        wide = self.wide_filters()
         for b in self.bounds():
             if not self.measure_is_straight(b.var):
                 continue
+            m = self.measures[b.var]
+            if (b.kind != "check" and b.is_min and self.shape_of_edge(m["from"]) in wide
+                    and self.shape_of_edge(m["from"]) == self.shape_of_edge(m["to"])):
+                continue                                 # a filter on an operand, not a rule
             if b.kind == "check":
                 out.append((b.var, b, None, False) if b.is_min else (b.var, None, b, False))
             else:
