@@ -123,8 +123,25 @@ class DocsBackend(Backend):
             out.append(f"every {subj} corner must be {_fmt(angle)}°." if others
                        else f"{subj} must have no {_fmt(angle)}° corner.")
         for edge, kind, form, lo, hi in rule.length_facts():
-            if edge not in eol_edges:
+            if edge not in eol_edges and edge not in rule.array_edges():
                 out.append(self._length(rule, edge, kind, form, lo, hi))
+        for a, b, shape in rule.either_bounds():
+            m = rule.measures[a.var]
+            sf, st = rule.shape_of_edge(m["from"]), rule.shape_of_edge(m["to"])
+            ds, dt, consumed = rule.measure_derivations(a.var)
+            other = self._fmt_deriv_en(dt if shape == sf else ds)
+            me, v = self._fmt_deriv_en(ds if shape == sf else dt), _fmt(a.value)
+            if rule.relation(sf, st) in ("inside", "contains"):
+                core = (f"{other} must enclose {me} by at least {v} µm on at least one of any two "
+                        f"adjacent sides")
+            else:
+                core = (f"{me} must be at least {v} µm from {other} on at least one of any two "
+                        f"adjacent sides (in one direction)")
+            out.append(self._with_scope(core + ".", self._scope(rule, sf, consumed)))
+        for shape, form in rule.form_checks():
+            subj = self._deriv_en(rule, shape)
+            out.append(f"every {subj} shape must be a square." if form == "square"
+                       else f"no {subj} shape may be a square.")
         for var in [v for v, mm in rule.measures.items() if mm.get("crossed")]:
             out.append(self._presence(rule, var))
         for var, cap, side in eol:
@@ -140,6 +157,15 @@ class DocsBackend(Backend):
         """One edge-length constraint. A CHECK states what every edge must satisfy (the
         ones that fail are flagged); a MATCH only says which edges are picked out."""
         subj = self._deriv_en(rule, rule.shape_of_edge(edge))
+        role = rule.side_roles().get(edge)
+        if role:                              # the long / short side: one answer per shape
+            side = "longer" if role == "long" else "shorter"
+            rng = (f"exactly {_fmt(lo)} µm" if form == "exact" else f"other than {_fmt(lo)} µm" if form == "not"
+                   else f"between {_fmt(lo)} and {_fmt(hi)} µm" if lo is not None and hi is not None
+                   else f"at least {_fmt(lo)} µm" if lo is not None else f"at most {_fmt(hi)} µm")
+            if kind == "check":
+                return f"the {side} side of every {subj} must be {rng}."
+            return f"{subj} whose {side} side is {rng} are flagged."
         if form == "range":
             rng = (f"between {_fmt(lo)} and {_fmt(hi)} µm" if lo is not None and hi is not None
                    else f"at least {_fmt(lo)} µm" if lo is not None else f"at most {_fmt(hi)} µm")
@@ -194,11 +220,13 @@ class DocsBackend(Backend):
                 core = f"{subj} must be at most {v} µm wide"
             elif rule.relation(sf, st) in ("inside", "contains"):
                 outer, inner = (arg, subj) if rule.relation(sf, st) == "inside" else (subj, arg)
-                core = f"{outer} must enclose {inner} by at most {v} µm"
+                core = f"no part of {outer} may reach more than {v} µm beyond {inner}"
+                return self._with_scope(core + ".", scope)
             elif subj == arg:
                 core = f"any two shapes of {subj} must be at most {v} µm apart"
             else:
-                core = f"{subj} must be at most {v} µm from {arg}"
+                core = f"every part of {subj} must be within {v} µm of {arg}"
+                return self._with_scope(core + ".", scope)
             return self._with_scope(core + f" ({mt}).", scope)
         over = None if select or hi is not None else rule.overlap_reading(var)
         if over:                                        # partly overlapping shapes
@@ -226,6 +254,8 @@ class DocsBackend(Backend):
                     core = f"any two shapes of {subj} must be at least {v} µm apart"
                 else:
                     core = f"{subj} must be at least {v} µm from {arg}"
+                    if rule.cut_apart(ds, dt):     # they share the edge of the cut itself
+                        core += " (where the two abut is not a spacing)"
             run = rule.run_bounds().get(var)
             if run:
                 core += f", where the edges run side by side for {run[0]} {_fmt(run[1])} µm"
@@ -276,6 +306,13 @@ class DocsBackend(Backend):
         exact counterpart of the KLayout backend's `_fmt_deriv`, over the SAME facts."""
         from collections import defaultdict
         phrase = self._name(d["base"])
+        if d.get("form"):                    # the shape class a filter states
+            phrase = ("square " if d["form"] == "square" else "non-square ") + phrase
+        arr = d.get("array")
+        if arr:                              # members of a large enough array
+            dims = f"{arr['rows']} rows and {arr['columns']} columns"
+            phrase += (f" in an array of at least {dims} (shapes within {_fmt(arr['gap'])} µm of each other"
+                       + (f", each {_fmt(arr['size'])} µm" if arr["size"] is not None else "") + ")")
         if d["ands"]:
             phrase += " combined with " + _join(sorted(self._name(a) for a in d["ands"]))
 

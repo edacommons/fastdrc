@@ -281,3 +281,178 @@ def test_spacing_to_a_wide_line_with_a_long_parallel_run():
     en = get("docs").compile(r)
     assert "Metal1 at least 0.3 µm wide must be at least 0.22 µm from Metal1" in en
     assert "where the edges run side by side for > 1 µm" in en
+
+
+# --- shape class: comparing two SIDES of a shape says what kind of shape it is ---
+
+def _sized(constraints, shapes=None):
+    shapes = shapes or [_rect("K", 0, 0, 2, 2)]
+    rule = {"name": "R", "desc": "r", "shapes": shapes, "measures": [],
+            "constraints": [{"kind": "match", "expr": f"{s['name']}.layer == cont"} for s in shapes]
+            + [{"kind": k, "expr": e} for k, e in constraints]}
+    r = Rule(rule)
+    ops = [ln.split("=", 1)[1].strip() for ln in get("klayout").compile(r).splitlines() if "_l" in ln and " = " in ln]
+    return ops, [ln.strip() for ln in get("docs").compile(r).splitlines()[1:]]
+
+
+def test_equal_sides_as_a_filter_pick_the_squares():
+    # "contact size" in a manual that treats bars separately: the rule is about squares
+    ops, en = _sized([("match", "k0.length == k1.length"), ("check", "k0.length == 0.16")])
+    assert ops == ["cont.squares.edges.without_length(0.16.um)"]
+    assert en == ["• every square cont edge must be exactly 0.16 µm long "
+                  "(any other length is flagged — a min/max size check)."]
+
+
+def test_a_longer_side_makes_a_bar_and_names_its_two_extents():
+    bar = [_rect("K", 0, 0, 8, 2)]
+    longer = ("match", "k0.length > k1.length")
+    ops, en = _sized([longer, ("check", "k1.length == 0.16")], bar)
+    assert ops == ["cont.non_squares.without_bbox_min(0.16.um)"]
+    assert en == ["• the shorter side of every non-square cont must be exactly 0.16 µm."]
+    ops, en = _sized([longer, ("check", "k0.length >= 0.34")], bar)
+    assert ops == ["cont.non_squares.with_bbox_max(nil, 0.34.um)"]
+    assert en == ["• the longer side of every non-square cont must be at least 0.34 µm."]
+
+
+def test_equal_sides_as_a_check_mean_must_be_square():
+    ops, en = _sized([("check", "k0.length == k1.length")])
+    assert ops == ["cont.non_squares"]
+    assert en == ["• every cont shape must be a square."]
+
+
+def test_the_shape_class_follows_the_shape_into_a_spacing_rule():
+    a, b = _rect("A", 0, 0, 8, 2, {2}), _rect("B", 0, 5, 8, 7, {0})
+    rule = {"name": "R", "desc": "r", "shapes": [a, b], "measures": [{"name": "S", "from": "a2", "to": "b0"}],
+            "constraints": [{"kind": "match", "expr": "A.layer == cont"}, {"kind": "match", "expr": "B.layer == cont"},
+                            {"kind": "match", "expr": "a0.length > a1.length"},
+                            {"kind": "match", "expr": "b0.length > b1.length"},
+                            {"kind": "check", "expr": "S >= 0.28"}]}
+    out = get("klayout").compile(Rule(rule))
+    assert "cont.non_squares.space(0.28.um, euclidian).polygons(0.001)" in out
+
+
+# --- found by running a generated deck on real standard cells ---
+
+def test_a_layer_cut_out_of_another_abuts_it_without_violating_their_spacing():
+    # "P+ implant space to N+ diffusion", N+ diffusion being diffusion outside the
+    # implant: a butted tap puts the two edge to edge by construction
+    imp, nd = _rect("P", 0, 0, 4, 4, {1}), _rect("N", 6, 0, 10, 4, {3})
+    rule = {"name": "R", "desc": "r", "shapes": [imp, nd], "layers": {"ndiff": "diff and not pimp"},
+            "measures": [{"name": "S", "from": "p1", "to": "n3"}],
+            "constraints": [{"kind": "match", "expr": "P.layer == pimp"}, {"kind": "match", "expr": "N.layer == ndiff"},
+                            {"kind": "check", "expr": "S >= 0.18"}]}
+    r = Rule(rule)
+    assert "pimp.separation(ndiff, 0.18.um, euclidian).polygons\n" in get("klayout").compile(r)
+    assert "(where the two abut is not a spacing)" in get("docs").compile(r)
+    rule["layers"] = {"ndiff": "diff and nimp"}            # no cut: abutting is a zero spacing
+    assert ".polygons(0.001)" in get("klayout").compile(Rule(rule))
+
+
+def test_a_shape_marked_whole_stands_for_its_layer_anywhere():
+    # "contact on diffusion, space to poly" drawn at a gate: the poly is over diffusion in
+    # the picture, but the rule is about poly wherever it is
+    diff, gate, k = _rect("D", 0, 0, 20, 12), _rect("G", 9, -4, 11, 16, {3}), _rect("K", 4, 5, 5, 6, {1})
+    args = ([diff, gate, k], {"from": "k1", "to": "g3"}, {"D": "diff", "G": "poly", "K": "cont"})
+    assert _compile(*args)[0] == "cont.and(diff).separation(poly.and(diff), 0.22.um, euclidian).polygons(0.001)"
+    gate["whole"] = True
+    assert _compile(*args)[0] == "cont.and(diff).separation(poly, 0.22.um, euclidian).polygons(0.001)"
+
+
+# --- arrays: "spacing in an N x N or larger array" ---
+
+def _array_rule(extra):
+    a, b = _rect("A", 0, 0, 4, 4, {1}), _rect("B", 6, 0, 10, 4, {3})
+    rule = {"name": "R", "desc": "r", "shapes": [a, b], "measures": [{"name": "S", "from": "a1", "to": "b3"}],
+            "constraints": [{"kind": "match", "expr": "A.layer == cont"}, {"kind": "match", "expr": "B.layer == cont"},
+                            *({"kind": "match", "expr": e} for e in extra), {"kind": "check", "expr": "S >= 0.28"}]}
+    r = Rule(rule)
+    deck = get("klayout").compile(r)
+    ops = [ln.split("=", 1)[1].strip() for ln in deck.splitlines() if ln.startswith("r_l") and " = " in ln]
+    return ops, get("docs").compile(r).splitlines()[1].strip(), deck
+
+
+def test_spacing_inside_a_large_array():
+    both = ["A.rows >= 4 and A.columns >= 4", "B.rows >= 4 and B.columns >= 4"]
+    # the element size and how close makes an array are filters, not rules of their own
+    ops, en, deck = _array_rule(both + ["a0.length == 0.22", "b0.length == 0.22", "S < 0.36"])
+    assert ops == ["cont_array_4x4.space(0.28.um, euclidian).polygons(0.001)"]
+    assert ("cont_array_4x4 = cont.inside(cont.sized(0.18.um).sized(-0.18.um).sized(-0.69.um).sized(0.69.um))"
+            in deck)
+    assert en == ("• any two shapes of cont in an array of at least 4 rows and 4 columns (shapes within "
+                  "0.36 µm of each other, each 0.22 µm) must be at least 0.28 µm apart (euclidian).")
+
+
+def test_an_array_without_a_stated_size_is_taken_by_count_and_the_checked_spacing():
+    ops, _, deck = _array_rule(["A.rows > 4 and A.columns > 4", "B.rows > 4 and B.columns > 4"])
+    group = "cont.sized(0.14.um).sized(-0.14.um)"
+    assert ops == ["cont_array_5x5.space(0.28.um, euclidian).polygons(0.001)"]
+    assert f"cont_array_5x5 = cont.inside({group}.interacting(cont, 25))" in deck
+
+
+def test_rows_and_columns_may_differ():
+    _, _, deck = _array_rule(["A.rows >= 2 and A.columns >= 5", "B.rows >= 2 and B.columns >= 5",
+                              "a0.length == 0.2", "b0.length == 0.2"])
+    assert ".sized(-0.82.um, -0.1.um).sized(0.82.um, 0.1.um)" in deck
+
+
+def test_a_layer_set_can_be_spelled_with_in_or_with_or():
+    def op(expr):
+        big, k = _rect("D", 0, 0, 10, 10, {3}), _rect("L", 4, 4, 6, 6, {3})
+        rule = {"name": "R", "desc": "r", "shapes": [big, k], "measures": [{"name": "E", "from": "d3", "to": "l3"}],
+                "constraints": [{"kind": "match", "expr": expr}, {"kind": "match", "expr": "L.layer == licon"},
+                                {"kind": "check", "expr": "E >= 0.04"}]}
+        return next(ln for ln in get("klayout").compile(Rule(rule)).splitlines() if "_l1 =" in ln)
+    assert "diff.or(tap).enclosing(licon" in op("D.layer in {diff, tap}")
+    assert op("D.layer == diff or D.layer == tap") == op("D.layer in {diff, tap}")
+
+
+# --- "on one of two adjacent sides": a check that either of two arrows reaches the value ---
+
+def test_enclosure_on_one_of_two_adjacent_sides():
+    m, k = _rect("M", 0, 0, 10, 10), _rect("K", 3, 3, 5, 5)
+    rule = {"name": "R", "desc": "r", "shapes": [m, k],
+            "measures": [{"name": "Ea", "from": "m3", "to": "k3"}, {"name": "Eb", "from": "m0", "to": "k0"}],
+            "constraints": [{"kind": "match", "expr": "M.layer == met"}, {"kind": "match", "expr": "K.layer == via"},
+                            {"kind": "check", "expr": "Ea >= 0.06 or Eb >= 0.06"}]}
+    r = Rule(rule)
+    out = get("klayout").compile(r)
+    assert ("r_l1 = via.interacting(met.enclosing(via, 0.06.um, projection, whole_edges).second_edges"
+            ".width(angle_limit(100.0), 1.dbu).polygons(0.001))") in out
+    assert out.count(".output(") == 1                       # one rule, not one per arrow
+    assert get("docs").compile(r).splitlines()[1].strip() == (
+        "• met must enclose via by at least 0.06 µm on at least one of any two adjacent sides.")
+
+
+def test_spacing_in_at_least_one_direction():
+    a, right, up = _rect("A", 0, 0, 2, 2), _rect("B", 4, 0, 6, 2), _rect("C", 0, 4, 2, 6)
+    rule = {"name": "R", "desc": "r", "shapes": [a, right, up],
+            "measures": [{"name": "Sx", "from": "a1", "to": "b3"}, {"name": "Sy", "from": "a2", "to": "c0"}],
+            "constraints": [*({"kind": "match", "expr": f"{n}.layer == cont"} for n in "ABC"),
+                            {"kind": "check", "expr": "Sx >= 0.2 or Sy >= 0.2"}]}
+    out = get("klayout").compile(Rule(rule))
+    assert ("r_l1 = cont.interacting(cont.space(0.2.um, projection, whole_edges).edges.and(cont.edges)"
+            ".width(angle_limit(100.0), 1.dbu).polygons(0.001))") in out
+    assert out.count(".output(") == 1
+
+
+def test_or_with_zero_is_still_coinciding_allowed():
+    big, k = _rect("M", 0, 0, 10, 10, {3}), _rect("K", 3, 3, 5, 5, {3})
+    op, en, _ = _compile([big, k], {"from": "m3", "to": "k3"}, {"M": "met", "K": "via"}, bound="E >= 0.06 or E == 0")
+    assert op == "met.enclosing(via, 0.06.um, euclidian).polygons"
+
+
+# --- a MAXIMUM between two shapes: every part of the first within reach of the second ---
+
+def test_every_part_must_be_within_a_distance_of_a_neighbour():
+    # latch-up: "max. distance from any diffusion to a well tap"
+    a, t = _rect("A", 0, 0, 4, 4, {1}), _rect("T", 8, 0, 10, 4, {3})
+    op, en, _ = _compile([a, t], {"from": "a1", "to": "t3"}, {"A": "pdiff", "T": "ntap"}, bound="E <= 20")
+    assert op == "pdiff.not(ntap.sized(20.um))"
+    assert en == "• every part of pdiff must be within 20 µm of ntap."
+
+
+def test_a_maximum_enclosure_is_about_how_far_the_outer_reaches():
+    tie, k = _rect("T", 0, 0, 10, 4, {1}), _rect("K", 1, 1, 3, 3, {1})
+    op, en, _ = _compile([tie, k], {"from": "k1", "to": "t1"}, {"T": "tie", "K": "cont"}, bound="E <= 6")
+    assert op == "tie.not(cont.sized(6.um))"
+    assert en == "• no part of tie may reach more than 6 µm beyond cont."

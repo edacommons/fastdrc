@@ -241,3 +241,32 @@ def test_cli_warns_when_a_rule_checks_nothing(tmp_path, capsys):
                              "constraints": [M("A.layer == met1")]}))
     main(["rules", str(f)])
     assert "rule EMPTY.1 checks nothing" in capsys.readouterr().err
+
+
+def test_cli_warns_about_a_layer_the_layer_map_does_not_give(tmp_path, capsys):
+    # found on real cells: a rule on a layer read by name sees nothing and flags it all
+    import json
+    from fastdrc.cli import main
+    f, lm = tmp_path / "r.json", tmp_path / "lm.json"
+    f.write_text(json.dumps({"name": "E.1", "shapes": [_rect("M", 0, 0, 10, 10), _rect("V", 4, 4, 6, 6)],
+                             "measures": [{"name": "E", "from": "m3", "to": "v3"}],
+                             "constraints": [M("M.layer == met1"), M("V.layer == via"), C("E >= 0.03")]}))
+    lm.write_text(json.dumps({"via": [67, 44]}))
+    main(["rules", str(f), "--layermap", str(lm)])
+    err = capsys.readouterr().err
+    assert "no layer number for met1" in err and "via" not in err
+
+
+def test_a_same_layer_shape_on_another_rules_arrow_is_reported():
+    # met while extending a real sheet: a contact added for one rule sat on the arrow of
+    # another and silently became part of it
+    sheet = {"name": "S", "shapes": [_rect("D", 0, 0, 20, 12), _rect("KA", 8, 5, 9, 6), _rect("KX", 3.5, 5.2, 4.5, 5.8)],
+             "measures": [{"name": "E", "from": "d3", "to": "ka3"}],
+             "constraints": [M("D.layer == diff"), M("KA.layer == cont"), M("KX.layer == cont")],
+             "rules": [{"name": "c.1", "constraints": [C("E >= 0.07")]}]}
+    (rule,) = rules_of(sheet)
+    assert [s["name"] for s in rule["shapes"]] == ["D", "KA", "KX"]
+    assert "shape KX lies on an arrow of this rule" in rule["warnings"][0]
+    sheet["rules"][0]["without"] = ["KX"]
+    (rule,) = rules_of(sheet)
+    assert [s["name"] for s in rule["shapes"]] == ["D", "KA"] and "warnings" not in rule

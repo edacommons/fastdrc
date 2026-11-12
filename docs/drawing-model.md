@@ -194,7 +194,8 @@ part left outside it":
 dualgate must not extend beyond it".
 
 **Several layers at once (a layer set).** When the same shape stands for *any of*
-several layers, give it a set: `X.layer in {mvsd, otp_mk, ymtp_mk}`. One cutout with
+several layers, give it a set: `X.layer in {mvsd, otp_mk, ymtp_mk}` (or spelled out,
+`X.layer == mvsd or X.layer == otp_mk or …` — the same thing). One cutout with
 a set removes each member (`.not(mvsd).not(otp_mk).not(ymtp_mk)`); anywhere else the
 set is the union of its layers (`.not_interacting(dualgate.or(v5_xtor))`).
 
@@ -387,6 +388,80 @@ is a violation. Draw the layer with a straight edge and the check `e.length == 0
 `.extended` so they're outputtable:
 → `contact.edges.without_length(0.22).extended(0, 0, 0.001, 0.001)`
 
+### Shape class — squares and bars (comparing two sides)
+Manuals often split one layer by the *kind* of shape: "contact" is the square one,
+"contact bar" the long one, each with its own rules. Say it the way the figure does —
+by how two **sides of the same shape** compare. It is a filter (`match`), so it narrows
+the layer wherever that shape is used in the rule (a size, a spacing, an enclosure):
+
+| match | the shape stands for | compiles to |
+|---|---|---|
+| `k0.length == k1.length` | the squares of its layer | `layer.squares` |
+| `k0.length > k1.length` (or `<`, `!=`) | the others — bars | `layer.non_squares` |
+
+Once two sides are ordered, they are the shape's **long** and **short** side, and a
+length constraint on one of them is about that extent of the whole shape (one answer
+per shape), not about every edge:
+
+| with `k0.length > k1.length` | flags | compiles to |
+|---|---|---|
+| check `k1.length == 0.16` (bar width) | bars whose short side is not 0.16 | `layer.non_squares.without_bbox_min(0.16)` |
+| check `k0.length >= 0.34` (bar length) | bars shorter than 0.34 | `layer.non_squares.with_bbox_max(nil, 0.34)` |
+
+Written as a **`check`**, the comparison is the rule itself: `k0.length == k1.length`
+means "must be square" and flags `layer.non_squares`.
+
+### "On one of two adjacent sides" — either of two arrows is enough
+Via and contact enclosures are often stated per side: *enclosed by 0.06 on one of two
+adjacent sides* (equivalently: on two opposite sides), the *endcap* enclosure. Draw the
+inner shape near a corner of the outer one, an arrow on each of two **adjacent** sides,
+and one check joining them with `or`:
+
+    Ea >= 0.06 or Eb >= 0.06
+
+The shape fails where two of its sides that meet at a corner both fall short (a side
+falls short if any part of it does):
+→ `via.interacting(met.enclosing(via, v, projection, whole_edges).second_edges.width(angle_limit(100), 1.dbu).polygons(0.001))`
+
+The same form works for a spacing in two directions — "the spacing is only required in
+one direction": arrows to the neighbour beside and the neighbour above, `Sx >= v or
+Sy >= v`. (`E >= v or E == 0` on a *single* arrow is something else: coinciding edges
+are allowed.)
+
+### Arrays — "spacing in an N × N or larger array"
+Draw two neighbours of the array with the spacing arrow and its check, and say with a
+filter on each that it sits in an array: `match K.rows >= 4 and K.columns >= 4`
+(`> 4` for "more than 4"). Two more filters make it exact, both read off the same
+picture:
+
+| filter | says | if left out |
+|---|---|---|
+| `k0.length == 0.22` (a side of the element) | how big one element is | the array is taken by **count** (at least rows × columns shapes in the group) |
+| `S < 0.36` on the spacing arrow | how close neighbours must be to count as one array | the checked spacing itself |
+
+Shapes that close to one another form a group; a group at least N elements across
+is wider than N−1 elements could ever span inside a group, so the parts of the group
+that wide in both directions are the large array, and the shapes inside it are checked:
+→ `K.inside(K.sized(g/2).sized(-g/2).sized(-t/2).sized(t/2)).space(v)`
+with `g` the grouping distance and `t = (N−1)·size + (N−2)·g`. Rows and columns may
+differ (rows are counted along y).
+
+### The whole layer, although something lies under it in the picture
+A shape normally means "this layer *here*": whatever is drawn under the spot where
+the arrow touches it combines with it (poly over diffusion is read as the gate). When
+the rule is about the layer wherever it is — "contact on diffusion, space to **poly**",
+drawn at a transistor because that is where it matters — mark the shape as the whole
+layer (`"whole": true` on the shape, or `"whole": ["GATE"]` on one rule of a sheet):
+→ `cont.and(diff).separation(poly, v)` instead of `…separation(poly.and(diff), v)`.
+Manuals usually say which they mean ("poly **on diffusion**", "gate" vs just "poly").
+
+### Two layers that meet because one is cut out of the other
+If the legend defines one layer as what is left after removing another
+(`"ndiff": "diff and not pimp"`), the two share an edge wherever the cut runs — a
+butted tap. That is the definition, not a spacing of zero, so a spacing rule between
+them ignores the shared edge and still flags every real gap that is too small:
+→ `pimp.separation(ndiff, v).polygons` (no 1 nm widening of zero-width pairs).
+
 ### Gate width (poly over the gate) — a directional edge width
 A transistor gate is a **poly line crossing a comp region**; the channel width is
 the poly width *at the crossing*. Draw the poly `A` (its two measured edges
@@ -415,6 +490,14 @@ As a **`check`** (what must hold — where it fails is flagged):
 | `W >= 0.28` | the narrower | `metal1.width(0.28)` |
 | `W <= 5` | the wider (a *maximum* width) | `metal1.drc(width > 5)` |
 | `W >= 0.28 and W <= 5` | both | the two checks above |
+| `S <= 20` (an arrow from A to B) | every part of A farther than 20 from any B — "must be within 20 µm of a tap" | `A.not(B.sized(20))` |
+| `E <= 6` (inner inside outer) | the parts of the outer reaching more than 6 beyond the inner | `outer.not(inner.sized(6))` |
+
+A maximum between two shapes is about **every part** of the first: the far end of a
+long shape is flagged, and so is a shape with no partner near at all. The arrow starts
+at the shape that must be near (the diffusion) and ends at what it must be near to (the
+tap). For "the shape as a whole needs one within reach" use a halo and a cross instead
+(below).
 
 As a **`match`** (a filter — it *selects* the region that satisfies it; a rule with
 only filters flags what they select):
@@ -428,8 +511,8 @@ only filters flags what they select):
 | `0.04 <= E < 0.06` | `via1.drc(0.04 <= enclosed(metal1) < 0.06)` |
 | `W >= 2` | `metal1.drc(width >= 2)` |
 
-(A "greater than" predicate is KLayout's: it returns the edges that have no partner
-within the distance.)
+(A "greater than" predicate on a width is KLayout's: it returns the edges that have no
+partner within the distance — checked on straight and L-shaped lines around the limit.)
 
 ### A configuration that must never exist (the cross)
 Most rules check a *quantity* ("this distance is too small"). The other half of DRC
@@ -527,6 +610,9 @@ And the phrases manuals use map onto drawings like this:
 | *A width* / *A space* (notch included) | one shape / two shapes, an arrow | `A.width(v)` / `A.space(v)` |
 | *... with run length > x* | the same, plus the filter `S.run > x` | `A.space(v, projection, projecting > x)` |
 | *space to a line wider than w* | a width arrow on that line with the filter `Ww > w`, the spacing arrow with its check | `A.separation(A.sized(-w/2).sized(w/2), v)` |
+| *enclosure on one of two adjacent sides* / *endcap enclosure* | an arrow on each of two adjacent sides, `Ea >= v or Eb >= v` | `inner.interacting(<corners where both sides fall short>)` |
+| *space in a 4 × 4 or larger array* | two neighbours, the spacing arrow, the filter `K.rows >= 4 and K.columns >= 4` | `K.inside(<large groups>).space(v)` |
+| *square contacts only* / *contact bar* (a rule per shape class) | the filter that two sides are equal / that one is longer | `A.squares` / `A.non_squares` |
 | *P space to Q, square check* / *projection check* | the measure's metric | `P.separation(Q, v, square)` |
 | *(P space to Q) checked over R* | R drawn over the measured stretch | `P.and(R).separation(Q.and(R), v)` |
 | *J overlap past K* / *J extension beyond K* | J and K crossing, an arrow from K's edge to J's end | `J.enclosing(K, v)` |
@@ -617,6 +703,22 @@ fastdrc rules poly.sheet.json --to docs          # the same rules as plain sente
 layer names, values, columns and exemptions all come from the drawings. A rule that
 ends up checking nothing is reported as a warning rather than silently dropped.
 
+**Check the deck on a real layout.** Small test cases only show that a rule fires at
+its threshold; real cells show what it does everywhere else (butted taps, notched
+diffusion, bars among the contacts). If the process has a reference deck, run both on
+the same layout — a clean one, and one with errors put in — and compare by place:
+
+    klayout -b -r tools/cells_in_a_row.rb -rd in=stdcells.gds -rd out=all.gds
+    klayout -b -r tools/perturb_layout.rb -rd in=all.gds -rd out=edited.gds -rd seed=1
+    klayout -b -r ours.drc      -rd input=edited.gds -rd report=ours.lyrdb
+    klayout -b -r reference.drc -rd input=edited.gds -rd report=reference.lyrdb ...
+    tools/compare_reports.py ours.lyrdb reference.lyrdb [--rename _thin= ...]
+
+The first puts a library's cells side by side in one flat cell, the second moves a few
+hundred edges by tens of nanometres, the last lists, per rule, whether the two runs
+flag the same places — and, for rules the reference deck does not have, what ours
+flags (on the clean layout: nothing, or the drawing says more than the manual).
+
 ---
 
 ## In the editor (`fastdrc gui`)
@@ -631,6 +733,12 @@ ends up checking nothing is reported as a warning rather than silently dropped.
 - Each shape shows how it **reads** — subject, operand, combined, cut out, filter,
   forbidden, scope — in the tree and in its properties. This is derived from the
   drawing; if it is not what you meant, the drawing says something else.
+- A shape's properties also carry its **mark** (✗ forbidden / ✓ allowed), its halo, and
+  what it **stands for**: "its layer here" (what lies under the arrow combines with it)
+  or "anywhere on its layer".
+- Shape class, arrays and "one of two sides" are ordinary constraints in the
+  constraints table (`k0.length == k1.length`, `K.rows >= 4 and K.columns >= 4`,
+  `Ea >= v or Eb >= v`).
 - **Alternative cases**: "+ alternative case" turns the rule into several drawings,
   any of which is a violation; switch between them with the case buttons.
 - With nothing selected the panel edits the rule's **name and description**. The

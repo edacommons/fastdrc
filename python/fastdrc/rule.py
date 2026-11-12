@@ -112,6 +112,7 @@ class Rule:
         self._edge_owner = {e["id"]: name
                             for name, s in self.shapes.items() for e in s["edges"]}
         self._anchors = {}    # shape -> the point it is checked at, while reading a measure
+        self._partners = set()   # shapes of the partner arrow of a "one of two sides" check
 
     @staticmethod
     def _filtered_shapes(data):
@@ -174,7 +175,11 @@ class Rule:
 
     def _bounded_measures(self):
         if getattr(self, "_bounded", None) is None:
-            self._bounded = {b.var for b in self.bounds() if b.value != 0} | set(self.run_bounds())
+            self._bounded = set()              # (set first: _either is asked while it fills)
+            either = {x.var for kind, ast in self.constraints if kind == "check"
+                      for x in (self._either(ast) or ())[:2]}
+            self._bounded = ({b.var for b in self.bounds() if b.value != 0} | either
+                             | set(self.run_bounds()))
         return self._bounded
 
     def relation_selections(self):
@@ -266,6 +271,49 @@ class Rule:
                     lh = spans.setdefault((edge, kind), [None, None])
                     lh[0 if op in (">", ">=") else 1] = num
         out += [(e, k, "range", lo, hi) for (e, k), (lo, hi) in spans.items()]
+        return out
+
+    def side_relations(self) -> list:
+        """Constraints that compare two SIDES of one shape -- ``a.length == b.length``,
+        ``a.length > b.length`` -- as ``(kind, shape, a, op, b)``. They say what KIND of
+        shape it is (a square, a bar), not how big."""
+        out = []
+        for kind, ast in self.constraints:
+            for leaf in _and_leaves(ast):
+                if not (isinstance(leaf, dict) and leaf.get("op") in ("==", "!=", "<", ">", "<=", ">=")):
+                    continue
+                a, b = (x.get("ref", "") if isinstance(x, dict) else "" for x in leaf["args"])
+                if a.endswith(".length") and b.endswith(".length"):
+                    ea, eb = a[:-7], b[:-7]
+                    sa = self.shape_of_edge(ea)
+                    if sa and sa == self.shape_of_edge(eb) and ea != eb:
+                        out.append((kind, sa, ea, leaf["op"], eb))
+        return out
+
+    def shape_forms(self) -> dict:
+        """``{shape: "square" | "oblong"}`` -- the shape class a FILTER states: a `match`
+        that two sides are equal picks the squares of the layer, one that they differ
+        (``!=``, ``<``, ``>``) the others (a bar)."""
+        return {shape: "square" if op == "==" else "oblong"
+                for kind, shape, _, op, _ in self.side_relations() if kind != "check"}
+
+    def form_checks(self) -> list:
+        """``(shape, form)``: a CHECK comparing two sides asserts the shape class --
+        ``a.length == b.length`` "must be square" (the others are flagged)."""
+        return [(shape, "square" if op == "==" else "oblong")
+                for kind, shape, _, op, _ in self.side_relations() if kind == "check"]
+
+    def side_roles(self) -> dict:
+        """``{edge: "long" | "short"}`` for sides a constraint orders by length
+        (``a.length > b.length``: a is the long side of its shape, b the short one). A
+        length constraint on such a side is about the shape's longer / shorter extent,
+        not about every edge."""
+        out = {}
+        for _, _, a, op, b in self.side_relations():
+            if op in (">", ">="):
+                out[a], out[b] = "long", "short"
+            elif op in ("<", "<="):
+                out[a], out[b] = "short", "long"
         return out
 
     def length_spans(self) -> dict:
@@ -381,6 +429,12 @@ class Rule:
         sf, st = self.shape_of_edge(m["from"]), self.shape_of_edge(m["to"])
         if not self.measure_is_straight(mname) or m.get("crossed"):
             return self.check_derivations(sf, st)
+        # the other arrow of a "one of two sides" pair goes to a neighbour that is part
+        # of the same statement, not a context of this one
+        for ba, bb, _ in self.either_bounds():
+            if mname in (ba.var, bb.var):
+                pm = self.measures[bb.var if mname == ba.var else ba.var]
+                self._partners = {self.shape_of_edge(pm["from"]), self.shape_of_edge(pm["to"])} - {sf, st}
         a, b = self.measure_spots(mname)
         if sf == st:
             self._anchors = {sf: ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)}
@@ -389,7 +443,7 @@ class Rule:
         try:
             return self.check_derivations(sf, st)
         finally:
-            self._anchors = {}
+            self._anchors, self._partners = {}, set()
 
     def _facing_points(self, ea, eb):
         """The pair of points, one on each edge, where a measure between the two edges
@@ -431,7 +485,12 @@ class Rule:
 
     def covering(self, shape):
         """Other shapes whose polygon contains this shape's DEVICE point -- the
-        measured region sits inside them, so they COMBINE into its layer (.and)."""
+        measured region sits inside them, so they COMBINE into its layer (.and).
+
+        A shape marked ``"whole": true`` stands for its layer wherever it is, whatever
+        happens to lie under it in the picture ("space to poly", drawn at a gate)."""
+        if self.shapes[shape].get("whole"):
+            return []
         pt = self.device_point(shape)
         return [s for s in self.shapes
                 if s != shape and topology.contains(self.polygon(s), pt)]
@@ -463,7 +522,8 @@ class Rule:
     # --- constraint facts (mined from the parsed ASTs) ---
     def layer_of(self, shape):
         """The shape's layer: a name from ``A.layer == metal1``, or -- for a layer SET,
-        ``A.layer in {otp_mk, ymtp_mk}`` ("any of these") -- the names joined with
+        ``A.layer in {otp_mk, ymtp_mk}`` or ``A.layer == otp_mk or A.layer == ymtp_mk``
+        ("any of these") -- the names joined with
         ``|`` in sorted order (see `split_layers`). None if the rule doesn't say."""
         v = self._attr_eq(shape, "layer")
         if v is not None:
@@ -474,6 +534,11 @@ class Rule:
                 a, b = ast["args"]
                 if a.get("ref") == target and "set" in b:
                     return "|".join(sorted(e["ref"] for e in b["set"]))
+            # the same set spelled out: ``A.layer == diff or A.layer == tap``
+            if isinstance(ast, dict) and ast.get("op") == "or":
+                names = [_eq_value(x, target) for x in ast["args"]]
+                if all(isinstance(n, str) for n in names):
+                    return "|".join(sorted(names))
         return None
 
     def overlapping_markers(self, context, exclude):
@@ -505,12 +570,12 @@ class Rule:
         describe the same facts. Encapsulates cover->and, cutout->not, wavy-measure->
         selection (op via the labeled-instances table), and selected-marker recovery."""
         measured = {sf, st}
-        consumed = set()
+        consumed = set(self._partners)
         sel = {sf: [], st: []}
         for sa, sb in self.relation_selections():
             for subj in (sf, st):
                 other = sb if sa == subj else sa if sb == subj else None
-                if other is not None and other not in measured:
+                if other is not None and other not in measured and other not in self._partners:
                     sel[subj].append(self._marker(subj, other, measured, consumed))
                     consumed.add(other)
                     break
@@ -547,10 +612,43 @@ class Rule:
                 x[1]["ands"] or x[1]["nots"] or x[1]["selections"])]
             return {"base": self.layer_of(shape), "ands": ands, "nots": nots,
                     "wide": self.wide_filters().get(shape),
+                    "form": self.shape_forms().get(shape),
+                    "array": self.array_filters().get(shape),
                     "pre_selections": pre,
                     "selections": [x for x in sel[shape] if x not in pre],
                     "halo": self.halo(shape), "rounded": self.rounded(shape)}
         return deriv(sf), deriv(st), measured | scope_consumed
+
+    def _cut_layers(self, layer, seen=()):
+        """Layers the LEGEND removes to make `layer` ("n_activ = activ and not psd")."""
+        out = set()
+
+        def walk(ast, neg):
+            if not isinstance(ast, dict):
+                return
+            if "ref" in ast:
+                if neg:
+                    out.add(ast["ref"])
+                elif ast["ref"] in self.layer_defs and ast["ref"] not in seen:
+                    out.update(self._cut_layers(ast["ref"], (*seen, layer)))
+            elif ast.get("op") == "not":
+                walk(ast["args"][0], not neg)
+            elif ast.get("op") in ("and", "or"):
+                for a in ast["args"]:
+                    walk(a, neg)
+        for l in split_layers(layer or ""):
+            if l in self.layer_defs:
+                walk(self.layer_defs[l], False)
+        return out
+
+    def cut_apart(self, da, db) -> bool:
+        """Is one of two derived layers what is LEFT of something after removing the
+        other ("activ outside psd" against psd)?  Then the two meet edge to edge
+        wherever the cut runs -- by construction, not by a designer's choice -- and
+        that zero distance is not a spacing between them."""
+        def cut(d, other):
+            return other["base"] in (set(d["nots"]) | self._cut_layers(d["base"]))
+        return bool(da["base"] and db["base"]) and (cut(da, db) or cut(db, da))
 
     def overlap_reading(self, mname):
         """How to read a distance measured between two shapes that PARTLY OVERLAP --
@@ -799,6 +897,51 @@ class Rule:
         constraints QUALIFY the wire end (filters), they are not rules of their own."""
         return {e for _, cap, side in self.eol_measures() for e in (cap, side)}
 
+    def array_filters(self) -> dict:
+        """``{shape: {"rows", "columns", "size", "gap"}}`` -- shapes a FILTER says sit in
+        an ARRAY: ``match K.rows >= 4 and K.columns >= 4`` ("in a 4 x 4 or larger
+        array"). The array is the group of same-layer shapes each closer to a
+        neighbour than ``gap`` -- a filter on the spacing arrow says how close makes an
+        array (``match S < 0.36``); without one it is the spacing the rule checks;
+        ``size`` is the element's side when the rule states it (an exact length on one
+        of the shape's edges, e.g. ``match k0.length == 0.22``), else None."""
+        want = {}
+        for kind, ast in self.constraints:
+            if kind == "check":
+                continue
+            for key in ("rows", "columns"):
+                for shape, op, num in _attr_cmps(ast, "." + key):
+                    if shape in self.shapes and op in (">", ">=", "=="):
+                        want.setdefault(shape, {"rows": 1, "columns": 1})[key] = int(num) + (op == ">")
+        for shape, w in want.items():
+            edges = {e["id"] for e in self.shapes[shape]["edges"]}
+            w["size"] = next((lo for e, _, form, lo, _ in self.length_facts()
+                              if e in edges and form == "exact"), None)
+            w["gap"] = w["var"] = None
+            near = None                    # a filter on the same arrow: "closer than this"
+            either = [x for e in self.either_bounds() for x in e[:2]]
+            for b in self.bounds() + either:
+                m = self.measures.get(b.var)
+                if not (m and self.measure_is_straight(b.var)):
+                    continue
+                ends = (self.shape_of_edge(m["from"]), self.shape_of_edge(m["to"]))
+                if shape not in ends or ends[0] == ends[1]:
+                    continue
+                if b.kind == "check" and b.is_min:
+                    w["gap"], w["var"] = b.value, b.var
+                elif b.kind != "check" and b.is_max:
+                    near = b.value
+            if near is not None and w["gap"] is not None:
+                w["gap"] = near
+        return {s: w for s, w in want.items() if w["gap"] is not None}
+
+    def array_edges(self):
+        """Edges whose exact length is the element SIZE of an array filter -- a
+        qualifier of the array, not a length rule of its own."""
+        arr = self.array_filters()
+        return {e["id"] for s in arr for e in self.shapes[s]["edges"]
+                if any(x == e["id"] and form == "exact" for x, _, form, _, _ in self.length_facts())}
+
     def halo(self, shape):
         """A shape's HALO: a signed margin (µm) its region is grown (>0) or shrunk
         (<0) by -- the formal form of a DRM 'within X' / offset, drawn as a dashed
@@ -833,11 +976,52 @@ class Rule:
                 keep = [a for a in ast["args"] if not _is_zero(a, names)]
                 if len(keep) == 1 and len(keep) < len(ast["args"]):
                     ast, zero_ok = keep[0], True
+            if kind == "check" and self._either(ast) is not None:
+                continue                        # "one of two sides": see either_bounds
             for leaf in _and_leaves(ast):       # a two-sided range is one `and`
                 b = _bound(leaf, names)
                 if b is not None:
                     b.kind, b.zero_ok = kind, zero_ok
                     out.append(b)
+        return out
+
+    def _either(self, ast):
+        """If `ast` is ``Ea >= v or Eb >= v`` over two arrows on ADJACENT sides of one
+        shape (the measured edges of that shape are perpendicular), the two bounds."""
+        if not (isinstance(ast, dict) and ast.get("op") == "or" and len(ast["args"]) == 2):
+            return None
+        a, b = (_bound(x, set(self.measures)) for x in ast["args"])
+        if not (a and b and a.var != b.var and a.is_min and b.is_min and a.value == b.value
+                and a.value != 0):
+            return None
+        ma, mb = self.measures[a.var], self.measures[b.var]
+        found = []
+        for ea in (ma["from"], ma["to"]):
+            for eb in (mb["from"], mb["to"]):
+                if ea != eb and self.shape_of_edge(ea) == self.shape_of_edge(eb):
+                    (x0, y0), (x1, y1) = self._edge_ends(ea)
+                    (u0, v0), (u1, v1) = self._edge_ends(eb)
+                    dot = (x1 - x0) * (u1 - u0) + (y1 - y0) * (v1 - v0)
+                    la = math.hypot(x1 - x0, y1 - y0) * math.hypot(u1 - u0, v1 - v0)
+                    if la and abs(dot) < 0.2 * la:
+                        found.append(self.shape_of_edge(ea))
+        if not found:
+            return None
+        # an enclosure is about the sides of the INNER shape
+        inner = [x for x in found if any(y != x and self.relation(x, y) == "inside" for y in found)]
+        return a, b, (inner or found)[0]
+
+    def either_bounds(self) -> list:
+        """``(bound_a, bound_b, shape)``: a CHECK that at least ONE of two arrows on
+        adjacent sides of `shape` reaches the value -- "enclosed by 0.06 on one of two
+        adjacent sides", "spaced 0.20 in at least one direction". The shape fails where
+        two of its sides that meet at a corner both fall short."""
+        out = []
+        for kind, ast in self.constraints:
+            e = self._either(ast) if kind == "check" else None
+            if e:
+                e[0].kind = e[1].kind = "check"
+                out.append(e)
         return out
 
     def run_bounds(self) -> dict:
@@ -893,9 +1077,12 @@ class Rule:
         satisfies it: ``W <= v`` the narrow regions, ``v1 <= W < v2`` a band."""
         sel, out = {}, []
         wide = self.wide_filters()
+        arrayed = {w["var"] for w in self.array_filters().values()}
         for b in self.bounds():
             if not self.measure_is_straight(b.var):
                 continue
+            if b.kind != "check" and b.var in arrayed:
+                continue                                 # how close makes an array: a filter
             m = self.measures[b.var]
             if (b.kind != "check" and b.is_min and self.shape_of_edge(m["from"]) in wide
                     and self.shape_of_edge(m["from"]) == self.shape_of_edge(m["to"])):

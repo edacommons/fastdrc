@@ -69,3 +69,29 @@ def test_interior_point_of_a_concave_shape_is_inside_it():
     r = Rule({"shapes": [L, notch], "measures": [], "constraints": []})
     assert topology.contains(r.polygon("A"), r.interior_point("A"))
     assert r.covering("A") == []                                   # the notch shape covers none of A
+
+
+def test_compare_reports_matches_markers_by_place(tmp_path):
+    import importlib.util
+    import pathlib
+    spec = importlib.util.spec_from_file_location(
+        "compare_reports", pathlib.Path(__file__).parent.parent / "tools" / "compare_reports.py")
+    cr = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cr)
+
+    def report(path, items, cats):
+        body = "".join(f"<item><category>'{c}'</category><cell>T</cell><values><value>{v}</value></values></item>"
+                       for c, v in items)
+        head = "".join(f"<category><name>{c}</name></category>" for c in cats)
+        path.write_text(f"<report-database><categories>{head}</categories><cells></cells><items>{body}</items>"
+                        "</report-database>")
+        return str(path)
+    ours = report(tmp_path / "o.lyrdb", [("A.1", "edge-pair: (0,0;0,1)/(0.1,0;0.1,1)"),
+                                         ("B.1_thin", "polygon: (50,50;50,51;51,51;51,50)")], ["A.1", "B.1_thin", "C.1"])
+    ref = report(tmp_path / "r.lyrdb", [("A.1", "polygon: (0,0;0,1;0.1,1;0.1,0)"),
+                                        ("B.1", "polygon: (10,10;10,11;11,11;11,10)")], ["A.1", "B.1"])
+    o, names = cr.load(ours)
+    assert names == ["A.1", "B.1_thin", "C.1"]
+    res = {r: s for r, s, *_ in cr.compare(o, cr.load(ref)[0], ["A.1", "B.1_thin", "C.1"], 0.25)}
+    assert res == {"A.1": "same", "B.1_thin": "differs", "C.1": "quiet"}
+    assert cr.main([ours, ref, "--rename", "_thin="]) == 1

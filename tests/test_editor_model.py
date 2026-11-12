@@ -108,3 +108,11 @@ def test_a_sheet_survives_open_and_save():
              "rules": [{"name": "PL.1", "constraints": [{"kind": "check", "expr": "W >= ?"}],
                         "values": {"5V": 0.2}}]}
     assert _roundtrip(sheet) == sheet
+
+
+def test_the_whole_layer_mark_survives_open_and_save():
+    G = {"name": "G", "edges": _edges("g", 4, -2, 6, 8, {3}), "whole": True}
+    D = {"name": "D", "edges": _edges("d", 0, 0, 10, 6)}
+    rule = {"name": "R.2", "desc": "d", "shapes": [D, G], "measures": [],
+            "constraints": [{"kind": "match", "expr": "G.layer == poly"}]}
+    assert _roundtrip(rule) == rule

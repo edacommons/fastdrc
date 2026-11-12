@@ -154,6 +154,8 @@ def _compile_rules(args):
     from .rule import Rule
     silent = get("docs")
     for r in rules:
+        for note in r.get("warnings", []):
+            print(f"fastdrc: warning: rule {r.get('name') or '(unnamed)'}: {note}", file=sys.stderr)
         try:
             if "(no checkable assertion found)" in silent.compile(Rule(r)):
                 print(f"fastdrc: warning: rule {r.get('name') or '(unnamed)'} checks nothing "
@@ -162,7 +164,13 @@ def _compile_rules(args):
             raise SystemExit(f"fastdrc: rule {r.get('name') or '(unnamed)'}: {ex}")
     if args.to == "klayout":
         kw.update(standalone=args.standalone, title=args.title)
-    text = get(args.to, **(kw if args.to == "klayout" else {})).compile_all(rules)
+    backend = get(args.to, **(kw if args.to == "klayout" else {}))
+    text = backend.compile_all(rules)
+    if args.to == "klayout" and (args.layermap or args.standalone) and backend.unmapped:
+        # such a layer is read by NAME, which a GDS file does not have: every rule on
+        # it would silently see nothing
+        print("fastdrc: warning: no layer number for " + ", ".join(sorted(backend.unmapped))
+              + " -- add to the layer map", file=sys.stderr)
     if args.out:
         with open(args.out, "w") as f:
             f.write(text)

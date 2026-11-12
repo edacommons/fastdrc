@@ -49,8 +49,8 @@ from . import topology
 from .constraint import parse
 from .rule import Rule
 
-_RULE_KEYS = ("shapes", "with", "without", "cross", "allowed", "constraints", "measures",
-              "values", "columns")
+_RULE_KEYS = ("shapes", "with", "without", "cross", "allowed", "whole", "constraints",
+              "measures", "values", "columns")
 
 
 def is_sheet(data) -> bool:
@@ -110,6 +110,7 @@ def rules_of(data) -> list:
         for c in r.get("constraints", []):
             _refs(parse(c["expr"]), refs)
         used = [m for m in measures if m in refs or m in r.get("measures", [])]
+        notes = []
         if "shapes" in r:
             keep = list(r["shapes"])
         else:
@@ -142,6 +143,13 @@ def rules_of(data) -> list:
                         topology.contains(scene.polygon(name), p) and not background(name, ms)
                         for p, ms in spots):
                     keep.add(name)
+                    # a shape of the SAME layer as a measured one, lying on the arrow, is
+                    # almost surely another rule's example drawn too close -- say so
+                    if name not in r.get("without", []) and scene.layer_of(name) in {
+                            scene.layer_of(x) for x in seeds} - {None}:
+                        notes.append(f"shape {name} lies on an arrow of this rule and takes part in "
+                                     f"it; if it belongs to another rule, move it or list it "
+                                     f"under \"without\"")
             skip = set(r.get("without", []))
             grown = True
             while grown:                             # follow the links, from a kept shape
@@ -164,6 +172,8 @@ def rules_of(data) -> list:
                 s["crossed"] = True
             if n in r.get("allowed", []):
                 s["flagged"] = False
+            if n in r.get("whole", []):          # its layer anywhere, not only under a cover
+                s["whole"] = True
             rs.append(s)
         # its own measures, and the plain links among the shapes it keeps (a cross is a
         # rule of its own: only the rule that names it has it)
@@ -183,5 +193,7 @@ def rules_of(data) -> list:
         skip_under = list(data.get("except") or []) + list(r.get("except") or [])
         if skip_under:                               # the section note + the rule's own
             rule["except"] = sorted(set(skip_under))
+        if notes:
+            rule["warnings"] = notes
         out.append(rule)
     return out

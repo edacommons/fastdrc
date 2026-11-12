@@ -947,6 +947,8 @@ class Editor:
                 tag += "  ✓"
             if ex.get("halo"):
                 tag += f"  halo {ex['halo']:+g}"
+            if ex.get("whole"):
+                tag += "  (anywhere)"
             c.create_text(vpx[0][0] + 5, vpx[0][1] + 4, text=tag, fill=col,
                           anchor="nw", font=("TkDefaultFont", 11, "bold"))
             self._draw_verts(c, s, vpx)
@@ -1361,6 +1363,18 @@ class Editor:
                 else:
                     ex.pop("halo", None)
             name(nr + 2, "halo (µm)"); ent(nr + 2, ex.get("halo", 0), set_halo)
+
+            # "here" (the default): what is drawn under the arrow combines with this
+            # shape -- poly over diffusion is the gate. "anywhere": its whole layer,
+            # for a rule about poly that is merely drawn at a gate.
+            def set_whole(x):
+                if x.startswith("anywhere"):
+                    ex["whole"] = True
+                else:
+                    ex.pop("whole", None)
+            name(nr + 3, "stands for")
+            opt(nr + 3, "anywhere on its layer" if ex.get("whole") else "its layer here",
+                ["its layer here", "anywhere on its layer"], set_whole)
             return
         meta = self.rule_meta()                                # nothing selected: the rule itself
         name(0, "rule"); ent(0, meta.get("name") or "", lambda x: meta.__setitem__("name", x))

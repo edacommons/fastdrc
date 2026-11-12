@@ -64,10 +64,18 @@ class FactsBackend(Backend):
     name = "facts"
 
     def compile(self, rule: Rule) -> str:
-        lines = []
+        lines = [f"rule {rule.name}"] if rule.name else []
+        forms = rule.shape_forms()
         for name in rule.shapes:
             lines.append(f"shape {name}: layer={rule.layer_of(name)} "
-                         f"net={rule.net_of(name)}")
+                         f"net={rule.net_of(name)}"
+                         + (f" class={forms[name]}" if name in forms else ""))
+        roles = rule.side_roles()
+        for edge, kind, form, lo, hi in rule.length_facts():
+            side = f"{roles[edge]} side" if edge in roles else "edge"
+            lines.append(f"length: {kind} {side} {edge} {form} {lo}..{hi}")
+        for shape, form in rule.form_checks():
+            lines.append(f"class: check {shape} must be {form}")
         for (a, b), rel in rule.relations().items():
             lines.append(f"topology: {a} {rel} {b}")
         for bnd in rule.bounds():
