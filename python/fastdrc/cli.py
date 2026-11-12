@@ -147,13 +147,21 @@ def _compile_rules(args):
         with open(args.layermap) as f:
             kw["layermap"] = {k: tuple(v) for k, v in json.load(f).items()}
     rules = []
+    from .sheet import sheet_warnings
     for path in args.files:
         with open(path) as f:
-            rules += rules_of(json.load(f))
+            data = json.load(f)
+        for note in sheet_warnings(data):
+            print(f"fastdrc: warning: {path}: {note}", file=sys.stderr)
+        rules += rules_of(data)
     # a drawing that says nothing checkable must not pass silently
     from .rule import Rule
     silent = get("docs")
     for r in rules:
+        if not Rule(r).connections() and any(
+                ".net" in c.get("expr", "") for c in r.get("constraints", [])):
+            print(f"fastdrc: warning: rule {r.get('name') or '(unnamed)'} is about nets but nothing "
+                  f"says how layers connect -- add \"connect\": [[layer, layer], ...]", file=sys.stderr)
         for note in r.get("warnings", []):
             print(f"fastdrc: warning: rule {r.get('name') or '(unnamed)'}: {note}", file=sys.stderr)
         try:

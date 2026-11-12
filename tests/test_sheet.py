@@ -270,3 +270,117 @@ def test_a_same_layer_shape_on_another_rules_arrow_is_reported():
     sheet["rules"][0]["without"] = ["KX"]
     (rule,) = rules_of(sheet)
     assert [s["name"] for s in rule["shapes"]] == ["D", "KA"] and "warnings" not in rule
+
+
+def test_columns_that_leave_a_gap_between_them_are_reported():
+    # found on real I/O cells: "outside X" / "inside X" as the two columns of a table both
+    # drop a violation whose marker lies across X's edge
+    from fastdrc.sheet import sheet_warnings
+    gap = {"domains": {"thin": [["outside", "tgo"]], "thick": [["inside", "tgo"]]}}
+    assert "lies across the edge of tgo" in sheet_warnings(gap)[0]
+    ok = {"domains": {"thin": [["not_interacting", "tgo"]], "thick": [["overlapping", "tgo"]]}}
+    assert sheet_warnings(ok) == [] and sheet_warnings({}) == []
+
+
+def test_cli_warns_when_a_net_rule_has_no_connectivity(tmp_path, capsys):
+    import json
+    from fastdrc.cli import main
+    f = tmp_path / "r.json"
+    rule = {"name": "N.1", "shapes": [_rect("A", 0, 0, 4, 4), _rect("B", 8, 0, 12, 4)],
+            "measures": [{"name": "S", "from": "a1", "to": "b3"}],
+            "constraints": [M("A.layer == nwell"), M("B.layer == nwell"), M("A.net != B.net"), C("S >= 1.4")]}
+    f.write_text(json.dumps(rule))
+    main(["rules", str(f)])
+    assert "is about nets but nothing says how layers connect" in capsys.readouterr().err
+    f.write_text(json.dumps(dict(rule, connect=[["nwell", "ntap"]])))
+    main(["rules", str(f)])
+    assert "about nets" not in capsys.readouterr().err
+
+
+def test_connectivity_is_read_from_a_drawn_stack():
+    # a tap in the well, a contact on the tap, metal over the contact -- each pair stated
+    # to be one net where they touch; two wells apart, on different nets, is the rule
+    sheet = {"name": "W",
+             "shapes": [_rect("A", 0, 0, 8, 10), _rect("B", 12, 0, 20, 10),
+                        _rect("W", 30, 0, 50, 20), _rect("T", 34, 4, 46, 16), _rect("K", 38, 8, 42, 12),
+                        _rect("MT", 36, 6, 44, 14)],
+             "measures": [{"name": "S", "from": "a1", "to": "b3"}],
+             "constraints": [M("A.layer == nwell"), M("B.layer == nwell"), M("W.layer == nwell"),
+                             M("T.layer == ntap"), M("K.layer == cont"), M("MT.layer == met1"),
+                             M("T.net == W.net"), M("K.net == T.net"), M("K.net == MT.net")],
+             "rules": [{"name": "w.2", "constraints": [M("A.net != B.net"), C("S >= 1.4")]}]}
+    (rule,) = rules_of(sheet)
+    assert rule["connect"] == [["ntap", "nwell"], ["cont", "ntap"], ["cont", "met1"]]
+    assert [s["name"] for s in rule["shapes"]] == ["A", "B"]        # the stack is not part of the rule
+    deck = get("klayout").compile_data(sheet)
+    assert "connect(ntap, nwell)" in deck and "connect(cont, met1)" in deck
+    assert "w_2_l1 = nwell.nets.space(1.4.um, euclidian, props_ne).polygons(0.001)" in deck
+
+
+def test_a_net_equality_between_shapes_apart_is_a_filter_not_a_connection():
+    from fastdrc.rule import Rule
+    r = Rule({"shapes": [_rect("A", 0, 0, 8, 10), _rect("B", 12, 0, 20, 10)], "measures": [],
+              "constraints": [M("A.layer == nwell"), M("B.layer == pwell"), M("A.net == B.net")]})
+    assert r.connections() == [] and r.net_relation("A", "B") == "eq"
+
+
+ANTENNA = {"name": "A", "layers": {"gate": "poly and diff", "field_poly": "poly and not diff"},
+           "shapes": [_rect("G", 10, 4, 12, 8), _rect("P", 10, 8, 12, 20), _rect("K", 10.5, 12, 11.5, 13),
+                      _rect("MT", 9, 11, 13, 14), _rect("V", 10.6, 12.1, 11.4, 12.9), _rect("M2", 8, 10, 14, 15)],
+           "measures": [],
+           "constraints": [M("G.layer == gate"), M("P.layer == field_poly"), M("K.layer == cont"),
+                           M("MT.layer == met1"), M("V.layer == via1"), M("M2.layer == met2"),
+                           M("P.net == G.net"), M("K.net == P.net"), M("K.net == MT.net"),
+                           M("V.net == MT.net"), M("V.net == M2.net")],
+           "rules": [{"name": "ant.1", "constraints": [C("MT.area <= 400 * G.area")]},
+                     {"name": "ant.p", "constraints": [C("P.area / G.area <= 200")]}]}
+
+
+def test_antenna_ratio_sees_the_stack_only_up_to_its_own_layer():
+    deck = get("klayout").compile_data(ANTENNA).splitlines()
+    i = deck.index("ant_1_l1 = antenna_check(gate, met1, 400.0)")
+    # metal1 is the last layer made: via1 and metal2 are not connected yet
+    assert deck[i - 3:i] == ["connect(field_poly, gate)", "connect(cont, field_poly)", "connect(cont, met1)"]
+    j = deck.index("ant_p_l1 = antenna_check(gate, field_poly, 200.0)")
+    # a different set for the poly rule (contacts come after poly): the deck starts over
+    assert deck[j - 2:j] == ["clear_connections", "connect(field_poly, gate)"]
+    en = get("docs").compile_data(ANTENNA)
+    assert "the area of met1 connected to gate must be at most 400 times the area of that gate" in en
+
+
+def _antenna_sheet(rules, extra_shapes=(), extra_facts=()):
+    s = dict(ANTENNA, rules=rules)
+    s["shapes"] = ANTENNA["shapes"] + list(extra_shapes)
+    s["constraints"] = ANTENNA["constraints"] + list(extra_facts)
+    return s
+
+
+def test_a_contact_on_the_gate_does_not_pull_the_metals_into_the_poly_stage():
+    # the contact touches the gate directly; the stage is still "poly and what is as
+    # close to the gate as poly", not everything reachable through the contact
+    sheet = _antenna_sheet([{"name": "ant.p", "constraints": [C("P.area <= 200 * G.area")]}],
+                           [_rect("KG", 10.5, 5, 11.5, 6)], [M("KG.layer == cont"), M("KG.net == G.net")])
+    deck = get("klayout").compile_data(sheet)
+    assert "connect(cont, gate)" in deck and "connect(cont, met1)" not in deck
+
+
+def test_cumulative_antenna_ratio_with_and_without_a_diode():
+    diode = ([_rect("D", 30, 0, 40, 10), _rect("KD", 34, 4, 36, 6)],
+             [M("D.layer == ndiff"), M("KD.layer == cont"), M("KD.net == D.net")])
+    sheet = _antenna_sheet(
+        [{"name": "ant.b", "constraints": [M("D.area < 0.16"), C("(MT.area + M2.area) <= 200 * G.area")]},
+         {"name": "ant.e", "constraints": [M("D.area >= 0.16"), C("(MT.area + M2.area) / G.area <= 20000")]}], *diode)
+    deck = get("klayout").compile_data(sheet).splitlines()
+    i = next(n for n, ln in enumerate(deck) if ln.startswith("ant_b_l1_t1 = "))
+    j = next(n for n, ln in enumerate(deck) if ln.startswith("ant_b_l1_t2 = "))
+    # metal-1's share is taken before via-1 and metal-2 are connected, metal-2's after
+    assert deck[i] == 'ant_b_l1_t1 = evaluate_nets(gate, { "x" => met1 }, "put(\'t1\', area(x) / area)")'
+    assert deck[i + 1:j] == ["connect(via1, met1)", "connect(via1, met2)"]
+    assert "clear_connections" not in deck[i:j + 3]            # never started over within one rule
+    assert ("""ant_b_l1 = ant_b_l1_nets.selected_if("value('f1') < 0.16 && value('t1') + value('t2') > 200")"""
+            in deck)
+    assert any("value('f1') >= 0.16 && value('t1') + value('t2') > 20000" in ln for ln in deck)
+    assert not any(".with_area(" in ln for ln in deck)          # the diode's area is not an area rule
+    en = get("docs").compile_data(sheet)
+    assert ("the area of met1 and met2 together connected to gate must be at most 200 times the area of "
+            "that gate, on nets with less than 0.16 µm² of ndiff (antenna ratio).") in en

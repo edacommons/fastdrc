@@ -49,6 +49,9 @@ def from_py(node):
         assert len(node.ops) == 1, "chained comparison unsupported"
         return {"op": _CMP[type(node.ops[0])],
                 "args": [from_py(node.left), from_py(node.comparators[0])]}
+    if isinstance(node, ast.Call):                        # the one function: Count(shape)
+        assert isinstance(node.func, ast.Name) and node.func.id.lower() == "count"
+        return {"op": "count", "args": [from_py(a) for a in node.args]}
     if isinstance(node, ast.Set):
         return {"set": [from_py(e) for e in node.elts]}
     if isinstance(node, (ast.Name, ast.Attribute)):
@@ -61,6 +64,8 @@ def from_py(node):
 FORMULAS = [
     "A.layer == metal5",
     "A.net != B.net",
+    "Count(K) == 4",
+    "count(V) >= 2 and X >= 1.4",
     "e2.angle - e3.angle == 45",
     "X >= 1.4",
     "X == -45",
@@ -100,10 +105,16 @@ def test_expected_trees():
         {"op": "!=", "args": [{"ref": "B.y"}, {"num": 0}]}]}
 
 
+def test_count_is_the_one_function():
+    assert parse("Count(K) == 4") == {"op": "==", "args": [
+        {"op": "count", "args": [{"ref": "K"}]}, {"num": 4}]}
+    assert parse("count(K) >= 2") == parse("Count(K) >= 2")
+
+
 def test_outside_the_subset_is_rejected():
     import pytest
     from fastdrc.constraint import ConstraintError
-    for bad in ["W >", "", "f(X) > 2", "X > 'a'", "1 < X < 3", "X ** 2 > 1",
+    for bad in ["W >", "", "f(X) > 2", "Count(X, Y) > 2", "Count(3) > 2", "X > 'a'", "1 < X < 3", "X ** 2 > 1",
                 "A.layer == {m1}", "A.layer in {1, 2}", "X is Y", "X not in {a}",
                 "X[0] > 1", "X == True", "~X", "x = 1", "W >= 2; Y >= 1"]:
         with pytest.raises(ConstraintError):
@@ -133,8 +144,8 @@ def test_uniform_shape():
             return
         assert set(n) == {"op", "args"}, n
         assert isinstance(n["args"], list) and n["args"], n
-        if n["op"] == "not":
-            assert len(n["args"]) == 1, n
+        if n["op"] in ("not", "count"):
+            assert len(n["args"]) == 1, n          # unary / the one function
         elif n["op"] in ("and", "or"):
             assert len(n["args"]) >= 2, n          # flat n-ary
         else:

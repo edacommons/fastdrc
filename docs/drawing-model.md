@@ -411,6 +411,105 @@ per shape), not about every edge:
 Written as a **`check`**, the comparison is the rule itself: `k0.length == k1.length`
 means "must be square" and flags `layer.non_squares`.
 
+### Nets — "different potential", "same net"
+Some spacings depend on whether the two shapes are electrically connected. Say it as a
+filter between the two measured shapes:
+
+| match | the rule is about | compiles to |
+|---|---|---|
+| `A.net != B.net` | pairs on different nets ("different potential") | `nwell.nets.space(1.4, euclidian, props_ne)` |
+| `A.net == B.net` | pairs on the same net | `… props_eq` |
+| (nothing) | every pair — the usual "equi-potential" minimum | `nwell.space(0.6)` |
+
+What makes a net is process knowledge, given **once** — and it can be drawn like
+everything else. Draw the stack somewhere on the sheet: a tap in the well, a contact on
+the tap, metal over the contact; and state for each pair that touches that it is one
+net:
+
+    T.net == W.net      K.net == T.net      K.net == M.net
+
+Two shapes of different layers drawn touching or overlapping, with their nets equal,
+mean "these layers connect where they meet" → `connect(ntap, nwell)`,
+`connect(cont, ntap)`, `connect(cont, met1)`. (Between shapes drawn *apart* the same
+equality is a filter, as in the table above.) The stack takes part in no rule; it only
+says how nets form. The same can be written as a list instead:
+
+    "connect": [["nwell", "ntap"], ["ntap", "cont"], ["cont", "met1"]]
+
+Legend names such as `ncomp` may be used. The deck declares the connections before
+the rules.
+A well with no tap at all is a net of its own. `fastdrc rules` warns if a rule speaks
+of nets and no `connect` list is given.
+
+### Counts — "must contain exactly n"
+`Count(K)` is the one function in a constraint: how many shapes of K's layer a shape
+holds. *Which* shape is read from the picture — the one K is drawn in. Draw the pad
+with one via in it and write:
+
+| constraint | flags / selects | compiles to |
+|---|---|---|
+| check `Count(V) == 4` | pads that do not hold exactly 4 vias (none included) | `pad.not_interacting(via, 4, 4)` |
+| check `Count(V) >= 2` | pads holding fewer than 2 | `pad.not_interacting(via, 2)` |
+| check `Count(V) <= 8` | pads holding more than 8 | `pad.interacting(via, 9)` |
+| match `Count(V) >= 4` | (a filter) the pad stands for pads holding at least 4 — "pads with 4 or more vias must be 2 µm wide" | `pad.interacting(via, 4).width(2)` |
+
+Everything that touches or overlaps the holder counts, a via lying across its edge
+included.
+
+### A share of a shape's area — what it holds
+"Slit density of a metal plate at least 6 %": the area of what a shape **holds**,
+relative to its own. Draw the slit inside the plate and bound one area by the other:
+
+    S.area >= 0.06 * P.area        (or  S.area / P.area >= 0.06;  <=  for a maximum)
+
+A sum on the left takes several layers together. Each plate is judged on its own, and
+a plate holding nothing at all fails a minimum. Filters on the holder apply as usual —
+"any plate bigger than 35 µm" is a width arrow on the plate with the filter `W >= 35`.
+→ the holders, what lies in each, and `evaluate_nets(…, "put('r', area(a) / area)")
+.selected_if("value('r') < 0.06")`.
+
+This is by *containment*, read from the drawing. Two shapes joined by connections
+(nets) with the same kind of constraint are an antenna rule, next.
+
+### Antenna ratio — area collected per connected gate area
+During processing a conductor collects charge that can only leave through the gates
+it is connected to. Draw the gate and the conductor connected to it (through the drawn
+stack, see nets above) and bound one area by the other:
+
+    M.area <= 400 * G.area        (or  M.area / G.area <= 400)
+
+→ `antenna_check(gate, met1, 400.0)`.
+
+The rule sees the stack only **up to its own layer**: for a metal-1 rule, via-1 and
+metal-2 are not there yet. The order of the stack is read from the drawn connections —
+a layer's level is how many connection steps it is from the gate (poly and the
+contacts on it, then metal-1, via-1, metal-2 ...) — and the deck declares just the
+connections between layers no further out than the rule's own.
+
+Two refinements, both read from the same picture:
+
+| you write | means | compiles to |
+|---|---|---|
+| `(M1.area + M2.area) <= 200 * G.area` | the layers together — a *cumulative* ratio; each layer's share is taken at its own stage | one `evaluate_nets(...)` per layer as the connections are added, then the nets whose sum is too large |
+| a `match` on another connected shape: `D.area < 0.16` / `D.area >= 0.16` | only nets *without* / *with* that much of it — a protection diode | the same, with the condition on the finished stack |
+
+### Density — how much of an area a layer covers
+Draw the material and say how much of the area it must cover:
+`M.density >= 0.35`, `M.density <= 0.6` (a fraction, or a percentage: `>= 35`). Where
+the density is taken is read from the picture:
+
+| you draw | the density is taken | compiles to |
+|---|---|---|
+| the material alone | over the whole layout | `(M.area < 0.35 * extent.area) ? extent.dup : polygon_layer` |
+| the material inside a shape on a boundary layer (`W.layer == chip`) | over that layer | the same, with `chip` |
+| ... and that shape given a side length (`w0.length == 800`) and a step (`W.step == 400`) | in every window of that size, stepped across the area | `out_of_density.call(M, 0.0 .. 0.65, chip, 800.0, 400.0)` |
+
+The marker is the area (a global rule) or each window that is out of range. Windows
+start at the lower-left corner of the area and never reach outside it; where the last
+step stops short of the far edge, one more row / column is laid against that edge. A
+window exactly at the limit passes. The deck carries the small `out_of_density` helper
+once, at the top.
+
 ### "On one of two adjacent sides" — either of two arrows is enough
 Via and contact enclosures are often stated per side: *enclosed by 0.06 on one of two
 adjacent sides* (equivalently: on two opposite sides), the *endcap* enclosure. Draw the
@@ -633,9 +732,8 @@ width of *each* (`diff.width(v)` or `tap.width(v)`), "spacing of diff or tap" is
 between *any* of them (`diff.or(tap).space(v)`). A zone "within x of" a layer is a
 legend entry: `"near_nwell": "nwell + 0.43"` (grown; `-` shrinks).
 
-Not drawn by example (yet): density, summed areas, counts ("must contain exactly n",
-contact arrays), shape-class filters ("square contacts only"), and a required
-neighbour within a maximum distance.
+Everything on the earlier "not drawn yet" list now has a drawn form; rule kinds
+found missing from here on should be added to this section.
 
 ### Sheets — one figure, many rules
 
@@ -687,6 +785,11 @@ number that still holds per column lists them: `"columns": ["3.3V", "5V"]`.
 **A section note** — "these rules do not apply inside OTP_MK" — is `"except":
 ["otp_mk"]` on the sheet (every rule) or on one rule, instead of a cutout drawn into
 every shape.
+
+A column's test is applied to the **marker** of each violation, so the columns of one
+table should cover every case between them: `not_interacting X` / `overlapping X`.
+`outside X` / `inside X` would both drop a violation lying across X's edge; `fastdrc
+rules` warns about such a pair.
 
 ---
 
@@ -771,7 +874,7 @@ generated deck and the official statement in KLayout on many layouts per rule an
 compare the violation markers by XOR; `tools/behavioral_validate.py` is the older,
 weaker count-on-one-layout check). The recipes above cover the declarative rule
 families. **Not** geometry-by-example (separate, parameterized/universal forms):
-off-grid, density, antenna; and a small tail of **procedural** rules (multi-stage
+off-grid, antenna; and a small tail of **procedural** rules (multi-stage
 imperative layer algebra, e.g. via-3D enclosure) that are hand-coded algorithms
 rather than a single drawn example.
 

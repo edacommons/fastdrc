@@ -106,6 +106,9 @@ class Rule:
         # the LEGEND: names for derived layers, as a datasheet's legend has NCOMP or
         # "gate" -- {"pcomp": "comp and pplus", "field_poly": "poly2 and not comp"}
         self.layer_defs = {k: parse(v) for k, v in (data.get("layers") or {}).items()}
+        # how layers CONNECT (contact joins diffusion and metal1 ...): what makes a net.
+        # Process knowledge given once, like the legend: [["nwell", "ntap"], ...]
+        self.connect = [tuple(p) for p in (data.get("connect") or [])]
         # constraints: list of (kind, parsed-AST)
         self.constraints = [(c.get("kind", "check"), parse(c["expr"]))
                             for c in data.get("constraints", [])]
@@ -570,12 +573,14 @@ class Rule:
         describe the same facts. Encapsulates cover->and, cutout->not, wavy-measure->
         selection (op via the labeled-instances table), and selected-marker recovery."""
         measured = {sf, st}
-        consumed = set(self._partners)
+        counted = {k for k, _, _ in self.count_filters().values()}   # what a filter counts
+        consumed = set(self._partners) | (counted - measured)        # is not a context
         sel = {sf: [], st: []}
         for sa, sb in self.relation_selections():
             for subj in (sf, st):
                 other = sb if sa == subj else sa if sb == subj else None
-                if other is not None and other not in measured and other not in self._partners:
+                if (other is not None and other not in measured and other not in self._partners
+                        and other not in counted):
                     sel[subj].append(self._marker(subj, other, measured, consumed))
                     consumed.add(other)
                     break
@@ -614,6 +619,9 @@ class Rule:
                     "wide": self.wide_filters().get(shape),
                     "form": self.shape_forms().get(shape),
                     "array": self.array_filters().get(shape),
+                    "nets": self.net_relation(sf, st) is not None,
+                    "count": (lambda c: c and (self.layer_of(c[0]), c[1], c[2]))(
+                        self.count_filters().get(shape)),
                     "pre_selections": pre,
                     "selections": [x for x in sel[shape] if x not in pre],
                     "halo": self.halo(shape), "rounded": self.rounded(shape)}
@@ -942,6 +950,46 @@ class Rule:
         return {e["id"] for s in arr for e in self.shapes[s]["edges"]
                 if any(x == e["id"] and form == "exact" for x, _, form, _, _ in self.length_facts())}
 
+    def density_bounds(self) -> list:
+        """Density rules -> ``(shape, lo, hi, window)``: ``M.density >= 0.35`` and/or
+        ``M.density <= 0.6`` as CHECKS (fractions; a value above 1 is a percentage).
+
+        `window` says where the density is taken, read from the picture: a shape drawn
+        AROUND the material is the window. Its exact side length (``w0.length == 800``)
+        makes it a sliding window of that size, ``W.step == 400`` its step (default: the
+        size); without a size the density is that of the whole area. If the window
+        shape has a layer, that layer bounds the area (a chip boundary); else the
+        layout's extent does. ``{"shape", "size", "step", "layer"}``, or None when no
+        window is drawn (the whole layout)."""
+        spans = {}
+        for kind, ast in self.constraints:
+            if kind != "check":
+                continue
+            for shape, op, num in _attr_cmps(ast, ".density"):
+                if shape in self.shapes and op in (">", ">=", "<", "<="):
+                    v = num / 100.0 if num > 1 else num
+                    spans.setdefault(shape, [None, None])[0 if op in (">", ">=") else 1] = v
+        out = []
+        for shape, (lo, hi) in spans.items():
+            win = next((w for w in self.shapes
+                        if w != shape and self.relation(shape, w) == "inside"), None)
+            window = None
+            if win:
+                edges = {e["id"] for e in self.shapes[win]["edges"]}
+                size = next((a for e, _, form, a, _ in self.length_facts()
+                             if e in edges and form == "exact"), None)
+                step = self._attr_eq(win, "step")
+                window = {"shape": win, "size": size, "layer": self.layer_of(win),
+                          "step": step if isinstance(step, (int, float)) else None}
+            out.append((shape, lo, hi, window))
+        return out
+
+    def density_edges(self):
+        """Edges of a density window whose exact length is the window SIZE."""
+        wins = {w["shape"] for _, _, _, w in self.density_bounds() if w}
+        return {e["id"] for s in wins for e in self.shapes[s]["edges"]
+                if any(x == e["id"] and form == "exact" for x, _, form, _, _ in self.length_facts())}
+
     def halo(self, shape):
         """A shape's HALO: a signed margin (µm) its region is grown (>0) or shrunk
         (<0) by -- the formal form of a DRM 'within X' / offset, drawn as a dashed
@@ -951,6 +999,179 @@ class Rule:
     def rounded(self, shape):
         """Whether the halo grows with ROUNDED corners (vs square). A drawn tick."""
         return bool(self.shapes.get(shape, {}).get("rounded"))
+
+    def connections(self) -> list:
+        """``(layer, layer)`` pairs that CONNECT -- what makes a net. Either listed
+        (``"connect"``) or DRAWN: two shapes of different layers drawn touching or
+        overlapping, with the fact ``K.net == D.net`` ("where a contact sits on
+        diffusion they are one net"). A net equality between shapes that are apart
+        is a filter on a rule instead (`net_relation`)."""
+        out = list(self.connect)
+        for _, ast in self.constraints:
+            for leaf in _and_leaves(ast):
+                if not (isinstance(leaf, dict) and leaf.get("op") == "=="):
+                    continue
+                refs = [x.get("ref", "") if isinstance(x, dict) else "" for x in leaf["args"]]
+                if not all(r.endswith(".net") for r in refs):
+                    continue
+                a, b = (r[:-4] for r in refs)
+                if a in self.shapes and b in self.shapes and self._drawn_joined(a, b):
+                    pair = (self.layer_of(a), self.layer_of(b))
+                    if all(pair) and pair[0] != pair[1] and pair not in out and pair[::-1] not in out:
+                        out.append(pair)
+        return out
+
+    def _drawn_joined(self, a, b):
+        return self.relation(a, b) not in ("disjoint", "outside", None)
+
+    def _counts(self, kinds):
+        """``{counted shape: [container, lo, hi]}`` from ``Count(K) <cmp> n`` constraints
+        of the given kinds. WHAT is counted in WHAT is read from the picture: K's
+        layer, in the shape K is drawn inside (or, failing that, overlapping)."""
+        out = {}
+        for kind, ast in self.constraints:
+            if kind not in kinds:
+                continue
+            for leaf in _and_leaves(ast):
+                if not (isinstance(leaf, dict) and leaf.get("op") in ("==", "<", "<=", ">", ">=")):
+                    continue
+                a, b = leaf["args"]
+                op = leaf["op"]
+                if isinstance(b, dict) and b.get("op") == "count":
+                    a, b, op = b, a, _FLIP.get(op, op)
+                if not (isinstance(a, dict) and a.get("op") == "count" and isinstance(b, dict) and "num" in b):
+                    continue
+                k = a["args"][0].get("ref")
+                if k not in self.shapes:
+                    continue
+                holders = ([s for s in self.shapes if s != k and self.relation(k, s) == "inside"]
+                           or [s for s in self.shapes if s != k and self._drawn_joined(k, s)])
+                if not holders:
+                    continue
+                n = int(b["num"])
+                span = out.setdefault(k, [holders[0], None, None])
+                if op in ("==", ">=", ">"):
+                    span[1] = n + (op == ">")
+                if op in ("==", "<=", "<"):
+                    span[2] = n - (op == "<")
+        return out
+
+    def count_bounds(self) -> list:
+        """``(holder, counted, lo, hi)``: the CHECK ``Count(K) == 2`` / ``>= 2`` /
+        ``<= 4`` -- every shape like the holder must hold that many of K's layer."""
+        return [(h, k, lo, hi) for k, (h, lo, hi) in self._counts(("check",)).items()]
+
+    def count_filters(self) -> dict:
+        """``{holder: (counted, lo, hi)}``: the same as a FILTER (`match`) -- the
+        holder stands for the shapes of its layer that hold that many."""
+        return {h: (k, lo, hi) for k, (h, lo, hi) in self._counts(("match",)).items()}
+
+    def _area_ratios(self):
+        """Every CHECK comparing areas of shapes: ``(terms, base, op, value)`` from
+        ``T.area <op> v * B.area`` or ``T.area / B.area <op> v``, the left side a single
+        area or a sum of areas."""
+        def area_of(node):
+            ref = node.get("ref", "") if isinstance(node, dict) else ""
+            return ref[:-5] if ref.endswith(".area") and ref[:-5] in self.shapes else None
+
+        def summed(node):                      # A.area + B.area + ... -> [A, B, ...] or None
+            if area_of(node):
+                return [area_of(node)]
+            if isinstance(node, dict) and node.get("op") == "+":
+                parts = [summed(x) for x in node["args"]]
+                return None if any(p is None for p in parts) else [x for p in parts for x in p]
+            return None
+        out = []
+        for kind, ast in self.constraints:
+            if kind != "check" or not (isinstance(ast, dict) and ast.get("op") in ("<=", "<", ">=", ">")):
+                continue
+            left, right = ast["args"]
+            if summed(left) and isinstance(right, dict) and right.get("op") == "*":
+                x, y = right["args"]
+                num, base = (x, y) if "num" in x else (y, x)
+                if "num" in num and area_of(base):
+                    out.append((summed(left), area_of(base), ast["op"], num["num"]))
+            elif isinstance(left, dict) and left.get("op") == "/" and "num" in right:
+                top, bottom = left["args"]
+                if summed(top) and area_of(bottom):
+                    out.append((summed(top), area_of(bottom), ast["op"], right["num"]))
+        return out
+
+    def _connected(self, terms, base):
+        return all(self.connections_up_to(self.layer_of(base), self.layer_of(t)) for t in terms)
+
+    def antenna_bounds(self) -> list:
+        """Antenna rules -> ``(collectors, gate, ratio, filters)``: the CHECK that the
+        area of one shape -- or of several together -- is at most `ratio` times the
+        area of another it is CONNECTED to (through the drawn or listed connections):
+        ``M.area <= 200 * G.area``, ``(M1.area + M2.area) / G.area <= 200`` ("max.
+        ratio of cumulative metal area to connected gate area"). Charge collected
+        during processing has only the gate to go through.
+
+        `filters` are the nets the rule is about, by what else is connected to them:
+        a `match` on the area of another connected shape -- ``D.area >= 0.16`` "with a
+        protection diode", ``D.area < 0.16`` "without" -- as ``(shape, op, value)``."""
+        out = []
+        for terms, base, op, value in self._area_ratios():
+            if op in ("<=", "<") and self._connected(terms, base):
+                used = set(terms) | {base}
+                filters = [(sh, o, num) for k, a in self.constraints if k != "check"
+                           for sh, o, num in _attr_cmps(a, ".area") if sh in self.shapes and sh not in used]
+                out.append((terms, base, value, filters))
+        return out
+
+    def held_ratio_bounds(self) -> list:
+        """``(held, holder, lo, hi)``: how much of a shape's area what it HOLDS takes up
+        -- ``S.area >= 0.06 * P.area`` with S drawn inside P ("min. slit density of a
+        plate"), a sum on the left for several layers together. By containment, read
+        from the drawing; shapes joined by connections are an antenna rule instead."""
+        spans = {}
+        for terms, base, op, value in self._area_ratios():
+            if self._connected(terms, base) or not all(self._drawn_joined(t, base) for t in terms):
+                continue
+            span = spans.setdefault((tuple(terms), base), [None, None])
+            span[0 if op in (">=", ">") else 1] = value
+        return [(list(t), b, lo, hi) for (t, b), (lo, hi) in spans.items()]
+
+    def antenna_shapes(self):
+        """Every shape an antenna rule speaks of (its areas are not area rules)."""
+        return {s for cs, g, _, fs in self.antenna_bounds() for s in [*cs, g, *(f[0] for f in fs)]}
+
+    def connections_up_to(self, start, stop) -> list:
+        """The connections that exist while layer `stop` is the last one made. The
+        stack's order is read from the connections themselves: a layer's level is how
+        many connection steps it is from `start` (the gate) -- poly and the contacts
+        on it 1, metal-1 2, via-1 3 ... -- and the stage of `stop` is every connection
+        between layers no further out than `stop` itself."""
+        pairs, level, todo = self.connections(), {start: 0}, [start]
+        while todo:
+            cur = todo.pop(0)
+            for a, b in pairs:
+                if cur in (a, b):
+                    other = b if cur == a else a
+                    if other not in level:
+                        level[other] = level[cur] + 1
+                        todo.append(other)
+        top = level.get(stop)
+        if top is None:
+            return []
+        return [(a, b) for a, b in pairs if level.get(a, top + 1) <= top and level.get(b, top + 1) <= top]
+
+    def net_relation(self, a, b):
+        """``"ne"`` / ``"eq"`` if a constraint says shapes `a` and `b` are on DIFFERENT
+        nets (``A.net != B.net``) or on the SAME net (``A.net == B.net``) -- a filter on
+        which pairs a spacing rule is about ("different potential"); else None."""
+        want = {f"{a}.net", f"{b}.net"}
+        for _, ast in self.constraints:
+            for leaf in _and_leaves(ast):
+                if isinstance(leaf, dict) and leaf.get("op") in ("==", "!="):
+                    refs = {x.get("ref") for x in leaf["args"] if isinstance(x, dict)}
+                    if refs == want and len(want) == 2:
+                        if leaf["op"] == "==" and self._drawn_joined(a, b) and (
+                                self.layer_of(a) != self.layer_of(b)):
+                            continue              # drawn joined: a connection, not a filter
+                        return "ne" if leaf["op"] == "!=" else "eq"
+        return None
 
     def net_of(self, shape):
         return self._attr_eq(shape, "net")
@@ -1062,7 +1283,8 @@ class Rule:
                 continue
             sf, st = self.shape_of_edge(m["from"]), self.shape_of_edge(m["to"])
             # ... and some OTHER measure checks the shape
-            if sf == st and any(sf in (a, c) for a, c, var in pairs if var != b.var):
+            held = {h for _, h, _, _ in self.held_ratio_bounds()}
+            if sf == st and (sf in held or any(sf in (a, c) for a, c, var in pairs if var != b.var)):
                 out[sf] = b.value
         return out
 
@@ -1107,12 +1329,15 @@ class Rule:
         ``.holes``). Written as a filter (match ``A.area < v``: "the small ones") it
         flags the same shapes."""
         out = []
+        antenna = self.antenna_shapes()
         for kind, ast in self.constraints:
             if isinstance(ast, dict) and ast.get("op") in _CMP:
                 a, b = ast["args"]
                 ref = a.get("ref", "") if isinstance(a, dict) else ""
                 if not (isinstance(b, dict) and "num" in b):
                     continue
+                if ref.split(".")[0] in antenna:
+                    continue                     # "with a diode of at least ...": a net filter
                 # the op returned is the ASSERTION whose failures are flagged. A check
                 # is one already; a match is a filter ("the ones with area < 2", crossed
                 # out on a datasheet) -- flagging those is asserting the opposite.

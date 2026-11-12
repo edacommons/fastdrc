@@ -10,7 +10,10 @@ leaves are::
     {"num": -45}            # numeric literal (signed)
     {"set": [node, ...]}    # set literal, only as RHS of `in`
 
-Anything outside the subset (calls, strings, subscripts, chained comparisons,
+The one function is ``Count(K)`` -> ``{"op": "count", "args": [{"ref": "K"}]}``: how
+many of K's layer a shape holds (which shape: the one K is drawn in).
+
+Anything outside the subset (other calls, strings, subscripts, chained comparisons,
 ``**``, ...) is rejected with `ConstraintError`. The compiler walks one node
 shape: read ``op``, recurse ``args``.
 
@@ -84,6 +87,12 @@ def _lower(node, text):
         else:
             right = _lower(rhs, text)
         return {"op": op, "args": [_lower(node.left, text), right]}
+    if isinstance(node, ast.Call):                         # the one function: Count(shape)
+        name = node.func.id.lower() if isinstance(node.func, ast.Name) else None
+        arg = _ref(node.args[0]) if len(node.args) == 1 and not node.keywords else None
+        if name != "count" or arg is None:
+            raise bad("this function call")
+        return {"op": "count", "args": [{"ref": arg}]}
     if _num(node) is not None:
         return {"num": _num(node)}
     if _ref(node) is not None:

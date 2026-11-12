@@ -53,6 +53,30 @@ _RULE_KEYS = ("shapes", "with", "without", "cross", "allowed", "whole", "constra
               "measures", "values", "columns")
 
 
+# Pairs of domain tests that between them leave nothing out. A column is applied to the
+# MARKER of a violation, so "outside X" and "inside X" as the two columns of a table
+# would both drop a marker that lies across X's edge.
+_COVERING = [{"not_interacting", "interacting"}, {"not_interacting", "overlapping"},
+             {"outside", "not_outside"}, {"inside", "not_inside"},
+             {"not_overlapping", "overlapping"}]
+
+
+def sheet_warnings(data) -> list:
+    """What a sheet's table columns leave out: two columns that split by the same layer
+    with tests that do not cover every case (``outside`` / ``inside``)."""
+    by_layer = {}
+    for column, tests in (data.get("domains") or {}).items():
+        for op, layer in tests:
+            by_layer.setdefault(layer, {})[op] = column
+    out = []
+    for layer, ops in by_layer.items():
+        if len(ops) > 1 and not any(set(ops) <= pair for pair in _COVERING):
+            cols = " / ".join(f"{c} ({op})" for op, c in ops.items())
+            out.append(f"columns {cols} leave out a violation that lies across the edge of "
+                       f"{layer}; split with not_interacting / overlapping instead")
+    return out
+
+
 def is_sheet(data) -> bool:
     return isinstance(data.get("rules"), list)
 
@@ -101,6 +125,7 @@ def rules_of(data) -> list:
         for c in r.get("constraints", []) if c.get("expr", "").strip()]
     scene = Rule({"shapes": data.get("shapes", []), "measures": data.get("measures", []),
                   "constraints": everything})
+    joined = [list(p) for p in Rule(dict(data, rules=[])).connections()]
     shapes = {s["name"]: s for s in data.get("shapes", [])}
     measures = {m["name"]: m for m in data.get("measures", [])}
     edge_owner = {e["id"]: n for n, s in shapes.items() for e in s["edges"]}
@@ -190,6 +215,8 @@ def rules_of(data) -> list:
         rule.update(shapes=rs, measures=rm, constraints=cons + list(r.get("constraints", [])))
         if data.get("layers"):
             rule["layers"] = data["layers"]
+        if joined:                                   # listed, or drawn in the scene
+            rule["connect"] = joined
         skip_under = list(data.get("except") or []) + list(r.get("except") or [])
         if skip_under:                               # the section note + the rule's own
             rule["except"] = sorted(set(skip_under))

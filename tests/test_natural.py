@@ -456,3 +456,142 @@ def test_a_maximum_enclosure_is_about_how_far_the_outer_reaches():
     op, en, _ = _compile([tie, k], {"from": "k1", "to": "t1"}, {"T": "tie", "K": "cont"}, bound="E <= 6")
     assert op == "tie.not(cont.sized(6.um))"
     assert en == "• no part of tie may reach more than 6 µm beyond cont."
+
+
+# --- density: how much of an area (or of every window) a layer covers ---
+
+def _density(constraints, window=True):
+    shapes = ([_rect("W", 0, 0, 10, 10)] if window else []) + [_rect("M", 2, 2, 6, 6)]
+    rule = {"name": "R", "desc": "r", "shapes": shapes, "measures": [],
+            "constraints": [{"kind": "match", "expr": "M.layer == met"},
+                            *({"kind": k, "expr": e} for k, e in constraints)]}
+    r = Rule(rule)
+    deck = get("klayout").compile(r)
+    op = next(ln.split("=", 1)[1].strip() for ln in deck.splitlines() if ln.startswith("r_l1 = "))
+    return op, get("docs").compile(r).splitlines()[1].strip(), deck
+
+
+def test_global_density_over_the_layout():
+    op, en, _ = _density([("check", "M.density >= 0.35 and M.density <= 0.6")], window=False)
+    assert op == "(met.area < 0.35 * extent.area || met.area > 0.6 * extent.area) ? extent.dup : polygon_layer"
+    assert en == "• met must cover between 35 % and 60 % of the layout."
+
+
+def test_density_within_a_boundary_layer_given_in_percent():
+    op, en, _ = _density([("match", "W.layer == chip"), ("check", "M.density >= 35")])
+    assert op == "(met.area < 0.35 * chip.area) ? chip.dup : polygon_layer"
+    assert en == "• met must cover at least 35 % of chip."
+
+
+def test_density_in_a_sliding_window():
+    op, en, deck = _density([("match", "W.layer == chip"), ("match", "w0.length == 800"),
+                             ("match", "W.step == 400"), ("check", "M.density <= 0.65")])
+    assert op == "out_of_density.call(met, 0.0 .. 0.65, chip, 800.0, 400.0)"
+    assert "out_of_density = lambda do |layer, range, area, size, step|" in deck    # the helper, once
+    assert deck.count(".output(") == 1                     # the window's size is not a length rule
+    assert en == "• met must cover at most 65 % of every 800 × 800 µm window (stepped by 400 µm) of chip."
+
+
+# --- nets: "different potential" / "same net" as a filter on which pairs a rule is about ---
+
+def _wells(net, connect=(("nwell", "ntap"), ("ntap", "cont"), ("cont", "met1"))):
+    a, b = _rect("A", 0, 0, 8, 10, {1}), _rect("B", 12, 0, 20, 10, {3})
+    rule = {"name": "R", "desc": "r", "shapes": [a, b], "measures": [{"name": "S", "from": "a1", "to": "b3"}],
+            "connect": [list(p) for p in connect],
+            "constraints": [{"kind": "match", "expr": "A.layer == nwell"}, {"kind": "match", "expr": "B.layer == nwell"},
+                            *([{"kind": "match", "expr": net}] if net else []), {"kind": "check", "expr": "S >= 1.4"}]}
+    r = Rule(rule)
+    deck = get("klayout").compile(r)
+    op = next(ln.split("=", 1)[1].strip() for ln in deck.splitlines() if ln.startswith("r_l1 = "))
+    return op, get("docs").compile(r).splitlines()[1].strip(), deck
+
+
+def test_spacing_between_shapes_on_different_nets():
+    op, en, deck = _wells("A.net != B.net")
+    assert op == "nwell.nets.space(1.4.um, euclidian, props_ne).polygons(0.001)"
+    assert en == ("• any two shapes of nwell must be at least 1.4 µm apart where the two are on "
+                  "different nets (euclidian).")
+    # how layers connect is stated once, at the top of the deck, before the rules
+    lines = deck.splitlines()
+    assert ["connect(nwell, ntap)", "connect(ntap, cont)", "connect(cont, met1)"] == [
+        ln for ln in lines if ln.startswith("connect(")]
+    assert lines.index("connect(nwell, ntap)") < next(i for i, ln in enumerate(lines) if ln.startswith("r_l1"))
+
+
+def test_same_net_and_no_net_statement():
+    assert _wells("A.net == B.net")[0] == "nwell.nets.space(1.4.um, euclidian, props_eq).polygons(0.001)"
+    assert _wells(None)[0] == "nwell.space(1.4.um, euclidian).polygons(0.001)"
+
+
+def test_the_net_stays_with_a_shape_through_a_cutout():
+    a, b, x = _rect("A", 0, 0, 8, 10, {1}), _rect("B", 12, 0, 20, 10, {3}), _rect("X", 2, 2, 5, 5, {1})
+    rule = {"name": "R", "desc": "r", "shapes": [a, b, x], "measures": [{"name": "S", "from": "a1", "to": "b3"}],
+            "connect": [["nwell", "ntap"]],
+            "constraints": [{"kind": "match", "expr": "A.layer == nwell"}, {"kind": "match", "expr": "B.layer == nwell"},
+                            {"kind": "match", "expr": "X.layer == mk"}, {"kind": "match", "expr": "A.net != B.net"},
+                            {"kind": "check", "expr": "S >= 1.4"}]}
+    out = get("klayout").compile(Rule(rule))
+    assert "nwell.nets.not(mk, props_copy)" in out
+
+
+# --- counts: Count(K) -- how many of K's layer the shape it is drawn in holds ---
+
+def _pad(constraints, extra=()):
+    pad, via = _rect("P", 0, 0, 10, 10), _rect("V", 2, 2, 3, 3)
+    rule = {"name": "R", "desc": "r", "shapes": [pad, via, *extra], "measures": [],
+            "constraints": [{"kind": "match", "expr": "P.layer == pad"}, {"kind": "match", "expr": "V.layer == via"},
+                            *({"kind": k, "expr": e} for k, e in constraints)]}
+    r = Rule(rule)
+    deck = get("klayout").compile(r)
+    return ([ln.split("=", 1)[1].strip() for ln in deck.splitlines() if ln.startswith("r_l") and " = " in ln],
+            [ln.strip() for ln in get("docs").compile(r).splitlines()[1:]])
+
+
+def test_must_hold_exactly_at_least_at_most():
+    assert _pad([("check", "Count(V) == 4")]) == (
+        ["pad.not_interacting(via, 4, 4)"], ["• every pad must hold exactly 4 via."])
+    assert _pad([("check", "Count(V) >= 2")]) == (
+        ["pad.not_interacting(via, 2)"], ["• every pad must hold at least 2 via."])
+    assert _pad([("check", "Count(V) <= 8")])[0] == ["pad.interacting(via, 9)"]
+    assert _pad([("check", "Count(V) >= 2 and Count(V) < 5")])[0] == ["pad.not_interacting(via, 2, 4)"]
+
+
+def test_a_count_as_a_filter_narrows_the_shape_it_is_about():
+    # "pads holding at least 4 vias must be 2 um wide"
+    pad, via = _rect("P", 0, 0, 10, 10, {1, 3}), _rect("V", 2, 2, 3, 3)
+    rule = {"name": "R", "desc": "r", "shapes": [pad, via], "measures": [{"name": "W", "from": "p3", "to": "p1"}],
+            "constraints": [{"kind": "match", "expr": "P.layer == pad"}, {"kind": "match", "expr": "V.layer == via"},
+                            {"kind": "match", "expr": "Count(V) >= 4"}, {"kind": "check", "expr": "W >= 2"}]}
+    r = Rule(rule)
+    assert "r_l1 = pad.interacting(via, 4).width(2.um, euclidian).polygons(0.001)" in get("klayout").compile(r)
+    assert get("docs").compile(r).splitlines()[1].strip() == (
+        "• pad holding at least 4 via must be at least 2 µm wide (euclidian).")
+
+
+# --- how much of a shape what it holds takes up (an area ratio by containment) ---
+
+def _plate(constraints, measures=()):
+    plate, slit = _rect("P", 0, 0, 40, 40, {1, 3}), _rect("S", 6, 10, 9, 30)
+    rule = {"name": "R", "desc": "r", "shapes": [plate, slit], "measures": list(measures),
+            "constraints": [{"kind": "match", "expr": "P.layer == met"}, {"kind": "match", "expr": "S.layer == slit"},
+                            *({"kind": k, "expr": e} for k, e in constraints)]}
+    r = Rule(rule)
+    return get("klayout").compile(r).splitlines(), get("docs").compile(r).splitlines()[1].strip(), r
+
+
+def test_what_a_shape_holds_must_take_up_a_share_of_its_area():
+    deck, en, r = _plate([("match", "W >= 35"), ("check", "S.area >= 0.06 * P.area")],
+                         [{"name": "W", "from": "p3", "to": "p1"}])
+    i = deck.index("r_l1_in = met.sized(-17.5.um).sized(17.5.um)")          # the wide plates
+    assert deck[i + 1:i + 3] == ["r_l1_h1 = slit.and(r_l1_in)", "connect(r_l1_h1, r_l1_in)"]
+    assert deck[i + 3] == ("""r_l1 = evaluate_nets(r_l1_in, { "a" => r_l1_h1 }, "put('r', (area(a)) / area)")"""
+                           """.selected_if("value('r') < 0.06")""")
+    assert sum(".output(" in ln for ln in deck) == 1          # the width is a filter, not a rule
+    assert en == "• slit must take up at least 6 % of the area of every met at least 35 µm wide."
+    assert r.antenna_bounds() == []                           # held, not connected: no antenna
+
+
+def test_a_share_given_as_a_quotient_and_as_a_maximum():
+    deck, en, _ = _plate([("check", "S.area / P.area <= 0.2")])
+    assert any("""selected_if("value('r') > 0.2")""" in ln for ln in deck)
+    assert en == "• slit must take up at most 20 % of the area of every met."

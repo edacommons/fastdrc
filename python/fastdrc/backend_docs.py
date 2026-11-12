@@ -50,7 +50,13 @@ def _join(items):
     return ", ".join(items[:-1]) + f", and {items[-1]}"
 
 
+def _how_many(lo, hi):
+    return (f"exactly {lo}" if lo == hi else f"at least {lo}" if hi is None
+            else f"at most {hi}" if lo is None else f"{lo} to {hi}")
+
+
 @register
+
 class DocsBackend(Backend):
     name = "docs"
 
@@ -123,8 +129,41 @@ class DocsBackend(Backend):
             out.append(f"every {subj} corner must be {_fmt(angle)}°." if others
                        else f"{subj} must have no {_fmt(angle)}° corner.")
         for edge, kind, form, lo, hi in rule.length_facts():
-            if edge not in eol_edges and edge not in rule.array_edges():
+            if edge not in eol_edges and edge not in rule.array_edges() | rule.density_edges():
                 out.append(self._length(rule, edge, kind, form, lo, hi))
+        for held, holder, lo, hi in rule.held_ratio_bounds():
+            pct = lambda x: f"{_fmt(round(x * 100, 6))} %"
+            much = (f"between {pct(lo)} and {pct(hi)}" if lo is not None and hi is not None
+                    else f"at least {pct(lo)}" if lo is not None else f"at most {pct(hi)}")
+            what = _join([self._name(rule.layer_of(h)) for h in held])
+            out.append(f"{what} must take up {much} of the area of every "
+                       f"{self._deriv_en(rule, holder)}.")
+        for holder, counted, lo, hi in rule.count_bounds():
+            out.append(f"every {self._name(rule.layer_of(holder))} must hold "
+                       f"{_how_many(lo, hi)} {self._name(rule.layer_of(counted))}.")
+        for collectors, gate, ratio, filters in rule.antenna_bounds():
+            g = self._name(rule.layer_of(gate))
+            what = _join([self._name(rule.layer_of(c)) for c in collectors])
+            what += " together" if len(collectors) > 1 else ""
+            words = {">=": "at least", ">": "more than", "<": "less than", "<=": "at most"}
+            only = "".join(f", on nets with {words.get(op, op)} {_fmt(v)} µm² of "
+                           f"{self._name(rule.layer_of(sh))}" for sh, op, v in filters)
+            out.append(f"the area of {what} connected to {g} must be at most {_fmt(ratio)} times "
+                       f"the area of that {g}{only} (antenna ratio).")
+        for shape, lo, hi, window in rule.density_bounds():
+            skipw = {shape} | ({window["shape"]} if window else set())
+            pct = lambda x: f"{_fmt(round(x * 100, 6))} %"
+            much = (f"between {pct(lo)} and {pct(hi)}" if lo is not None and hi is not None
+                    else f"at least {pct(lo)}" if lo is not None else f"at most {pct(hi)}")
+            area = (self._name(window["layer"]) if window and window["layer"] else "the layout")
+            if window and window["size"] is not None:
+                sz = _fmt(window["size"])
+                where = (f"every {sz} × {sz} µm window"
+                         + (f" (stepped by {_fmt(window['step'])} µm)" if window["step"] else "")
+                         + f" of {area}")
+            else:
+                where = area
+            out.append(f"{self._name(rule.layer_of(shape))} must cover {much} of {where}.")
         for a, b, shape in rule.either_bounds():
             m = rule.measures[a.var]
             sf, st = rule.shape_of_edge(m["from"]), rule.shape_of_edge(m["to"])
@@ -256,6 +295,9 @@ class DocsBackend(Backend):
                     core = f"{subj} must be at least {v} µm from {arg}"
                     if rule.cut_apart(ds, dt):     # they share the edge of the cut itself
                         core += " (where the two abut is not a spacing)"
+            net = rule.net_relation(sf, st) if sf != st else None
+            if net:
+                core += " where the two are on different nets" if net == "ne" else " where the two are on the same net"
             run = rule.run_bounds().get(var)
             if run:
                 core += f", where the edges run side by side for {run[0]} {_fmt(run[1])} µm"
@@ -308,6 +350,8 @@ class DocsBackend(Backend):
         phrase = self._name(d["base"])
         if d.get("form"):                    # the shape class a filter states
             phrase = ("square " if d["form"] == "square" else "non-square ") + phrase
+        if d.get("count"):                   # only those holding so many of a layer
+            phrase += f" holding {_how_many(d['count'][1], d['count'][2])} {self._name(d['count'][0])}"
         arr = d.get("array")
         if arr:                              # members of a large enough array
             dims = f"{arr['rows']} rows and {arr['columns']} columns"
