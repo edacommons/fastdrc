@@ -1120,6 +1120,18 @@ class Rule:
                 out.append((terms, base, value, filters))
         return out
 
+    def holder_derivation(self, holder, contents):
+        """The derived layer of a shape judged by what it HOLDS (a count, an area
+        share): its own filters and contexts apply, but its contents are neither cut
+        out of it nor combined with it. Returns ``(derivation, consumed)``."""
+        d, _, consumed = self.check_derivations(holder, holder)
+        inner = {self.layer_of(c) for c in contents}
+        d = dict(d, nots=[n for n in d["nots"] if n not in inner],
+                 ands=[a for a in d["ands"] if a not in inner],
+                 selections=[x for x in d["selections"] if x[1]["base"] not in inner],
+                 pre_selections=[x for x in d.get("pre_selections", []) if x[1]["base"] not in inner])
+        return d, consumed | set(contents)
+
     def held_ratio_bounds(self) -> list:
         """``(held, holder, lo, hi)``: how much of a shape's area what it HOLDS takes up
         -- ``S.area >= 0.06 * P.area`` with S drawn inside P ("min. slit density of a
@@ -1283,7 +1295,8 @@ class Rule:
                 continue
             sf, st = self.shape_of_edge(m["from"]), self.shape_of_edge(m["to"])
             # ... and some OTHER measure checks the shape
-            held = {h for _, h, _, _ in self.held_ratio_bounds()}
+            held = ({h for _, h, _, _ in self.held_ratio_bounds()}
+                    | {h for h, _, _, _ in self.count_bounds()})
             if sf == st and (sf in held or any(sf in (a, c) for a, c, var in pairs if var != b.var)):
                 out[sf] = b.value
         return out

@@ -5,6 +5,9 @@ How a DRC rule is **drawn** so the compiler can turn it into a real check
 rule editor and for `tools/validate_klayout.py` (`as_drawn`), which builds these
 shapes for every deck rule it validates.
 
+> New here? [from-a-manual.md](from-a-manual.md) walks one complete example from a
+> manual's page to a deck that has been run; this file is the reference behind it.
+
 ## The core idea
 
 A rule is **`shapes` + `measures` + `constraints`**.
@@ -795,14 +798,23 @@ rules` warns about such a pair.
 
 ## From drawings to a deck
 
+A process is a folder: `process.json` (layer numbers, legend, table columns — said
+once) and `rules/` with a sheet per section of the manual.
+
 ```
-fastdrc rules poly.sheet.json contact.sheet.json --layermap layers.json --standalone -o process.drc
-klayout -b -r process.drc -rd input=chip.gds -rd report=chip.lyrdb
-fastdrc rules poly.sheet.json --to docs          # the same rules as plain sentences
+fastdrc init myprocess                     # the skeleton
+fastdrc build myprocess                    # -> build/<name>.drc and build/<name>.md (the rules as sentences)
+fastdrc check chip.gds myprocess           # builds, runs KLayout, lists the violations per rule
 ```
 
-`layers.json` maps the layer names used in the drawings to GDS numbers:
-`{"poly": [66, 20], "diff": [65, 20]}`. Nothing in the compiler knows any process:
+`process.json`:
+`{"name": "...", "layers": {"poly": [66, 20], "diff": [65, 20]}, "legend": {"gate": "poly and diff"},
+"columns": {"thin": [["not_interacting", "thick"]], ...}}`. A sheet may carry its own
+legend or columns; the process supplies what it does not, and a layer stack drawn on
+any sheet makes the nets for all of them. Single files still work
+(`fastdrc rules a.sheet.json --layermap layers.json --standalone -o a.drc`, `--to docs`).
+
+Nothing in the compiler knows any process:
 layer names, values, columns and exemptions all come from the drawings. A rule that
 ends up checking nothing is reported as a warning rather than silently dropped.
 
@@ -825,6 +837,13 @@ flags (on the clean layout: nothing, or the drawing says more than the manual).
 ---
 
 ## In the editor (`fastdrc gui`)
+
+- **`fastdrc gui myprocess`** opens a process: its sheets are listed top left, one click
+  apart ("+ sheet" adds a section). **Save** writes the sheet being edited; switching
+  sheets or closing asks about unsaved changes. The text pane at the bottom shows the
+  sheet as part of the process — with its legend, columns, layer numbers, and the layer
+  stack drawn on any other sheet. A single file opens the same way
+  (`fastdrc gui rule.json`); if it lies in a process folder, the process comes with it.
 
 - **Drag** on empty canvas: a new shape (all edges wavy). **Double-click** an edge:
   straight ↔ wavy. **Right-click** an edge: split it.

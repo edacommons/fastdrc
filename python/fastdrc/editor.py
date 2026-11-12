@@ -240,6 +240,9 @@ class Editor:
         self._roles = {}                       # shape name -> how the compiler reads it
         self.sel, self._newk = None, "check"   # _newk = kind for the next new constraint
         self._dir = os.getcwd()                # Save/Open start in the launch dir, then last-used
+        self._path = None                      # the file being edited (Save writes here)
+        self._process = None                   # the process folder it belongs to, if any
+        self._ctx = {}                         # what the process says once: legend, columns, connect, layers
         self.pending, self.drag, self.moving, self.ids = None, None, None, 1
         self._suppress_tree = False
         self._label_meta = {}                  # measure id -> (label bbox, axis) for label drag
@@ -265,6 +268,18 @@ class Editor:
                         foreground=INK, rowheight=20, borderwidth=0)
         style.map("FD.Treeview",                # readable selection: white text on a blue row
                   background=[("selected", "#2d5a88")], foreground=[("selected", "#ffffff")])
+        # the PROCESS this file belongs to: its sheets, one click apart
+        self.proc_frame = tk.Frame(tree_frame, bg=PANEL)
+        self.proc_title = tk.Label(self.proc_frame, text="", bg=PANEL, fg="#8b93a7", anchor="w",
+                                   font=("TkDefaultFont", 9, "bold"))
+        self.proc_title.pack(fill="x", padx=6, pady=(6, 2))
+        self.proc_list = tk.Listbox(self.proc_frame, height=6, bg="#0b0d12", fg=INK, exportselection=False,
+                                    selectbackground="#2d5a88", selectforeground="#ffffff",
+                                    highlightthickness=0, borderwidth=0, activestyle="none")
+        self.proc_list.pack(fill="x", padx=4)
+        self.proc_list.bind("<<ListboxSelect>>", self.on_sheet_pick)
+        tk.Button(self.proc_frame, text="+ sheet", command=self.new_sheet).pack(anchor="w", padx=4, pady=4)
+        self._proc_files = []
         self.tree = ttk.Treeview(tree_frame, show="tree", selectmode="browse", style="FD.Treeview")
         self.tree.pack(fill="both", expand=True)
         self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
@@ -308,8 +323,8 @@ class Editor:
     def _build_side(self, side):
         tb = tk.Frame(side, bg=PANEL)
         tb.pack(fill="x", padx=8, pady=6)
-        for txt, cmd in (("Open", self.open), ("Save", self.save), ("Clear", self.clear),
-                         ("Fit", self.fit), ("+ rule", self.add_rule)):
+        for txt, cmd in (("Open", self.open), ("Save", self.save), ("Save as", self.save_as),
+                         ("New", self.clear), ("Fit", self.fit), ("+ rule", self.add_rule)):
             tk.Button(tb, text=txt, command=cmd).pack(side="left", padx=2)
         self.case_bar = tk.Frame(side, bg=PANEL)
         self.case_bar.pack(fill="x", padx=8, pady=(0, 4))
@@ -360,11 +375,13 @@ class Editor:
             from .backend import get
             from .rule import Rule
             _backends()
-            data = self.serialize()
+            data = self.in_process(self.serialize())
             if not data.get("shapes") and not data.get("or"):
                 out, tag = "(nothing drawn yet)", ""
             else:
-                out, tag = get(self._backend.get()).compile_data(data).rstrip(), ""
+                kw = ({"layermap": self._ctx["layers"]} if self._backend.get() == "klayout"
+                      and self._ctx.get("layers") else {})
+                out, tag = get(self._backend.get(), **kw).compile_data(data).rstrip(), ""
         except Exception as ex:                # e.g. a half-typed constraint
             out, tag = f"{type(ex).__name__}: {ex}", "err"
         if (out, tag) == self._text_shown:     # unchanged -> keep scroll position / selection
@@ -1560,22 +1577,162 @@ class Editor:
         tk.Button(bar, text="+", command=self.add_case).pack(side="left", padx=(6, 1))
         tk.Button(bar, text="−", command=self.remove_case).pack(side="left", padx=1)
 
+    # ---- files and the process they belong to ----
+    def in_process(self, data):
+        """`data` with what the process says once (legend, columns, how layers connect)
+        added where the sheet does not say it itself -- what the deck is built from."""
+        c = self._ctx
+        if not c:
+            return data
+        d = dict(data)
+        if c.get("legend") or d.get("layers"):
+            d["layers"] = {**c.get("legend", {}), **(d.get("layers") or {})}
+        if c.get("columns") or d.get("domains"):
+            d["domains"] = {**c.get("columns", {}), **(d.get("domains") or {})}
+        if c.get("connect") and not d.get("connect"):
+            d["connect"] = c["connect"]
+        return d
+
+    def set_process(self, folder):
+        """Show `folder` as the process: list its sheets and take its legend, columns,
+        layer numbers and connections for the live text."""
+        from . import process
+        self._process = folder
+        self._ctx = {}
+        if folder:
+            try:
+                proc, sheets = process.load(folder)
+                self._ctx = {"legend": proc.get("legend") or {}, "columns": proc.get("columns") or {},
+                             "layers": {k: tuple(v) for k, v in (proc.get("layers") or {}).items()},
+                             "connect": next((d["connect"] for _, d in sheets if d.get("connect")), [])}
+                self._proc_files = [p for p, _ in sheets]
+                self.proc_title.config(text=(proc.get("name") or os.path.basename(os.path.abspath(folder))).upper())
+            except Exception as ex:                    # noqa: BLE001
+                messagebox.showerror("Process", str(ex))
+                self._process, self._proc_files = None, []
+        if not self._process:
+            self.proc_frame.pack_forget()
+            return
+        self.proc_frame.pack(fill="x", before=self.tree)
+        self.proc_list.delete(0, "end")
+        for p in self._proc_files:
+            self.proc_list.insert("end", os.path.basename(p).replace(".sheet.json", "").replace(".json", ""))
+        self._mark_current()
+
+    def _mark_current(self):
+        self.proc_list.selection_clear(0, "end")
+        here = os.path.abspath(self._path) if self._path else None
+        for i, p in enumerate(self._proc_files):
+            if os.path.abspath(p) == here:
+                self.proc_list.selection_set(i)
+        name = os.path.basename(self._path) if self._path else "untitled"
+        self.root.title(f"{name} — FastDRC rule editor")
+
+    def changed(self):
+        """Does what is drawn differ from the file on disk?"""
+        cur = self.serialize()
+        if not self._path:
+            return bool(cur.get("shapes") or cur.get("or"))
+        try:
+            with open(self._path) as f:
+                return json.load(f) != cur
+        except (OSError, ValueError):
+            return True
+
+    def may_leave(self):
+        """Before another file replaces this one: offer to save what changed."""
+        if not self.changed():
+            return True
+        name = os.path.basename(self._path) if self._path else "this drawing"
+        ans = messagebox.askyesnocancel("Unsaved changes", f"Save changes to {name}?")
+        if ans is None:
+            return False
+        return self.save() if ans else True
+
+    def open_path(self, path):
+        from . import process
+        with open(path) as f:
+            data = json.load(f)
+        self._path, self._dir = path, os.path.dirname(os.path.abspath(path))
+        here = self._dir
+        folder = here if process.is_process(here) else (
+            os.path.dirname(here) if os.path.basename(here) == "rules" and process.is_process(os.path.dirname(here))
+            else None)
+        self.load(data)
+        if folder != self._process or folder:
+            self.set_process(folder)
+        self._mark_current()
+
+    def on_sheet_pick(self, _event=None):
+        pick = self.proc_list.curselection()
+        if not pick:
+            return
+        path = self._proc_files[pick[0]]
+        if self._path and os.path.abspath(path) == os.path.abspath(self._path):
+            return
+        if not self.may_leave():
+            self._mark_current()
+            return
+        try:
+            self.open_path(path)
+        except Exception as ex:                        # noqa: BLE001
+            messagebox.showerror("Open failed", str(ex))
+
+    def new_sheet(self):
+        """A new, empty sheet in the process's rules/ folder."""
+        from tkinter import simpledialog
+        if not self._process or not self.may_leave():
+            return
+        name = simpledialog.askstring("New sheet", "Name of the section (e.g. metal1):", parent=self.root)
+        if not name:
+            return
+        stem = "".join(c if c.isalnum() or c in "-_" else "_" for c in name.strip())
+        folder = os.path.join(self._process, "rules")
+        os.makedirs(folder, exist_ok=True)
+        path = os.path.join(folder, stem + ".sheet.json")
+        if os.path.exists(path):
+            messagebox.showerror("New sheet", f"{os.path.basename(path)} already exists")
+            return
+        with open(path, "w") as f:
+            json.dump({"name": name.strip(), "shapes": [], "measures": [], "constraints": [], "rules": []}, f, indent=2)
+        self.open_path(path)
+
     def save(self):
+        """Write to the file being edited (asks where the first time). True if saved."""
+        if not self._path:
+            return self.save_as()
+        with open(self._path, "w") as f:
+            json.dump(self.serialize(), f, indent=2)
+        if self._process:
+            self.set_process(self._process)            # a drawn stack / legend may have changed
+        return True
+
+    def save_as(self):
         path = filedialog.asksaveasfilename(initialdir=self._dir, defaultextension=".json",
                                             filetypes=[("JSON", "*.json")])
-        if path:
-            self._dir = os.path.dirname(path)
-            with open(path, "w") as f:
-                json.dump(self.serialize(), f, indent=2)
+        if not path:
+            return False
+        self._path, self._dir = path, os.path.dirname(path)
+        self.save()
+        self.open_path(path)                           # it may now belong to a process
+        return True
 
     def open(self):
+        if not self.may_leave():
+            return
         path = filedialog.askopenfilename(initialdir=self._dir, filetypes=[("JSON", "*.json")])
         if path:
-            self._dir = os.path.dirname(path)
-            with open(path) as f:
-                self.load(json.load(f))
+            try:
+                self.open_path(path)
+            except Exception as ex:                    # noqa: BLE001
+                messagebox.showerror("Open failed", str(ex))
 
     def clear(self):
+        """A new, untitled drawing (the file that was open is left as it is on disk)."""
+        if not self.may_leave():
+            return
+        self._path = None
+        self._mark_current()
         self.shapes, self.measures, self.constraints, self.meta = [], [], [], {}
         self.cases, self.case, self.top_meta = None, 0, {}
         self.sel = self.pending = self.drag = self.moving = None
@@ -1584,14 +1741,25 @@ class Editor:
 
 
 def run(path=None):
+    """Open the editor on a rule / sheet file, or on a process folder (its first sheet)."""
+    from . import process
     root = tk.Tk()
     ed = Editor(root)
     if path:
         try:
-            with open(path) as f:
-                ed.load(json.load(f))
+            if os.path.isdir(path):
+                ed._dir = os.path.abspath(path)
+                ed.set_process(path)
+                if ed._proc_files:
+                    ed.open_path(ed._proc_files[0])
+                elif not process.is_process(path):
+                    messagebox.showinfo("Process", f"{path} has no {process.PROCESS_FILE} yet -- "
+                                        f"run `fastdrc init {path}` to make it a process.")
+            else:
+                ed.open_path(path)
         except Exception as ex:
             messagebox.showerror("Open failed", str(ex))
+    root.protocol("WM_DELETE_WINDOW", lambda: ed.may_leave() and root.destroy())
     root.mainloop()
 
 

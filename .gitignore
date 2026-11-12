@@ -26,3 +26,5 @@ venv/
 
 # Tooling-local
 .doit.db
+# a process's generated deck and rule text
+examples/*/build/

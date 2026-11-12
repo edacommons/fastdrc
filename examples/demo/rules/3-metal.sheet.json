@@ -1,0 +1,1154 @@
+{
+ "name": "Metal",
+ "desc": "Metal-1, via-1, antenna and density; and how the layers connect",
+ "shapes": [
+  {
+   "name": "MV",
+   "edges": [
+    {
+     "id": "mv_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      10,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_1",
+     "start": [
+      10,
+      0
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_2",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      0,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_3",
+     "start": [
+      0,
+      10
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "VA",
+   "edges": [
+    {
+     "id": "va_0",
+     "start": [
+      2,
+      2
+     ],
+     "end": [
+      4,
+      2
+     ],
+     "edge": false
+    },
+    {
+     "id": "va_1",
+     "start": [
+      4,
+      2
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "va_2",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      2,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "va_3",
+     "start": [
+      2,
+      4
+     ],
+     "end": [
+      2,
+      2
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "MW",
+   "edges": [
+    {
+     "id": "mw_0",
+     "start": [
+      20,
+      0
+     ],
+     "end": [
+      32,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mw_1",
+     "start": [
+      32,
+      0
+     ],
+     "end": [
+      32,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "mw_2",
+     "start": [
+      32,
+      12
+     ],
+     "end": [
+      20,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "mw_3",
+     "start": [
+      20,
+      12
+     ],
+     "end": [
+      20,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "VW",
+   "edges": [
+    {
+     "id": "vw_0",
+     "start": [
+      25,
+      5
+     ],
+     "end": [
+      27,
+      5
+     ],
+     "edge": false
+    },
+    {
+     "id": "vw_1",
+     "start": [
+      27,
+      5
+     ],
+     "end": [
+      27,
+      7
+     ],
+     "edge": false
+    },
+    {
+     "id": "vw_2",
+     "start": [
+      27,
+      7
+     ],
+     "end": [
+      25,
+      7
+     ],
+     "edge": false
+    },
+    {
+     "id": "vw_3",
+     "start": [
+      25,
+      7
+     ],
+     "end": [
+      25,
+      5
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "WS",
+   "edges": [
+    {
+     "id": "ws_0",
+     "start": [
+      40,
+      0
+     ],
+     "end": [
+      60,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "ws_1",
+     "start": [
+      60,
+      0
+     ],
+     "end": [
+      60,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "ws_2",
+     "start": [
+      60,
+      20
+     ],
+     "end": [
+      40,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "ws_3",
+     "start": [
+      40,
+      20
+     ],
+     "end": [
+      40,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "TS",
+   "edges": [
+    {
+     "id": "ts_0",
+     "start": [
+      44,
+      4
+     ],
+     "end": [
+      56,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "ts_1",
+     "start": [
+      56,
+      4
+     ],
+     "end": [
+      56,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "ts_2",
+     "start": [
+      56,
+      16
+     ],
+     "end": [
+      44,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "ts_3",
+     "start": [
+      44,
+      16
+     ],
+     "end": [
+      44,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "KS",
+   "edges": [
+    {
+     "id": "ks_0",
+     "start": [
+      48,
+      8
+     ],
+     "end": [
+      52,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "ks_1",
+     "start": [
+      52,
+      8
+     ],
+     "end": [
+      52,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "ks_2",
+     "start": [
+      52,
+      12
+     ],
+     "end": [
+      48,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "ks_3",
+     "start": [
+      48,
+      12
+     ],
+     "end": [
+      48,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "MS",
+   "edges": [
+    {
+     "id": "ms_0",
+     "start": [
+      46,
+      6
+     ],
+     "end": [
+      54,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "ms_1",
+     "start": [
+      54,
+      6
+     ],
+     "end": [
+      54,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "ms_2",
+     "start": [
+      54,
+      14
+     ],
+     "end": [
+      46,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "ms_3",
+     "start": [
+      46,
+      14
+     ],
+     "end": [
+      46,
+      6
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "VS",
+   "edges": [
+    {
+     "id": "vs_0",
+     "start": [
+      49,
+      9
+     ],
+     "end": [
+      51,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "vs_1",
+     "start": [
+      51,
+      9
+     ],
+     "end": [
+      51,
+      11
+     ],
+     "edge": false
+    },
+    {
+     "id": "vs_2",
+     "start": [
+      51,
+      11
+     ],
+     "end": [
+      49,
+      11
+     ],
+     "edge": false
+    },
+    {
+     "id": "vs_3",
+     "start": [
+      49,
+      11
+     ],
+     "end": [
+      49,
+      9
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "M2",
+   "edges": [
+    {
+     "id": "m2_0",
+     "start": [
+      45,
+      5
+     ],
+     "end": [
+      55,
+      5
+     ],
+     "edge": false
+    },
+    {
+     "id": "m2_1",
+     "start": [
+      55,
+      5
+     ],
+     "end": [
+      55,
+      15
+     ],
+     "edge": false
+    },
+    {
+     "id": "m2_2",
+     "start": [
+      55,
+      15
+     ],
+     "end": [
+      45,
+      15
+     ],
+     "edge": false
+    },
+    {
+     "id": "m2_3",
+     "start": [
+      45,
+      15
+     ],
+     "end": [
+      45,
+      5
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "GA",
+   "edges": [
+    {
+     "id": "ga_0",
+     "start": [
+      70,
+      4
+     ],
+     "end": [
+      72,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "ga_1",
+     "start": [
+      72,
+      4
+     ],
+     "end": [
+      72,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "ga_2",
+     "start": [
+      72,
+      8
+     ],
+     "end": [
+      70,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "ga_3",
+     "start": [
+      70,
+      8
+     ],
+     "end": [
+      70,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PA",
+   "edges": [
+    {
+     "id": "pa_0",
+     "start": [
+      70,
+      8
+     ],
+     "end": [
+      72,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "pa_1",
+     "start": [
+      72,
+      8
+     ],
+     "end": [
+      72,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "pa_2",
+     "start": [
+      72,
+      20
+     ],
+     "end": [
+      70,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "pa_3",
+     "start": [
+      70,
+      20
+     ],
+     "end": [
+      70,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "KP",
+   "edges": [
+    {
+     "id": "kp_0",
+     "start": [
+      70.5,
+      12
+     ],
+     "end": [
+      71.5,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "kp_1",
+     "start": [
+      71.5,
+      12
+     ],
+     "end": [
+      71.5,
+      13
+     ],
+     "edge": false
+    },
+    {
+     "id": "kp_2",
+     "start": [
+      71.5,
+      13
+     ],
+     "end": [
+      70.5,
+      13
+     ],
+     "edge": false
+    },
+    {
+     "id": "kp_3",
+     "start": [
+      70.5,
+      13
+     ],
+     "end": [
+      70.5,
+      12
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "MP",
+   "edges": [
+    {
+     "id": "mp_0",
+     "start": [
+      69,
+      11
+     ],
+     "end": [
+      73,
+      11
+     ],
+     "edge": false
+    },
+    {
+     "id": "mp_1",
+     "start": [
+      73,
+      11
+     ],
+     "end": [
+      73,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mp_2",
+     "start": [
+      73,
+      14
+     ],
+     "end": [
+      69,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mp_3",
+     "start": [
+      69,
+      14
+     ],
+     "end": [
+      69,
+      11
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "CHIP",
+   "edges": [
+    {
+     "id": "chip_0",
+     "start": [
+      90,
+      0
+     ],
+     "end": [
+      120,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "chip_1",
+     "start": [
+      120,
+      0
+     ],
+     "end": [
+      120,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "chip_2",
+     "start": [
+      120,
+      20
+     ],
+     "end": [
+      90,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "chip_3",
+     "start": [
+      90,
+      20
+     ],
+     "end": [
+      90,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "MD",
+   "edges": [
+    {
+     "id": "md_0",
+     "start": [
+      96,
+      6
+     ],
+     "end": [
+      104,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "md_1",
+     "start": [
+      104,
+      6
+     ],
+     "end": [
+      104,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "md_2",
+     "start": [
+      104,
+      14
+     ],
+     "end": [
+      96,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "md_3",
+     "start": [
+      96,
+      14
+     ],
+     "end": [
+      96,
+      6
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "WIN",
+   "edges": [
+    {
+     "id": "win_0",
+     "start": [
+      130,
+      0
+     ],
+     "end": [
+      150,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "win_1",
+     "start": [
+      150,
+      0
+     ],
+     "end": [
+      150,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "win_2",
+     "start": [
+      150,
+      20
+     ],
+     "end": [
+      130,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "win_3",
+     "start": [
+      130,
+      20
+     ],
+     "end": [
+      130,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "MN",
+   "edges": [
+    {
+     "id": "mn_0",
+     "start": [
+      136,
+      6
+     ],
+     "end": [
+      144,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "mn_1",
+     "start": [
+      144,
+      6
+     ],
+     "end": [
+      144,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mn_2",
+     "start": [
+      144,
+      14
+     ],
+     "end": [
+      136,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mn_3",
+     "start": [
+      136,
+      14
+     ],
+     "end": [
+      136,
+      6
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "Ea",
+   "from": "mv_3",
+   "to": "va_3"
+  },
+  {
+   "name": "Eb",
+   "from": "mv_0",
+   "to": "va_0"
+  },
+  {
+   "name": "Ww",
+   "from": "mw_3",
+   "to": "mw_1",
+   "at": 10
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MV.layer == met1"
+  },
+  {
+   "kind": "match",
+   "expr": "VA.layer == via1"
+  },
+  {
+   "kind": "match",
+   "expr": "MW.layer == met1"
+  },
+  {
+   "kind": "match",
+   "expr": "VW.layer == via1"
+  },
+  {
+   "kind": "match",
+   "expr": "WS.layer == nwell"
+  },
+  {
+   "kind": "match",
+   "expr": "TS.layer == ndiff"
+  },
+  {
+   "kind": "match",
+   "expr": "KS.layer == cont"
+  },
+  {
+   "kind": "match",
+   "expr": "MS.layer == met1"
+  },
+  {
+   "kind": "match",
+   "expr": "VS.layer == via1"
+  },
+  {
+   "kind": "match",
+   "expr": "M2.layer == met2"
+  },
+  {
+   "kind": "match",
+   "expr": "TS.net == WS.net"
+  },
+  {
+   "kind": "match",
+   "expr": "KS.net == TS.net"
+  },
+  {
+   "kind": "match",
+   "expr": "KS.net == MS.net"
+  },
+  {
+   "kind": "match",
+   "expr": "VS.net == MS.net"
+  },
+  {
+   "kind": "match",
+   "expr": "VS.net == M2.net"
+  },
+  {
+   "kind": "match",
+   "expr": "GA.layer == gate"
+  },
+  {
+   "kind": "match",
+   "expr": "PA.layer == field_poly"
+  },
+  {
+   "kind": "match",
+   "expr": "KP.layer == cont"
+  },
+  {
+   "kind": "match",
+   "expr": "MP.layer == met1"
+  },
+  {
+   "kind": "match",
+   "expr": "PA.net == GA.net"
+  },
+  {
+   "kind": "match",
+   "expr": "KP.net == PA.net"
+  },
+  {
+   "kind": "match",
+   "expr": "KP.net == MP.net"
+  },
+  {
+   "kind": "match",
+   "expr": "CHIP.layer == chip"
+  },
+  {
+   "kind": "match",
+   "expr": "MD.layer == met1"
+  },
+  {
+   "kind": "match",
+   "expr": "WIN.layer == chip"
+  },
+  {
+   "kind": "match",
+   "expr": "MN.layer == met1"
+  },
+  {
+   "kind": "match",
+   "expr": "win_0.length == 100"
+  },
+  {
+   "kind": "match",
+   "expr": "WIN.step == 50"
+  }
+ ],
+ "rules": [
+  {
+   "name": "V1.1",
+   "desc": "Metal-1 enclosure of via-1 on one of two adjacent sides",
+   "constraints": [
+    {
+     "kind": "check",
+     "expr": "Ea >= 0.1 or Eb >= 0.1"
+    }
+   ]
+  },
+  {
+   "name": "V1.2",
+   "desc": "Vias on metal-1 wider than 2",
+   "constraints": [
+    {
+     "kind": "match",
+     "expr": "Ww >= 2"
+    },
+    {
+     "kind": "check",
+     "expr": "Count(VW) >= 2"
+    }
+   ]
+  },
+  {
+   "name": "AN.1",
+   "desc": "Metal-1 area per connected gate area",
+   "constraints": [
+    {
+     "kind": "check",
+     "expr": "MP.area <= 400 * GA.area"
+    }
+   ]
+  },
+  {
+   "name": "DN.1",
+   "desc": "Metal-1 density over the chip",
+   "constraints": [
+    {
+     "kind": "check",
+     "expr": "MD.density >= 0.2 and MD.density <= 0.8"
+    }
+   ],
+   "with": [
+    "CHIP"
+   ]
+  },
+  {
+   "name": "DN.2",
+   "desc": "Metal-1 density in any 100 x 100 window",
+   "constraints": [
+    {
+     "kind": "check",
+     "expr": "MN.density <= 0.9"
+    }
+   ],
+   "with": [
+    "WIN"
+   ]
+  }
+ ]
+}

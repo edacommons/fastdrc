@@ -135,46 +135,35 @@ def compose(config_path, out_override=None):
 
 
 def _compile_rules(args):
-    """`fastdrc rules`: drawn rule files -> one deck / one text."""
+    """`fastdrc rules`: drawn rule files (or a process folder) -> one deck / one text."""
     import json
 
-    from . import backend_docs, backend_klayout   # noqa: F401  (register the backends)
+    from . import backend_docs, backend_klayout, process   # noqa: F401  (register the backends)
     from .backend import get
-    from .sheet import rules_of
 
-    kw = {}
+    kw, sheets = {}, []
+    for path in args.files:
+        if os.path.isdir(path):                  # a process folder: its sheets, its layer table
+            proc, found = process.load(path)
+            sheets += found
+            kw.setdefault("layermap", {}).update({k: tuple(v) for k, v in (proc.get("layers") or {}).items()})
+        else:
+            with open(path) as f:
+                sheets.append((path, json.load(f)))
     if args.layermap:
         with open(args.layermap) as f:
-            kw["layermap"] = {k: tuple(v) for k, v in json.load(f).items()}
-    rules = []
-    from .sheet import sheet_warnings
-    for path in args.files:
-        with open(path) as f:
-            data = json.load(f)
-        for note in sheet_warnings(data):
-            print(f"fastdrc: warning: {path}: {note}", file=sys.stderr)
-        rules += rules_of(data)
-    # a drawing that says nothing checkable must not pass silently
-    from .rule import Rule
-    silent = get("docs")
-    for r in rules:
-        if not Rule(r).connections() and any(
-                ".net" in c.get("expr", "") for c in r.get("constraints", [])):
-            print(f"fastdrc: warning: rule {r.get('name') or '(unnamed)'} is about nets but nothing "
-                  f"says how layers connect -- add \"connect\": [[layer, layer], ...]", file=sys.stderr)
-        for note in r.get("warnings", []):
-            print(f"fastdrc: warning: rule {r.get('name') or '(unnamed)'}: {note}", file=sys.stderr)
-        try:
-            if "(no checkable assertion found)" in silent.compile(Rule(r)):
-                print(f"fastdrc: warning: rule {r.get('name') or '(unnamed)'} checks nothing "
-                      f"-- no bound, cross or 'in' applies to what is drawn", file=sys.stderr)
-        except Exception as ex:                      # noqa: BLE001
-            raise SystemExit(f"fastdrc: rule {r.get('name') or '(unnamed)'}: {ex}")
+            kw.setdefault("layermap", {}).update({k: tuple(v) for k, v in json.load(f).items()})
+    try:
+        rules, notes = process.rules_and_warnings(sheets)
+    except Exception as ex:                          # noqa: BLE001
+        raise SystemExit(f"fastdrc: {ex}")
+    for note in notes:
+        print(f"fastdrc: warning: {note}", file=sys.stderr)
     if args.to == "klayout":
         kw.update(standalone=args.standalone, title=args.title)
     backend = get(args.to, **(kw if args.to == "klayout" else {}))
     text = backend.compile_all(rules)
-    if args.to == "klayout" and (args.layermap or args.standalone) and backend.unmapped:
+    if args.to == "klayout" and (kw.get("layermap") or args.standalone) and backend.unmapped:
         # such a layer is read by NAME, which a GDS file does not have: every rule on
         # it would silently see nothing
         print("fastdrc: warning: no layer number for " + ", ".join(sorted(backend.unmapped))
@@ -185,6 +174,46 @@ def _compile_rules(args):
     else:
         sys.stdout.write(text)
     return 0
+
+
+def _build(args):
+    """`fastdrc build`: a process folder -> its deck and its rules as text."""
+    from . import process
+    deck, text, n, notes = process.build(args.process, args.out)
+    for note in notes:
+        print(f"fastdrc: warning: {note}", file=sys.stderr)
+    print(f"{n} rules -> {deck}\n{' ' * len(str(n))}          {text}"
+          + (f"\n{len(notes)} warning(s)" if notes else ""))
+    return 0
+
+
+def _check(args):
+    """`fastdrc check`: build the process, run its deck on a layout, say what it found."""
+    import subprocess
+
+    from . import process
+    deck, _, n, notes = process.build(args.process)
+    for note in notes:
+        print(f"fastdrc: warning: {note}", file=sys.stderr)
+    klayout = process.klayout_binary()
+    if not klayout:
+        raise SystemExit("fastdrc: KLayout not found -- put `klayout` on the PATH or set KLAYOUT_BIN.\n"
+                         f"         The deck is ready: klayout -b -r {deck} -rd input={args.layout}")
+    report = args.report or os.path.splitext(args.layout)[0] + ".lyrdb"
+    cmd = [klayout, "-b", "-r", deck, "-rd", f"input={args.layout}", "-rd", f"report={report}"]
+    if args.top:
+        cmd += ["-rd", f"topcell={args.top}"]
+    p = subprocess.run(cmd, capture_output=True, text=True)
+    if p.returncode != 0 or not os.path.exists(report):
+        raise SystemExit("fastdrc: KLayout failed:\n" + (p.stderr or p.stdout)[-2000:])
+    counts = process.read_report(report)
+    hit = {r: v for r, v in counts.items() if v[0]}
+    width = max((len(r) for r in hit), default=0)
+    for r, (c, desc) in hit.items():
+        print(f"  {r:{width}}  {c:5}  {desc}")
+    print(f"{sum(c for c, _ in hit.values())} violation(s) of {len(hit)} rule(s); {len(counts) - len(hit)} of "
+          f"{len(counts)} rules clean. Report: {report}")
+    return 1 if hit else 0
 
 
 def main(argv=None):
@@ -223,7 +252,7 @@ def main(argv=None):
     rules_p = sub.add_parser(
         "rules", help="Compile drawn rule files (single rules or sheets) into a "
                       "KLayout DRC deck, or into plain-language rule text.")
-    rules_p.add_argument("files", nargs="+", help="rule / sheet .json files")
+    rules_p.add_argument("files", nargs="+", help="rule / sheet .json files, or process folders")
     rules_p.add_argument("--to", default="klayout", choices=["klayout", "docs", "facts"],
                          help="what to produce (default: a KLayout .drc deck)")
     rules_p.add_argument("--layermap", help="JSON file {layer name: [gds layer, datatype]}")
@@ -233,9 +262,25 @@ def main(argv=None):
                               "klayout -b -r deck.drc -rd input=layout.gds -rd report=out.lyrdb")
     rules_p.add_argument("--title", default="FastDRC", help="report title (with --standalone)")
 
+    init_p = sub.add_parser("init", help="Create an empty process folder (process.json, rules/).")
+    init_p.add_argument("process", help="folder to create")
+    init_p.add_argument("--name", help="process name (default: the folder's name)")
+
+    build_p = sub.add_parser(
+        "build", help="Compile a process folder: the KLayout deck and the rules as text.")
+    build_p.add_argument("process", nargs="?", default=".", help="process folder (default: here)")
+    build_p.add_argument("-o", "--out", help="output folder (default: <process>/build)")
+
+    check_p = sub.add_parser(
+        "check", help="Run a process's rules on a layout (needs KLayout) and list the violations.")
+    check_p.add_argument("layout", help="layout file (GDS / OASIS)")
+    check_p.add_argument("process", nargs="?", default=".", help="process folder (default: here)")
+    check_p.add_argument("--top", help="top cell (default: the layout's)")
+    check_p.add_argument("--report", help="report database to write (default: beside the layout)")
+
     gui_p = sub.add_parser(
         "gui", help="Launch the visual rule editor (Tkinter).")
-    gui_p.add_argument("file", nargs="?", help="optional rule .json to open")
+    gui_p.add_argument("file", nargs="?", help="optional rule .json, or a process folder, to open")
 
     args = parser.parse_args(argv)
     if args.command == "compose":
@@ -251,6 +296,15 @@ def main(argv=None):
         print(f"inflate {args.infile} by {args.d} -> {args.out} ({n} tiles)")
     elif args.command == "rules":
         return _compile_rules(args)
+    elif args.command == "init":
+        from fastdrc import process
+        made = process.init(args.process, args.name)
+        print(f"{'created' if made else 'already a process:'} {args.process}/{process.PROCESS_FILE}"
+              f" -- draw sheets into {args.process}/rules/ (fastdrc gui {args.process})")
+    elif args.command == "build":
+        return _build(args)
+    elif args.command == "check":
+        return _check(args)
     elif args.command == "gui":
         from fastdrc import editor
         editor.run(args.file)

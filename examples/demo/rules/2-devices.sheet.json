@@ -1,0 +1,549 @@
+{
+ "name": "Devices",
+ "desc": "Poly, diffusion and contacts",
+ "shapes": [
+  {
+   "name": "DT",
+   "edges": [
+    {
+     "id": "dt_0",
+     "start": [
+      0,
+      4
+     ],
+     "end": [
+      20,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dt_1",
+     "start": [
+      20,
+      4
+     ],
+     "end": [
+      20,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "dt_2",
+     "start": [
+      20,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "dt_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "GT",
+   "edges": [
+    {
+     "id": "gt_0",
+     "start": [
+      8,
+      0
+     ],
+     "end": [
+      11,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "gt_1",
+     "start": [
+      11,
+      0
+     ],
+     "end": [
+      11,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "gt_2",
+     "start": [
+      11,
+      16
+     ],
+     "end": [
+      8,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "gt_3",
+     "start": [
+      8,
+      16
+     ],
+     "end": [
+      8,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PW",
+   "edges": [
+    {
+     "id": "pw_0",
+     "start": [
+      26,
+      0
+     ],
+     "end": [
+      28,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "pw_1",
+     "start": [
+      28,
+      0
+     ],
+     "end": [
+      28,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "pw_2",
+     "start": [
+      28,
+      16
+     ],
+     "end": [
+      26,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "pw_3",
+     "start": [
+      26,
+      16
+     ],
+     "end": [
+      26,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DC",
+   "edges": [
+    {
+     "id": "dc_0",
+     "start": [
+      40,
+      0
+     ],
+     "end": [
+      60,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "dc_1",
+     "start": [
+      60,
+      0
+     ],
+     "end": [
+      60,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "dc_2",
+     "start": [
+      60,
+      12
+     ],
+     "end": [
+      40,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "dc_3",
+     "start": [
+      40,
+      12
+     ],
+     "end": [
+      40,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "KA",
+   "edges": [
+    {
+     "id": "ka_0",
+     "start": [
+      44,
+      3
+     ],
+     "end": [
+      45,
+      3
+     ],
+     "edge": false
+    },
+    {
+     "id": "ka_1",
+     "start": [
+      45,
+      3
+     ],
+     "end": [
+      45,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "ka_2",
+     "start": [
+      45,
+      4
+     ],
+     "end": [
+      44,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "ka_3",
+     "start": [
+      44,
+      4
+     ],
+     "end": [
+      44,
+      3
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "KB",
+   "edges": [
+    {
+     "id": "kb_0",
+     "start": [
+      44,
+      7
+     ],
+     "end": [
+      45,
+      7
+     ],
+     "edge": false
+    },
+    {
+     "id": "kb_1",
+     "start": [
+      45,
+      7
+     ],
+     "end": [
+      45,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "kb_2",
+     "start": [
+      45,
+      8
+     ],
+     "end": [
+      44,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "kb_3",
+     "start": [
+      44,
+      8
+     ],
+     "end": [
+      44,
+      7
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "KC",
+   "edges": [
+    {
+     "id": "kc_0",
+     "start": [
+      48,
+      7
+     ],
+     "end": [
+      49,
+      7
+     ],
+     "edge": false
+    },
+    {
+     "id": "kc_1",
+     "start": [
+      49,
+      7
+     ],
+     "end": [
+      49,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "kc_2",
+     "start": [
+      49,
+      8
+     ],
+     "end": [
+      48,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "kc_3",
+     "start": [
+      48,
+      8
+     ],
+     "end": [
+      48,
+      7
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "Xp",
+   "from": "dt_2",
+   "to": "gt_2"
+  },
+  {
+   "name": "Xd",
+   "from": "gt_1",
+   "to": "dt_1",
+   "at": 8
+  },
+  {
+   "name": "Wp",
+   "from": "pw_3",
+   "to": "pw_1"
+  },
+  {
+   "name": "Sk",
+   "from": "ka_2",
+   "to": "kb_0"
+  },
+  {
+   "name": "Sk2",
+   "from": "kb_1",
+   "to": "kc_3"
+  },
+  {
+   "name": "Ek",
+   "from": "dc_3",
+   "to": "ka_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "DT.layer == diff"
+  },
+  {
+   "kind": "match",
+   "expr": "GT.layer == poly"
+  },
+  {
+   "kind": "match",
+   "expr": "PW.layer == poly"
+  },
+  {
+   "kind": "match",
+   "expr": "DC.layer == diff"
+  },
+  {
+   "kind": "match",
+   "expr": "KA.layer == cont"
+  },
+  {
+   "kind": "match",
+   "expr": "KB.layer == cont"
+  },
+  {
+   "kind": "match",
+   "expr": "KC.layer == cont"
+  },
+  {
+   "kind": "match",
+   "expr": "ka_0.length == ka_1.length"
+  },
+  {
+   "kind": "match",
+   "expr": "kb_0.length == kb_1.length"
+  },
+  {
+   "kind": "match",
+   "expr": "kc_0.length == kc_1.length"
+  }
+ ],
+ "rules": [
+  {
+   "name": "PO.1",
+   "desc": "Poly width",
+   "constraints": [
+    {
+     "kind": "check",
+     "expr": "Wp >= 0.15"
+    }
+   ]
+  },
+  {
+   "name": "PO.2",
+   "desc": "Poly extension beyond diffusion (end cap)",
+   "constraints": [
+    {
+     "kind": "check",
+     "expr": "Xp >= 0.2"
+    }
+   ]
+  },
+  {
+   "name": "PO.3",
+   "desc": "Diffusion extension beyond the gate",
+   "constraints": [
+    {
+     "kind": "check",
+     "expr": "Xd >= 0.25"
+    }
+   ]
+  },
+  {
+   "name": "CO.1",
+   "desc": "Contact size",
+   "constraints": [
+    {
+     "kind": "check",
+     "expr": "ka_0.length == 0.2"
+    }
+   ],
+   "extended": true
+  },
+  {
+   "name": "CO.2",
+   "desc": "Contact space",
+   "constraints": [
+    {
+     "kind": "check",
+     "expr": "Sk >= 0.25"
+    }
+   ]
+  },
+  {
+   "name": "CO.3",
+   "desc": "Contact space in an array of 4 x 4 or more (one direction is enough)",
+   "constraints": [
+    {
+     "kind": "match",
+     "expr": "KA.rows >= 4 and KA.columns >= 4"
+    },
+    {
+     "kind": "match",
+     "expr": "KB.rows >= 4 and KB.columns >= 4"
+    },
+    {
+     "kind": "match",
+     "expr": "KC.rows >= 4 and KC.columns >= 4"
+    },
+    {
+     "kind": "match",
+     "expr": "ka_0.length == 0.2"
+    },
+    {
+     "kind": "match",
+     "expr": "kb_0.length == 0.2"
+    },
+    {
+     "kind": "match",
+     "expr": "kc_0.length == 0.2"
+    },
+    {
+     "kind": "check",
+     "expr": "Sk >= 0.3 or Sk2 >= 0.3"
+    }
+   ]
+  },
+  {
+   "name": "CO.4",
+   "desc": "Diffusion enclosure of contact",
+   "constraints": [
+    {
+     "kind": "check",
+     "expr": "Ek >= 0.1"
+    }
+   ]
+  }
+ ]
+}

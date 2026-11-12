@@ -158,9 +158,9 @@ class KLayoutBackend(Backend):
                        off + k, total, rid)
         off += len(antennas)
         for k, (holder, counted, lo, hi) in enumerate(counts):
-            expr = (self._derived(rule, holder, {holder, counted})
-                    + self._holding(rule.layer_of(counted), lo, hi, select=False))
-            expr += "".join(f".{op}({mk})" for op, mk in self._scope(rule, {holder, counted}, holder))
+            d, consumed = rule.holder_derivation(holder, [counted])
+            expr = self._fmt_deriv(d) + self._holding(rule.layer_of(counted), lo, hi, select=False)
+            expr += "".join(f".{op}({mk})" for op, mk in self._scope(rule, consumed, holder))
             self._emit(rule, expr, off + k, total, rule.name or f"Count({counted})")
         off += len(counts)
         for k, (held, holder, lo, hi) in enumerate(helds):
@@ -638,10 +638,7 @@ end"""
         it is made one group (a private connection between the two), the areas are
         taken per group, and the holders whose ratio is out of range are the result --
         a holder holding nothing included."""
-        d, _, consumed = rule.check_derivations(holder, holder)
-        inner = {rule.layer_of(h) for h in held}
-        d = dict(d, nots=[n for n in d["nots"] if n not in inner],
-                 ands=[a for a in d["ands"] if a not in inner])
+        d, consumed = rule.holder_derivation(holder, held)
         self._checks.append(f"{stem}_in = {self._fmt_deriv(d)}")
         names = {}
         for i, h in enumerate(held):
@@ -655,7 +652,7 @@ end"""
                           + ([f"value('r') > {f(hi)}"] if hi is not None else []))
         expr = (f"evaluate_nets({stem}_in, {{ {args} }}, \"put('r', ({total}) / area)\")"
                 f".selected_if(\"{bad}\")")
-        return expr + "".join(f".{op}({mk})" for op, mk in self._scope(rule, consumed | set(held), holder))
+        return expr + "".join(f".{op}({mk})" for op, mk in self._scope(rule, consumed, holder))
 
     def _use_connections(self, pairs):
         """Declare how layers connect, before a rule that needs nets. Connections are

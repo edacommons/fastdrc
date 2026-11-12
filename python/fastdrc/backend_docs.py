@@ -12,6 +12,8 @@ of the KLayout codegen.
 
 from __future__ import annotations
 
+import re
+
 from .backend import Backend, register
 from .rule import Rule
 
@@ -90,8 +92,10 @@ class DocsBackend(Backend):
             return "\n".join(lines) + "\n"
         for sent in self._sentences(rule):
             lines.append(f"  • {sent}")
-        for name, expr in (rule.data.get("layers") or {}).items():   # the legend, as drawn
-            lines.append(f"    where {name} = {expr}")
+        said = " ".join(lines)
+        for name, expr in (rule.data.get("layers") or {}).items():   # the legend entries used
+            if re.search(rf"(?<![\w.]){re.escape(self._name(name))}(?!\w)", said):
+                lines.append(f"    where {name} = {expr}")
         if len(lines) == 1:
             lines.append("  • (no checkable assertion found)")
         return "\n".join(lines) + "\n"
@@ -139,7 +143,7 @@ class DocsBackend(Backend):
             out.append(f"{what} must take up {much} of the area of every "
                        f"{self._deriv_en(rule, holder)}.")
         for holder, counted, lo, hi in rule.count_bounds():
-            out.append(f"every {self._name(rule.layer_of(holder))} must hold "
+            out.append(f"every {self._fmt_deriv_en(rule.holder_derivation(holder, [counted])[0])} must hold "
                        f"{_how_many(lo, hi)} {self._name(rule.layer_of(counted))}.")
         for collectors, gate, ratio, filters in rule.antenna_bounds():
             g = self._name(rule.layer_of(gate))
@@ -173,6 +177,9 @@ class DocsBackend(Backend):
             if rule.relation(sf, st) in ("inside", "contains"):
                 core = (f"{other} must enclose {me} by at least {v} µm on at least one of any two "
                         f"adjacent sides")
+            elif me == other:
+                core = (f"any two shapes of {me} must be at least {v} µm apart in at least one of "
+                        f"the two directions")
             else:
                 core = (f"{me} must be at least {v} µm from {other} on at least one of any two "
                         f"adjacent sides (in one direction)")

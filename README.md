@@ -23,6 +23,10 @@ relationship and adding a few constraints — *not* by writing `.and` / `.not` /
 `.inside` / `.outside`. The compiler reads the topology off the drawing and
 *derives* the operations needed to implement the check.
 
+> **Start with [docs/from-a-manual.md](docs/from-a-manual.md)** — one invented process
+> taken from the manual's page to a deck that has been run, with every kind of rule
+> ([`examples/demo/`](examples/demo)): `fastdrc build examples/demo`.
+>
 > **📐 See [docs/drawing-model.md](docs/drawing-model.md)** — the reference for how
 > each rule type is drawn: wavy vs straight edges, measures (a real distance vs a
 > topological assertion), `match` vs `check` constraints, and a recipe per rule

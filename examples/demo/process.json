@@ -1,0 +1,65 @@
+{
+ "name": "Demo",
+ "layers": {
+  "nwell": [
+   1,
+   0
+  ],
+  "diff": [
+   2,
+   0
+  ],
+  "pimp": [
+   3,
+   0
+  ],
+  "poly": [
+   4,
+   0
+  ],
+  "cont": [
+   5,
+   0
+  ],
+  "met1": [
+   6,
+   0
+  ],
+  "via1": [
+   7,
+   0
+  ],
+  "met2": [
+   8,
+   0
+  ],
+  "thick": [
+   9,
+   0
+  ],
+  "chip": [
+   10,
+   0
+  ]
+ },
+ "legend": {
+  "pdiff": "diff and pimp",
+  "ndiff": "diff and not pimp",
+  "gate": "poly and diff",
+  "field_poly": "poly and not diff"
+ },
+ "columns": {
+  "thin": [
+   [
+    "not_interacting",
+    "thick"
+   ]
+  ],
+  "thick": [
+   [
+    "overlapping",
+    "thick"
+   ]
+  ]
+ }
+}
