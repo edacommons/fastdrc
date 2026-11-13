@@ -1,0 +1,141 @@
+{
+ "name": "CO.2",
+ "desc": "Contact space",
+ "shapes": [
+  {
+   "name": "KA",
+   "edges": [
+    {
+     "id": "ka_0",
+     "start": [
+      44,
+      3
+     ],
+     "end": [
+      45,
+      3
+     ],
+     "edge": false
+    },
+    {
+     "id": "ka_1",
+     "start": [
+      45,
+      3
+     ],
+     "end": [
+      45,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "ka_2",
+     "start": [
+      45,
+      4
+     ],
+     "end": [
+      44,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "ka_3",
+     "start": [
+      44,
+      4
+     ],
+     "end": [
+      44,
+      3
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "KB",
+   "edges": [
+    {
+     "id": "kb_0",
+     "start": [
+      44,
+      7
+     ],
+     "end": [
+      45,
+      7
+     ],
+     "edge": false
+    },
+    {
+     "id": "kb_1",
+     "start": [
+      45,
+      7
+     ],
+     "end": [
+      45,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "kb_2",
+     "start": [
+      45,
+      8
+     ],
+     "end": [
+      44,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "kb_3",
+     "start": [
+      44,
+      8
+     ],
+     "end": [
+      44,
+      7
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "Sk",
+   "from": "ka_2",
+   "to": "kb_0"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "KA.layer == cont"
+  },
+  {
+   "kind": "match",
+   "expr": "KB.layer == cont"
+  },
+  {
+   "kind": "match",
+   "expr": "ka_0.length == ka_1.length"
+  },
+  {
+   "kind": "match",
+   "expr": "kb_0.length == kb_1.length"
+  },
+  {
+   "kind": "check",
+   "expr": "Sk >= 0.25"
+  }
+ ]
+}

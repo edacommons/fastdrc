@@ -1,0 +1,76 @@
+{
+ "name": "PO.1",
+ "desc": "Poly width",
+ "shapes": [
+  {
+   "name": "PW",
+   "edges": [
+    {
+     "id": "pw_0",
+     "start": [
+      26,
+      0
+     ],
+     "end": [
+      28,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "pw_1",
+     "start": [
+      28,
+      0
+     ],
+     "end": [
+      28,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "pw_2",
+     "start": [
+      28,
+      16
+     ],
+     "end": [
+      26,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "pw_3",
+     "start": [
+      26,
+      16
+     ],
+     "end": [
+      26,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "Wp",
+   "from": "pw_3",
+   "to": "pw_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "PW.layer == poly"
+  },
+  {
+   "kind": "check",
+   "expr": "Wp >= 0.15"
+  }
+ ]
+}

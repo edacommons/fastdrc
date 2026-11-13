@@ -1,9 +1,15 @@
 """A PROCESS: one folder holding everything that turns a design manual into a deck.
 
-    myprocess/
-      process.json     what is said once for the whole process
-      rules/*.json     one sheet (or single rule) per section of the manual
-      build/           generated: <name>.drc (the KLayout deck), <name>.md (the rules as text)
+    mydeck/
+      process.json            what is said once for the whole deck
+      rules/<section>/*.json  ONE rule per file, one drawing each; a section of the
+                              manual is a folder (rule files directly in rules/ work too)
+      build/                  generated: <name>.drc (the KLayout script), <name>.md (the rules as text)
+
+The same folder zipped -- ``mydeck.zip`` -- is the same deck: every function here that
+takes a deck takes either (`pack` / `unpack` convert). What is generated from a zip is
+written beside it, in ``mydeck.build/``; the zip itself holds only what was written by
+hand.
 
 ``process.json``::
 
@@ -22,9 +28,13 @@ one sheet makes the nets for all of them) plus the process's own list.
 
 from __future__ import annotations
 
+import contextlib
 import glob
 import json
 import os
+import shutil
+import tempfile
+import zipfile
 
 from .rule import Rule
 from .sheet import rules_of, sheet_warnings
@@ -32,15 +42,130 @@ from .sheet import rules_of, sheet_warnings
 PROCESS_FILE = "process.json"
 
 
+def _natural(text):
+    """Sort key putting NW.2 before NW.10."""
+    import re
+    return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", text)]
+
+
+def section_of(path, folder):
+    """The section a rule file belongs to: the folder it lies in under rules/ ("" for a
+    file directly in rules/)."""
+    root = os.path.join(folder, "rules")
+    rel = os.path.relpath(os.path.dirname(os.path.abspath(path)), os.path.abspath(root if os.path.isdir(root) else folder))
+    return "" if rel == "." else rel
+
+
 def is_process(path) -> bool:
     return os.path.isdir(path) and os.path.isfile(os.path.join(path, PROCESS_FILE))
+
+
+def is_zip(path) -> bool:
+    """Is `path` a deck in one file (a zipped deck folder)?"""
+    return os.path.isfile(path) and zipfile.is_zipfile(path)
+
+
+def deck_name(path) -> str:
+    """What a deck is called when its process.json gives no name: the folder's name, or
+    the zip file's without ``.zip``."""
+    base = os.path.basename(os.path.abspath(path))
+    return os.path.splitext(base)[0] if is_zip(path) else base
+
+
+def build_dir(path) -> str:
+    """Where a deck's generated files go by default: ``build/`` in the folder; for
+    ``mydeck.zip``, ``mydeck.build/`` beside it."""
+    if is_zip(path):
+        return os.path.splitext(os.path.abspath(path))[0] + ".build"
+    return os.path.join(path, "build")
+
+
+def _kept(rel) -> bool:
+    """Does the file `rel` (relative to the deck) belong in the zip?  Everything written
+    by hand does; what is generated (build/) and hidden files do not."""
+    parts = rel.replace("\\", "/").split("/")
+    return parts[0] != "build" and not any(p.startswith(".") or p == "__MACOSX" for p in parts)
+
+
+def pack(folder, zip_path=None) -> str:
+    """Write the deck `folder` as one zip file (default: ``<folder>.zip`` beside it);
+    returns its path. The zip is replaced in one step, never left half-written."""
+    folder = os.path.abspath(folder)
+    zip_path = os.path.abspath(zip_path or folder.rstrip(os.sep) + ".zip")
+    names = []
+    for here, dirs, files in os.walk(folder):
+        dirs.sort(key=_natural)
+        for f in sorted(files, key=_natural):
+            full = os.path.join(here, f)
+            rel = os.path.relpath(full, folder).replace(os.sep, "/")
+            if _kept(rel) and os.path.abspath(full) != zip_path:
+                names.append((rel, full))
+    names.sort(key=lambda n: (n[0] != PROCESS_FILE,))          # process.json first; the rest as walked
+    fd, tmp = tempfile.mkstemp(suffix=".zip", dir=os.path.dirname(zip_path))
+    os.close(fd)
+    try:
+        with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as z:
+            for rel, full in names:
+                z.write(full, rel)
+        os.replace(tmp, zip_path)
+    except BaseException:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+        raise
+    return zip_path
+
+
+def unpack(zip_path, folder) -> str:
+    """Extract the deck `zip_path` into `folder` (made if missing); returns `folder`.
+    A zip made by zipping the folder itself (everything under one top folder) gives
+    the same deck. Entries that would land outside `folder` are refused."""
+    folder = os.path.abspath(folder)
+    with zipfile.ZipFile(zip_path) as z:
+        for i in z.infolist():                              # before anything is written
+            parts = i.filename.replace("\\", "/").split("/")
+            if ".." in parts or i.filename.startswith(("/", "\\")) or os.path.isabs(i.filename):
+                raise ValueError(f"{zip_path}: refusing entry {i.filename!r} (outside the deck)")
+        entries = [i for i in z.infolist() if not i.is_dir() and _kept(i.filename)]
+        tops = {i.filename.split("/")[0] for i in entries}
+        strip = ""
+        if PROCESS_FILE not in tops and len(tops) == 1 and all("/" in i.filename for i in entries):
+            strip = next(iter(tops)) + "/"                  # mydeck.zip holding mydeck/...
+        for i in entries:
+            rel = i.filename[len(strip):]
+            if not _kept(rel):
+                continue
+            target = os.path.abspath(os.path.join(folder, *rel.split("/")))
+            if os.path.isabs(rel) or os.path.commonpath([folder, target]) != folder:
+                raise ValueError(f"{zip_path}: refusing entry {i.filename!r} (outside the deck)")
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            with z.open(i) as src, open(target, "wb") as dst:
+                shutil.copyfileobj(src, dst)
+    os.makedirs(folder, exist_ok=True)
+    return folder
+
+
+@contextlib.contextmanager
+def opened(path, save=False):
+    """The deck `path` as a folder: the folder itself, or a zip unpacked for as long as
+    the block runs. With `save`, what the block changed is written back into the zip."""
+    if not is_zip(path):
+        yield path
+        return
+    with tempfile.TemporaryDirectory(prefix="fastdrc-deck-") as tmp:
+        folder = unpack(path, os.path.join(tmp, deck_name(path)))
+        yield folder
+        if save:
+            pack(folder, path)
 
 
 def rule_files(folder) -> list:
     """The rule / sheet files of a process folder (``rules/*.json``, else ``*.json`` in
     the folder itself), in name order. Files that are not drawings are left out."""
     sub = os.path.join(folder, "rules")
-    paths = sorted(glob.glob(os.path.join(sub if os.path.isdir(sub) else folder, "*.json")))
+    root = sub if os.path.isdir(sub) else folder
+    paths = sorted(glob.glob(os.path.join(root, "*.json")) + glob.glob(os.path.join(root, "*", "*.json")),
+                   key=lambda p: (_natural(os.path.relpath(os.path.dirname(p), root)), _natural(os.path.basename(p))))
+    paths = [p for p in paths if os.path.basename(os.path.dirname(p)) != "build"]
     out = []
     for p in paths:
         if os.path.basename(p) == PROCESS_FILE:
@@ -50,14 +175,19 @@ def rule_files(folder) -> list:
                 data = json.load(f)
         except (OSError, ValueError):
             continue
-        if isinstance(data, dict) and ("shapes" in data or "or" in data):
+        if isinstance(data, dict) and ("shapes" in data or "or" in data or isinstance(data.get("rules"), list)):
             out.append(p)
     return out
 
 
 def load(folder):
     """``(process, [(path, sheet), ...])`` with the process's legend, columns and
-    connections merged into every sheet (a sheet's own entries win)."""
+    connections merged into every sheet (a sheet's own entries win). For a zipped
+    deck the paths read ``mydeck.zip/rules/...``."""
+    if is_zip(folder):
+        with opened(folder) as tmp:
+            proc, merged = load(tmp)
+        return proc, [(os.path.join(folder, os.path.relpath(p, tmp)), d) for p, d in merged]
     proc = {}
     pf = os.path.join(folder, PROCESS_FILE)
     if os.path.isfile(pf):
@@ -75,9 +205,15 @@ def load(folder):
     shared.update(proc.get("legend") or {})
     proc = dict(proc, legend=shared)
     joined = [tuple(x) for x in proc.get("connect") or []]
-    for _, data in sheets:                       # a stack drawn anywhere serves every sheet
+    from .sheet import is_section
+    for _, data in sheets:                       # a stack drawn anywhere serves every file
         legend = {**(proc.get("legend") or {}), **(data.get("layers") or {})}
-        for pair in Rule(dict(data, layers=legend, rules=[])).connections():
+        drawings = (data["rules"] if is_section(data) else [dict(data, rules=[])])
+        for pair in [tuple(x) for x in data.get("connect") or []] + [
+                p for d in drawings for p in Rule({"shapes": d.get("shapes", []), "measures": d.get("measures", []),
+                                                    "constraints": [c for c in d.get("constraints", [])
+                                                                    if ".layer" in c.get("expr", "") or ".net" in c.get("expr", "")],
+                                                    "layers": legend}).connections()]:
             if pair not in joined and pair[::-1] not in joined:
                 joined.append(pair)
     merged = []
@@ -98,6 +234,81 @@ def load(folder):
             d["connect"] = [list(x) for x in joined]
         merged.append((p, d))
     return proc, merged
+
+
+def split(folder) -> int:
+    """Rewrite a deck so that every rule is ONE file with ONE drawing.
+
+    A sheet (one drawn scene shared by several rules) becomes a folder named after it,
+    holding a file per rule with the shapes and arrows that rule was read from. What
+    the sheets said for themselves -- legend, columns, families -- and how layers
+    connect (until now read from a stack drawn on some sheet) moves to process.json.
+    Returns the number of rule files written; rule files are left as they are."""
+    from .sheet import is_section, is_sheet, to_section
+    if is_zip(folder):
+        with opened(folder, save=True) as tmp:
+            own = os.path.join(tmp, PROCESS_FILE)
+            named = os.path.isfile(own) and "name" in json.load(open(own))
+            n = split(tmp)
+            if n and not named:                      # the temporary folder's name is not the deck's
+                data = json.load(open(own))
+                data["name"] = deck_name(folder)
+                with open(own, "w") as f:
+                    json.dump(data, f, indent=1)
+                    f.write("\n")
+        return n
+    proc, merged = load(folder)
+    files = rule_files(folder)                       # before rules/ is made: sheets may lie beside it
+    root = os.path.join(folder, "rules")
+    os.makedirs(root, exist_ok=True)
+    written, shared = 0, {"legend": dict(proc.get("legend") or {}), "columns": dict(proc.get("columns") or {}),
+                          "each": dict(proc.get("each") or {})}
+    connect = next((d["connect"] for _, d in merged if d.get("connect")), None)
+    for path in files:
+        with open(path) as f:
+            raw = json.load(f)
+        if not is_sheet(raw):
+            if os.path.dirname(os.path.abspath(path)) == os.path.abspath(folder):   # a rule file beside rules/
+                os.replace(path, os.path.join(root, os.path.basename(path)))
+            continue
+        shared["columns"].update(raw.get("domains") or {})
+        shared["each"].update(raw.get("each") or {})
+        section = raw if is_section(raw) else to_section(raw)
+        stem = os.path.basename(path)
+        for ext in (".sheet.json", ".json"):
+            if stem.endswith(ext):
+                stem = stem[:-len(ext)]
+                break
+        target = os.path.join(root, stem)
+        os.makedirs(target, exist_ok=True)
+        notes = [n for n in (raw.get("except") or [])]
+        for rule in section["rules"]:
+            one = dict(rule)
+            if notes:                                # the section's note applies to each of its rules
+                one["except"] = sorted(set(notes) | set(one.get("except") or []))
+            name = "".join(c if c.isalnum() or c in "-_." else "_" for c in one.get("name") or "rule")
+            with open(os.path.join(target, name + ".json"), "w") as f:
+                json.dump(one, f, indent=1)
+                f.write("\n")
+            written += 1
+        os.remove(path)
+    if written:
+        pf = os.path.join(folder, PROCESS_FILE)
+        try:
+            with open(pf) as f:
+                own = json.load(f)
+        except (OSError, ValueError):
+            own = {}
+        own.setdefault("name", os.path.basename(os.path.abspath(folder)))
+        for key in ("legend", "columns", "each"):
+            if shared[key]:
+                own[key] = shared[key]
+        if connect:
+            own["connect"] = connect
+        with open(pf, "w") as f:
+            json.dump(own, f, indent=1)
+            f.write("\n")
+    return written
 
 
 def rules_and_warnings(sheets):
@@ -124,7 +335,7 @@ def build(folder, out_dir=None, extra=()):
     names further backends (plugins) whose files are written beside the deck."""
     from .backend import get
     proc, sheets = load(folder)
-    name = proc.get("name") or os.path.basename(os.path.abspath(folder))
+    name = proc.get("name") or deck_name(folder)
     rules, notes = rules_and_warnings(sheets)
     layermap = {k: tuple(v) for k, v in (proc.get("layers") or {}).items()}
     kl = get("klayout", layermap=layermap, standalone=True, title=name)
@@ -134,7 +345,7 @@ def build(folder, out_dir=None, extra=()):
                      + f" -- add to \"layers\" in {PROCESS_FILE}")
     text = f"# {name} — design rules\n\n" + get("docs").compile_all(rules)
     # absolute: KLayout resolves a report path against the deck's folder, not the caller's
-    out_dir = os.path.abspath(out_dir or os.path.join(folder, "build"))
+    out_dir = os.path.abspath(out_dir or build_dir(folder))
     os.makedirs(out_dir, exist_ok=True)
     stem = "".join(c if c.isalnum() or c in "-_" else "_" for c in name).lower() or "deck"
     deck_path, text_path = os.path.join(out_dir, stem + ".drc"), os.path.join(out_dir, stem + ".md")
@@ -239,7 +450,18 @@ def _run_selftest(deck, notes):
 
 
 def init(folder, name=None):
-    """Create an empty process folder. Existing files are left alone."""
+    """Create an empty process folder -- or, for a name ending in ``.zip``, an empty
+    deck in one file. Existing files are left alone."""
+    if folder.lower().endswith(".zip"):
+        if os.path.exists(folder):
+            return False
+        with tempfile.TemporaryDirectory(prefix="fastdrc-deck-") as tmp:
+            init(tmp, name or os.path.splitext(os.path.basename(folder))[0])
+            os.makedirs(os.path.dirname(os.path.abspath(folder)), exist_ok=True)
+            with zipfile.ZipFile(folder, "w", zipfile.ZIP_DEFLATED) as z:
+                z.write(os.path.join(tmp, PROCESS_FILE), PROCESS_FILE)
+                z.writestr("rules/", "")
+        return True
     os.makedirs(os.path.join(folder, "rules"), exist_ok=True)
     pf = os.path.join(folder, PROCESS_FILE)
     if os.path.exists(pf):

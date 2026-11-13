@@ -1,0 +1,75 @@
+{
+ "name": "CO.1",
+ "desc": "Contact size",
+ "shapes": [
+  {
+   "name": "KA",
+   "edges": [
+    {
+     "id": "ka_0",
+     "start": [
+      44,
+      3
+     ],
+     "end": [
+      45,
+      3
+     ],
+     "edge": false
+    },
+    {
+     "id": "ka_1",
+     "start": [
+      45,
+      3
+     ],
+     "end": [
+      45,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "ka_2",
+     "start": [
+      45,
+      4
+     ],
+     "end": [
+      44,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "ka_3",
+     "start": [
+      44,
+      4
+     ],
+     "end": [
+      44,
+      3
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "KA.layer == cont"
+  },
+  {
+   "kind": "match",
+   "expr": "ka_0.length == ka_1.length"
+  },
+  {
+   "kind": "check",
+   "expr": "ka_0.length == 0.2"
+  }
+ ],
+ "extended": true
+}

@@ -1,0 +1,137 @@
+{
+ "name": "CO.4",
+ "desc": "Diffusion enclosure of contact",
+ "shapes": [
+  {
+   "name": "DC",
+   "edges": [
+    {
+     "id": "dc_0",
+     "start": [
+      40,
+      0
+     ],
+     "end": [
+      60,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "dc_1",
+     "start": [
+      60,
+      0
+     ],
+     "end": [
+      60,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "dc_2",
+     "start": [
+      60,
+      12
+     ],
+     "end": [
+      40,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "dc_3",
+     "start": [
+      40,
+      12
+     ],
+     "end": [
+      40,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "KA",
+   "edges": [
+    {
+     "id": "ka_0",
+     "start": [
+      44,
+      3
+     ],
+     "end": [
+      45,
+      3
+     ],
+     "edge": false
+    },
+    {
+     "id": "ka_1",
+     "start": [
+      45,
+      3
+     ],
+     "end": [
+      45,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "ka_2",
+     "start": [
+      45,
+      4
+     ],
+     "end": [
+      44,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "ka_3",
+     "start": [
+      44,
+      4
+     ],
+     "end": [
+      44,
+      3
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "Ek",
+   "from": "dc_3",
+   "to": "ka_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "DC.layer == diff"
+  },
+  {
+   "kind": "match",
+   "expr": "KA.layer == cont"
+  },
+  {
+   "kind": "match",
+   "expr": "ka_0.length == ka_1.length"
+  },
+  {
+   "kind": "check",
+   "expr": "Ek >= 0.1"
+  }
+ ]
+}

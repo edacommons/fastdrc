@@ -1,0 +1,134 @@
+{
+ "name": "PO.3",
+ "desc": "Diffusion extension beyond the gate",
+ "shapes": [
+  {
+   "name": "DT",
+   "edges": [
+    {
+     "id": "dt_0",
+     "start": [
+      0,
+      4
+     ],
+     "end": [
+      20,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dt_1",
+     "start": [
+      20,
+      4
+     ],
+     "end": [
+      20,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "dt_2",
+     "start": [
+      20,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "dt_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "GT",
+   "edges": [
+    {
+     "id": "gt_0",
+     "start": [
+      8,
+      0
+     ],
+     "end": [
+      11,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "gt_1",
+     "start": [
+      11,
+      0
+     ],
+     "end": [
+      11,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "gt_2",
+     "start": [
+      11,
+      16
+     ],
+     "end": [
+      8,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "gt_3",
+     "start": [
+      8,
+      16
+     ],
+     "end": [
+      8,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "Xd",
+   "from": "gt_1",
+   "to": "dt_1",
+   "at": 8
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "DT.layer == diff"
+  },
+  {
+   "kind": "match",
+   "expr": "GT.layer == poly"
+  },
+  {
+   "kind": "check",
+   "expr": "Xd >= 0.25"
+  }
+ ]
+}

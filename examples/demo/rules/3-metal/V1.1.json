@@ -1,0 +1,138 @@
+{
+ "name": "V1.1",
+ "desc": "Metal-1 enclosure of via-1 on one of two adjacent sides",
+ "shapes": [
+  {
+   "name": "MV",
+   "edges": [
+    {
+     "id": "mv_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      10,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_1",
+     "start": [
+      10,
+      0
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_2",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      0,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_3",
+     "start": [
+      0,
+      10
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "VA",
+   "edges": [
+    {
+     "id": "va_0",
+     "start": [
+      2,
+      2
+     ],
+     "end": [
+      4,
+      2
+     ],
+     "edge": false
+    },
+    {
+     "id": "va_1",
+     "start": [
+      4,
+      2
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "va_2",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      2,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "va_3",
+     "start": [
+      2,
+      4
+     ],
+     "end": [
+      2,
+      2
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "Ea",
+   "from": "mv_3",
+   "to": "va_3"
+  },
+  {
+   "name": "Eb",
+   "from": "mv_0",
+   "to": "va_0"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MV.layer == met1"
+  },
+  {
+   "kind": "match",
+   "expr": "VA.layer == via1"
+  },
+  {
+   "kind": "check",
+   "expr": "Ea >= 0.1 or Eb >= 0.1"
+  }
+ ]
+}

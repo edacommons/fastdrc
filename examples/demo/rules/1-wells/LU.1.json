@@ -1,0 +1,190 @@
+{
+ "name": "LU.1",
+ "desc": "Any part of a P+ diffusion to the nearest well tap",
+ "shapes": [
+  {
+   "name": "NW",
+   "edges": [
+    {
+     "id": "nw_0",
+     "start": [
+      30,
+      0
+     ],
+     "end": [
+      56,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "nw_1",
+     "start": [
+      56,
+      0
+     ],
+     "end": [
+      56,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "nw_2",
+     "start": [
+      56,
+      20
+     ],
+     "end": [
+      30,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "nw_3",
+     "start": [
+      30,
+      20
+     ],
+     "end": [
+      30,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PD",
+   "edges": [
+    {
+     "id": "pd_0",
+     "start": [
+      34,
+      6
+     ],
+     "end": [
+      40,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "pd_1",
+     "start": [
+      40,
+      6
+     ],
+     "end": [
+      40,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "pd_2",
+     "start": [
+      40,
+      14
+     ],
+     "end": [
+      34,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "pd_3",
+     "start": [
+      34,
+      14
+     ],
+     "end": [
+      34,
+      6
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "NT",
+   "edges": [
+    {
+     "id": "nt_0",
+     "start": [
+      44,
+      6
+     ],
+     "end": [
+      50,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "nt_1",
+     "start": [
+      50,
+      6
+     ],
+     "end": [
+      50,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "nt_2",
+     "start": [
+      50,
+      14
+     ],
+     "end": [
+      44,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "nt_3",
+     "start": [
+      44,
+      14
+     ],
+     "end": [
+      44,
+      6
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "Sl",
+   "from": "nt_3",
+   "to": "pd_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "NW.layer == nwell"
+  },
+  {
+   "kind": "match",
+   "expr": "PD.layer == pdiff"
+  },
+  {
+   "kind": "match",
+   "expr": "NT.layer == ndiff"
+  },
+  {
+   "kind": "check",
+   "expr": "Sl <= 20"
+  }
+ ]
+}

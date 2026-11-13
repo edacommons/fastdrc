@@ -401,3 +401,34 @@ def test_a_rule_drawn_on_a_family_of_layers_is_repeated_for_each_member():
     assert ops["mi_2_metal2_l1"] == "metal2.space(0.07.um, euclidian).polygons(0.001)"     # never metal2 to metal3
     assert ops["mi_2_metal3_l1"] == "metal3.space(0.07.um, euclidian).polygons(0.001)"
     assert ops["po_1_l1"] == "poly.width(0.05.um, euclidian).polygons(0.001)"
+
+
+def test_split_gives_every_rule_of_a_sheet_a_file_and_a_drawing_of_its_own(tmp_path):
+    # a sheet: two rules on one scene, a legend, and a stack that says how layers connect
+    import json
+    import os
+    from fastdrc import process
+    sheet = {"name": "W", "layers": {"ntap": "diff and nimp"},
+             "shapes": [_rect("A", 0, 0, 8, 10), _rect("B", 12, 0, 20, 10),
+                        _rect("W", 30, 0, 50, 20), _rect("T", 34, 4, 46, 16)],
+             "measures": [{"name": "Wd", "from": "a3", "to": "a1"}, {"name": "S", "from": "a1", "to": "b3"}],
+             "constraints": [M("A.layer == nwell"), M("B.layer == nwell"), M("W.layer == nwell"), M("T.layer == ntap"),
+                             M("T.net == W.net")],
+             "rules": [{"name": "w.1", "constraints": [C("Wd >= 0.8")]},
+                       {"name": "w.3", "constraints": [M("A.net != B.net"), C("S >= 2.0")]}]}
+    deck = tmp_path / "deck"
+    deck.mkdir()
+    (deck / "wells.sheet.json").write_text(json.dumps(sheet))
+    before = get("klayout").compile_data(dict(sheet))
+    assert process.split(str(deck)) == 2 and not (deck / "wells.sheet.json").exists()
+    files = [os.path.relpath(f, deck) for f in process.rule_files(str(deck))]
+    assert files == ["rules/wells/w.1.json", "rules/wells/w.3.json"]
+    w1 = json.loads((deck / "rules" / "wells" / "w.1.json").read_text())
+    assert [s["name"] for s in w1["shapes"]] == ["A"] and "rules" not in w1      # only its own drawing
+    proc = json.loads((deck / "process.json").read_text())
+    assert proc["legend"] == {"ntap": "diff and nimp"} and proc["connect"] == [["ntap", "nwell"]]
+    _, loaded = process.load(str(deck))
+    rules, notes = process.rules_and_warnings(loaded)
+    after = get("klayout").compile_all(rules)
+    assert notes == [] and _ops(after) == _ops(before)
+    assert process.split(str(deck)) == 0                                         # nothing left to split

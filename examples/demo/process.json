@@ -61,5 +61,35 @@
     "thick"
    ]
   ]
- }
+ },
+ "connect": [
+  [
+   "ndiff",
+   "nwell"
+  ],
+  [
+   "cont",
+   "ndiff"
+  ],
+  [
+   "cont",
+   "met1"
+  ],
+  [
+   "via1",
+   "met1"
+  ],
+  [
+   "via1",
+   "met2"
+  ],
+  [
+   "field_poly",
+   "gate"
+  ],
+  [
+   "cont",
+   "field_poly"
+  ]
+ ]
 }

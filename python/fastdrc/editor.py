@@ -286,6 +286,7 @@ class Editor:
         self._dir = os.getcwd()                # Save/Open start in the launch dir, then last-used
         self._path = None                      # the file being edited (Save writes here)
         self._process = None                   # the process folder it belongs to, if any
+        self._zip = None                       # the deck's zip file, when it is edited from one
         self._ctx = {}                         # what the process says once: legend, columns, connect, layers
         self.pending, self.drag, self.moving, self.ids = None, None, None, 1
         self._suppress_tree = False
@@ -317,7 +318,7 @@ class Editor:
         self.proc_title = tk.Label(self.proc_frame, text="", bg=PANEL, fg="#8b93a7", anchor="w",
                                    font=("TkDefaultFont", 9, "bold"))
         self.proc_title.pack(fill="x", padx=6, pady=(6, 2))
-        # one dropdown for the whole deck: its sheets, and under each sheet its rules
+        # one dropdown for the whole deck: its sections (folders), and under each its rules (files)
         self.rule_pick = tk.Menubutton(self.proc_frame, text="", relief="raised", anchor="w", bg="#0b0d12", fg=INK,
                                        activebackground="#2d5a88", activeforeground="#ffffff", padx=6, pady=3)
         self.rule_pick.pack(fill="x", padx=4)
@@ -326,7 +327,7 @@ class Editor:
         self._proc_rules = {}                          # sheet path -> [(rule name, description)]
         bar = tk.Frame(self.proc_frame, bg=PANEL)
         bar.pack(fill="x", padx=4, pady=4)
-        tk.Button(bar, text="+ sheet", command=self.new_sheet).pack(side="left")
+        tk.Button(bar, text="+ rule", command=self.new_rule).pack(side="left")
         tk.Button(bar, text="Process…", command=self.edit_process).pack(side="left", padx=4)
         self._proc_files = []
         self.tree = ttk.Treeview(tree_frame, show="tree", selectmode="browse", style="FD.Treeview")
@@ -373,7 +374,7 @@ class Editor:
         tb = tk.Frame(side, bg=PANEL)
         tb.pack(fill="x", padx=8, pady=6)
         for txt, cmd in (("Open", self.open), ("Save", self.save), ("Save as", self.save_as),
-                         ("New", self.clear), ("Fit", self.fit), ("+ rule", self.add_rule)):
+                         ("New", self.clear), ("Fit", self.fit)):
             tk.Button(tb, text=txt, command=cmd).pack(side="left", padx=2)
         self.case_bar = tk.Frame(side, bg=PANEL)
         self.case_bar.pack(fill="x", padx=8, pady=(0, 4))
@@ -1723,9 +1724,14 @@ class Editor:
                              "layers": {k: tuple(v) for k, v in (proc.get("layers") or {}).items()},
                              "connect": next((d["connect"] for _, d in sheets if d.get("connect")), [])}
                 self._proc_files = [p for p, _ in sheets]
-                self._proc_rules = {p: [(r.get("name", ""), r.get("desc", "")) for r in d.get("rules", [])]
-                                    for p, d in sheets}
-                self.proc_title.config(text=(proc.get("name") or os.path.basename(os.path.abspath(folder))).upper())
+                # the deck as it is browsed: sections (folders), and in each its rule files
+                self._proc_rules = {}
+                for p, d in sheets:
+                    label = d.get("name") or self._sheet_label(p)
+                    if isinstance(d.get("rules"), list):       # an old sheet: several rules on one drawing
+                        label += f"   ({len(d['rules'])} rules on one drawing)"
+                    self._proc_rules.setdefault(process.section_of(p, folder), []).append((p, label, d.get("desc", "")))
+                self.proc_title.config(text=(proc.get("name") or process.deck_name(self._zip or folder)).upper())
             except Exception as ex:                    # noqa: BLE001
                 messagebox.showerror("Process", str(ex))
                 self._process, self._proc_files = None, []
@@ -1741,52 +1747,46 @@ class Editor:
         return os.path.basename(path).replace(".sheet.json", "").replace(".json", "")
 
     def deck_tree(self):
-        """The deck as it is browsed: ``[(sheet path, sheet label, [(rule name, description)])]``."""
-        return [(p, self._sheet_label(p), self._proc_rules.get(p, [])) for p in self._proc_files]
+        """The deck as it is browsed: ``[(section, [(rule file, rule name, description)])]``
+        -- a section is a folder under rules/, a rule is ONE file with ONE drawing."""
+        return [(section or "(rules)", rules) for section, rules in self._proc_rules.items()]
 
     def _fill_rule_menu(self):
-        """The dropdown: a sheet per entry, opening onto that sheet's rules."""
+        """The dropdown: a section per entry, opening onto that section's rules."""
         menu = self.rule_menu
         menu.delete(0, "end")
-        for path, label, rules in self.deck_tree():
+        for section, rules in self.deck_tree():
             sub = tk.Menu(menu, tearoff=0)
-            sub.add_command(label="(the whole sheet)", command=lambda p=path: self.goto_rule(p, None))
-            if rules:
-                sub.add_separator()
-            for i, (name, desc) in enumerate(rules):
+            for path, name, desc in rules:
                 sub.add_command(label=f"{name}    {desc}" if desc else name,
-                                command=lambda p=path, i=i: self.goto_rule(p, i))
-            menu.add_cascade(label=f"{label}    ({len(rules)})", menu=sub)
+                                command=lambda p=path: self.goto_rule(p))
+            menu.add_cascade(label=f"{section}    ({len(rules)})", menu=sub)
 
-    def goto_rule(self, path, index):
-        """Open `path` if it is not the sheet being edited (offering to save what
-        changed), then select its rule number `index` (None: the sheet itself)."""
-        if not (self._path and os.path.abspath(path) == os.path.abspath(self._path)):
-            if not self.may_leave():
-                return False
-            try:
-                self.open_path(path)
-            except Exception as ex:                    # noqa: BLE001
-                messagebox.showerror("Open failed", str(ex))
-                return False
-        rules = self.sheet_rules() or []
-        self.sel = f"rule:{index}" if index is not None and 0 <= index < len(rules) else None
-        self.draw_canvas()
-        self.show_props()                              # the rule's own properties
-        self._refresh_tree()
-        self._mark_current()
+    def goto_rule(self, path, _index=None):
+        """Open the rule file `path` (offering to save what changed in the one open)."""
+        if self._path and os.path.abspath(path) == os.path.abspath(self._path):
+            return True
+        if not self.may_leave():
+            return False
+        try:
+            self.open_path(path)
+        except Exception as ex:                        # noqa: BLE001
+            messagebox.showerror("Open failed", str(ex))
+            return False
         return True
 
     def _mark_current(self):
         name = os.path.basename(self._path) if self._path else "untitled"
+        if self._zip:
+            name += f"  in  {os.path.basename(self._zip)}"
         self.root.title(f"{name} — FastDRC rule editor")
         if not self._path:
             self.rule_pick.config(text="choose a rule  ▾")
             return
-        i = self.sel_rule()
-        rules = self.sheet_rules() or []
-        rule = f"  ›  {rules[i].get('name', '')}" if i is not None and i < len(rules) else ""
-        self.rule_pick.config(text=f"{self._sheet_label(self._path)}{rule}  ▾")
+        from . import process
+        section = process.section_of(self._path, self._process) if self._process else ""
+        rule = self.rule_meta().get("name") or self._sheet_label(self._path)
+        self.rule_pick.config(text=(f"{section}  ›  " if section else "") + f"{rule}  ▾")
 
     def changed(self):
         """Does what is drawn differ from the file on disk?"""
@@ -1809,37 +1809,82 @@ class Editor:
             return False
         return self.save() if ans else True
 
+    def open_zip(self, path):
+        """Open a deck kept in one zip file. It is unpacked to a folder of its own for
+        the session; every save writes the whole deck back into the zip."""
+        import atexit
+        import shutil
+        import tempfile
+
+        from . import process
+        tmp = tempfile.mkdtemp(prefix="fastdrc-deck-")
+        atexit.register(shutil.rmtree, tmp, ignore_errors=True)
+        folder = process.unpack(path, os.path.join(tmp, process.deck_name(path)))
+        self._zip = os.path.abspath(path)
+        self._path = None
+        self.set_process(folder)
+        if self._proc_files:
+            self.open_path(self._proc_files[0])
+        else:
+            self.clear_drawing()
+        self._dir = os.path.dirname(self._zip)         # Open / Save as start beside the zip
+        self._mark_current()
+
+    def store(self):
+        """After anything was written to the deck's folder: put it back into the zip
+        the deck was opened from (nothing to do for a deck that is a folder)."""
+        if self._zip and self._process:
+            from . import process
+            process.pack(self._process, self._zip)
+
     def open_path(self, path):
         from . import process
+        if process.is_zip(path):
+            return self.open_zip(path)
         with open(path) as f:
             data = json.load(f)
         self._path, self._dir = path, os.path.dirname(os.path.abspath(path))
-        here = self._dir
-        folder = here if process.is_process(here) else (
-            os.path.dirname(here) if os.path.basename(here) == "rules" and process.is_process(os.path.dirname(here))
-            else None)
+        if self._zip:
+            root = os.path.abspath(self._process or os.sep)
+            if os.path.commonpath([root, os.path.abspath(path)]) == root:
+                self._dir = os.path.dirname(self._zip)     # dialogs start beside the zip, not in its unpacked copy
+            else:
+                self._zip = None                           # a file outside the zipped deck
+        folder, here = None, os.path.dirname(os.path.abspath(path))
+        for _ in range(4):                             # the deck: the folder holding process.json
+            if process.is_process(here):
+                folder = here
+                break
+            here = os.path.dirname(here)
         self.load(data)
         if folder != self._process or folder:
             self.set_process(folder)
         self._mark_current()
 
-    def new_sheet(self):
-        """A new, empty sheet in the process's rules/ folder."""
+    def new_rule(self):
+        """A new rule: ONE file with ONE drawing, in the section of the rule that is
+        open. `section/name` starts (or picks) another section."""
         from tkinter import simpledialog
+
+        from . import process
         if not self._process or not self.may_leave():
             return
-        name = simpledialog.askstring("New sheet", "Name of the section (e.g. metal1):", parent=self.root)
-        if not name:
+        here = process.section_of(self._path, self._process) if self._path else ""
+        name = simpledialog.askstring("New rule", "Name of the rule (section/name for another section):",
+                                      initialvalue=f"{here}/" if here else "", parent=self.root)
+        if not name or not name.strip().strip("/"):
             return
-        stem = "".join(c if c.isalnum() or c in "-_" else "_" for c in name.strip())
-        folder = os.path.join(self._process, "rules")
+        section, _, rule = name.strip().rpartition("/")
+        clean = lambda t: "".join(c if c.isalnum() or c in "-_." else "_" for c in t.strip())   # noqa: E731
+        folder = os.path.join(self._process, "rules", *[clean(x) for x in section.split("/") if x.strip()])
         os.makedirs(folder, exist_ok=True)
-        path = os.path.join(folder, stem + ".sheet.json")
+        path = os.path.join(folder, clean(rule) + ".json")
         if os.path.exists(path):
-            messagebox.showerror("New sheet", f"{os.path.basename(path)} already exists")
+            messagebox.showerror("New rule", f"{os.path.basename(path)} already exists")
             return
         with open(path, "w") as f:
-            json.dump({"name": name.strip(), "shapes": [], "measures": [], "constraints": [], "rules": []}, f, indent=2)
+            json.dump({"name": rule.strip(), "desc": "", "shapes": [], "measures": [], "constraints": []}, f, indent=1)
+        self.store()
         self.open_path(path)
 
     def edit_process(self):
@@ -1886,6 +1931,7 @@ class Editor:
             with open(path, "w") as f:
                 json.dump(new, f, indent=1)
                 f.write("\n")
+            self.store()
             win.destroy()
             self.set_process(self._process)
             self.redraw()
@@ -1912,6 +1958,7 @@ class Editor:
             return self.save_as()
         with open(self._path, "w") as f:
             json.dump(self.serialize(), f, indent=2)
+        self.store()
         if self._process:
             self.set_process(self._process)            # a drawn stack / legend may have changed
         return True
@@ -1929,7 +1976,8 @@ class Editor:
     def open(self):
         if not self.may_leave():
             return
-        path = filedialog.askopenfilename(initialdir=self._dir, filetypes=[("JSON", "*.json")])
+        path = filedialog.askopenfilename(initialdir=self._dir,
+                                          filetypes=[("Rule or zipped deck", "*.json *.zip"), ("All files", "*")])
         if path:
             try:
                 self.open_path(path)
@@ -1940,6 +1988,9 @@ class Editor:
         """A new, untitled drawing (the file that was open is left as it is on disk)."""
         if not self.may_leave():
             return
+        self.clear_drawing()
+
+    def clear_drawing(self):
         self._path = None
         self._mark_current()
         self.shapes, self.measures, self.constraints, self.meta = [], [], [], {}
@@ -1956,7 +2007,9 @@ def run(path=None):
     ed = Editor(root)
     if path:
         try:
-            if os.path.isdir(path):
+            if process.is_zip(path):
+                ed.open_zip(path)
+            elif os.path.isdir(path):
                 ed._dir = os.path.abspath(path)
                 ed.set_process(path)
                 if ed._proc_files:

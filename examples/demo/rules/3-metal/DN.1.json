@@ -1,0 +1,127 @@
+{
+ "name": "DN.1",
+ "desc": "Metal-1 density over the chip",
+ "shapes": [
+  {
+   "name": "CHIP",
+   "edges": [
+    {
+     "id": "chip_0",
+     "start": [
+      90,
+      0
+     ],
+     "end": [
+      120,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "chip_1",
+     "start": [
+      120,
+      0
+     ],
+     "end": [
+      120,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "chip_2",
+     "start": [
+      120,
+      20
+     ],
+     "end": [
+      90,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "chip_3",
+     "start": [
+      90,
+      20
+     ],
+     "end": [
+      90,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "MD",
+   "edges": [
+    {
+     "id": "md_0",
+     "start": [
+      96,
+      6
+     ],
+     "end": [
+      104,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "md_1",
+     "start": [
+      104,
+      6
+     ],
+     "end": [
+      104,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "md_2",
+     "start": [
+      104,
+      14
+     ],
+     "end": [
+      96,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "md_3",
+     "start": [
+      96,
+      14
+     ],
+     "end": [
+      96,
+      6
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "CHIP.layer == chip"
+  },
+  {
+   "kind": "match",
+   "expr": "MD.layer == met1"
+  },
+  {
+   "kind": "check",
+   "expr": "MD.density >= 0.2 and MD.density <= 0.8"
+  }
+ ]
+}

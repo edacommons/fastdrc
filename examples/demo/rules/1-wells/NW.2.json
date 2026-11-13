@@ -1,0 +1,133 @@
+{
+ "name": "NW.2",
+ "desc": "N-well space",
+ "shapes": [
+  {
+   "name": "NA",
+   "edges": [
+    {
+     "id": "na_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      8,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "na_1",
+     "start": [
+      8,
+      0
+     ],
+     "end": [
+      8,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "na_2",
+     "start": [
+      8,
+      10
+     ],
+     "end": [
+      0,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "na_3",
+     "start": [
+      0,
+      10
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "NB",
+   "edges": [
+    {
+     "id": "nb_0",
+     "start": [
+      12,
+      0
+     ],
+     "end": [
+      20,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "nb_1",
+     "start": [
+      20,
+      0
+     ],
+     "end": [
+      20,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "nb_2",
+     "start": [
+      20,
+      10
+     ],
+     "end": [
+      12,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "nb_3",
+     "start": [
+      12,
+      10
+     ],
+     "end": [
+      12,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "Sn",
+   "from": "na_1",
+   "to": "nb_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "NA.layer == nwell"
+  },
+  {
+   "kind": "match",
+   "expr": "NB.layer == nwell"
+  },
+  {
+   "kind": "check",
+   "expr": "Sn >= 1.0"
+  }
+ ]
+}

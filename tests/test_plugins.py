@@ -388,11 +388,11 @@ def test_antenna_over_two_metals_with_a_diode_condition():
 @pytest.mark.skipif(not process.klayout_binary(), reason="KLayout is not installed")
 def test_the_self_test_runs_on_rules_at_hand(tmp_path):
     # what the editor's Test button does: the open sheet, as part of its process
-    proc, sheets = process.load(DEMO)
-    devices = next(d for p, d in sheets if p.endswith("2-devices.sheet.json"))
+    proc, files = process.load(DEMO)
+    co2 = next(d for p, d in files if p.endswith("CO.2.json"))
     from fastdrc.sheet import rules_of
-    res = process.selftest_rules(rules_of(devices), proc["layers"], str(tmp_path))
-    assert res["wrong"] == [] and set(res["rules"]) == {"PO.1", "PO.2", "PO.3", "CO.1", "CO.2", "CO.3", "CO.4"}
+    res = process.selftest_rules(rules_of(co2), proc["layers"], str(tmp_path))
+    assert res["wrong"] == [] and set(res["rules"]) == {"CO.2"}
     assert ("CO.2", "match ka_0.length == ka_1.length") in res["constraints"]
 
 

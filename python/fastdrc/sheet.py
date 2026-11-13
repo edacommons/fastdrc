@@ -1,4 +1,21 @@
-"""A SHEET: one drawn scene carrying many rules -- the way a design manual does it.
+"""Rule files.
+
+A rule is ONE file holding ONE drawing: shapes, arrows, constraints. A drawing is read
+as a whole -- what lies inside, across or beside what -- so nothing drawn for another
+rule can change what this one says. What rules share is said once for the deck (see
+`fastdrc.process`): the legend, the table columns, families of layers, connections.
+
+`rules_of(data)` returns the rule dicts a file compiles to. For a rule file that is the
+rule itself, unless it gives a value per table column (``"values": {"3.3V": 0.22, "5V":
+0.3}`` with ``?`` in its constraint -> one rule per column, named ``<rule>_<column>``)
+or is drawn on a family of layers (``"each"`` -> one rule per member).
+
+SHEETS (below) are an older form in which one drawn scene carried several rules. They
+are still read, and `fastdrc split` (`fastdrc.process.split`) rewrites them as rule
+files; new work should not use them: a shape drawn for one rule can silently become
+part of another.
+
+A SHEET: one drawn scene carrying many rules -- the way a design manual does it.
 
 A datasheet figure is not one rule. It draws a situation once (a diffusion, two poly
 bars across it, a contact) and hangs many rules on it, each a labelled dimension or
@@ -87,6 +104,52 @@ def is_sheet(data) -> bool:
     return isinstance(data.get("rules"), list)
 
 
+_SHARED = ("layers", "domains", "each", "connect", "except", "touching")
+
+
+def is_section(data) -> bool:
+    """A file whose rules each carry their own drawing (a rule's ``"shapes"`` is the
+    geometry itself, not a list of names)."""
+    return is_sheet(data) and "shapes" not in data and all(
+        isinstance(r.get("shapes"), list) and all(isinstance(x, dict) for x in r["shapes"])
+        for r in data["rules"])
+
+
+def _one_rule_sheet(section, rule):
+    """A section's rule as a sheet of exactly that rule and exactly its own drawing --
+    so the per-column and per-family machinery of sheets applies unchanged, and nothing
+    is guessed about which shapes take part: all of them do."""
+    inner = {k: v for k, v in rule.items() if k not in ("shapes", "measures") + _SHARED or k == "except"}
+    inner["shapes"] = [s["name"] for s in rule.get("shapes", [])]
+    inner["measures"] = [m["name"] for m in rule.get("measures", []) if m.get("crossed")]
+    sheet = {k: section[k] for k in _SHARED if section.get(k)}
+    sheet.update(shapes=rule.get("shapes", []), measures=rule.get("measures", []), constraints=[], rules=[inner])
+    return sheet
+
+
+def to_section(data) -> dict:
+    """A sheet (one scene, many rules) as a section: each rule gets a drawing of its
+    own -- the shapes and arrows that rule was read from, and the facts about them."""
+    if not is_sheet(data) or is_section(data):
+        return data
+    out = {k: v for k, v in data.items() if k not in ("shapes", "measures", "constraints", "rules")}
+    out["rules"] = []
+    every = _rules_of_sheet(data)              # read in the full scene, as the sheet was
+    at = 0
+    for r in data["rules"]:
+        expanded = every[at]                   # its shapes, arrows and facts (one per column: the first)
+        at += max(1, len(r.get("values") or r.get("columns") or {}))
+        facts = expanded["constraints"][:len(expanded["constraints"]) - len(r.get("constraints", []))]
+        one = {"name": r.get("name", ""), "desc": r.get("desc", "")}
+        one.update(shapes=expanded["shapes"], measures=expanded["measures"],
+                   constraints=facts + [dict(c) for c in r.get("constraints", [])])
+        for key in ("values", "columns", "extended", "except", "touching", "scope"):
+            if r.get(key):
+                one[key] = r[key]
+        out["rules"].append(one)
+    return out
+
+
 def _refs(ast, out):
     if isinstance(ast, dict):
         if "ref" in ast:
@@ -123,7 +186,16 @@ def _per_column(data):
 def rules_of(data) -> list:
     """The rules a file holds, each as a complete rule dict."""
     if not is_sheet(data):
-        return [data]
+        # ONE rule, ONE drawing -- the normal case. It is expanded only if it gives a
+        # value per table column or is drawn on a family of layers.
+        if data.get("or") or not (data.get("values") or data.get("columns") or data.get("each")):
+            return [data]
+        return rules_of(_one_rule_sheet(data, data))
+    if is_section(data):                       # each rule is its own drawing
+        out = []
+        for r in data["rules"]:
+            out += rules_of(_one_rule_sheet(data, r))
+        return out
     out = []
     for rule in _rules_of_sheet(data):
         out += _per_family_member(rule, data.get("each") or {})

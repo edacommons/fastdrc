@@ -1,0 +1,76 @@
+{
+ "name": "NW.1",
+ "desc": "N-well width",
+ "shapes": [
+  {
+   "name": "NA",
+   "edges": [
+    {
+     "id": "na_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      8,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "na_1",
+     "start": [
+      8,
+      0
+     ],
+     "end": [
+      8,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "na_2",
+     "start": [
+      8,
+      10
+     ],
+     "end": [
+      0,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "na_3",
+     "start": [
+      0,
+      10
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "Wn",
+   "from": "na_3",
+   "to": "na_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "NA.layer == nwell"
+  },
+  {
+   "kind": "check",
+   "expr": "Wn >= 0.8"
+  }
+ ]
+}

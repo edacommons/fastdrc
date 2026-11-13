@@ -1,0 +1,138 @@
+{
+ "name": "V1.2",
+ "desc": "Vias on metal-1 wider than 2",
+ "shapes": [
+  {
+   "name": "MW",
+   "edges": [
+    {
+     "id": "mw_0",
+     "start": [
+      20,
+      0
+     ],
+     "end": [
+      32,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mw_1",
+     "start": [
+      32,
+      0
+     ],
+     "end": [
+      32,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "mw_2",
+     "start": [
+      32,
+      12
+     ],
+     "end": [
+      20,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "mw_3",
+     "start": [
+      20,
+      12
+     ],
+     "end": [
+      20,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "VW",
+   "edges": [
+    {
+     "id": "vw_0",
+     "start": [
+      25,
+      5
+     ],
+     "end": [
+      27,
+      5
+     ],
+     "edge": false
+    },
+    {
+     "id": "vw_1",
+     "start": [
+      27,
+      5
+     ],
+     "end": [
+      27,
+      7
+     ],
+     "edge": false
+    },
+    {
+     "id": "vw_2",
+     "start": [
+      27,
+      7
+     ],
+     "end": [
+      25,
+      7
+     ],
+     "edge": false
+    },
+    {
+     "id": "vw_3",
+     "start": [
+      25,
+      7
+     ],
+     "end": [
+      25,
+      5
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "Ww",
+   "from": "mw_3",
+   "to": "mw_1",
+   "at": 10
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MW.layer == met1"
+  },
+  {
+   "kind": "match",
+   "expr": "VW.layer == via1"
+  },
+  {
+   "kind": "match",
+   "expr": "Ww >= 2"
+  },
+  {
+   "kind": "check",
+   "expr": "Count(VW) >= 2"
+  }
+ ]
+}

@@ -1,0 +1,137 @@
+{
+ "name": "NW.4",
+ "desc": "N-well enclosure of P+ diffusion",
+ "shapes": [
+  {
+   "name": "NW",
+   "edges": [
+    {
+     "id": "nw_0",
+     "start": [
+      30,
+      0
+     ],
+     "end": [
+      56,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "nw_1",
+     "start": [
+      56,
+      0
+     ],
+     "end": [
+      56,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "nw_2",
+     "start": [
+      56,
+      20
+     ],
+     "end": [
+      30,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "nw_3",
+     "start": [
+      30,
+      20
+     ],
+     "end": [
+      30,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PD",
+   "edges": [
+    {
+     "id": "pd_0",
+     "start": [
+      34,
+      6
+     ],
+     "end": [
+      40,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "pd_1",
+     "start": [
+      40,
+      6
+     ],
+     "end": [
+      40,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "pd_2",
+     "start": [
+      40,
+      14
+     ],
+     "end": [
+      34,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "pd_3",
+     "start": [
+      34,
+      14
+     ],
+     "end": [
+      34,
+      6
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "Ep",
+   "from": "nw_3",
+   "to": "pd_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "NW.layer == nwell"
+  },
+  {
+   "kind": "match",
+   "expr": "PD.layer == pdiff"
+  },
+  {
+   "kind": "check",
+   "expr": "Ep >= ?"
+  }
+ ],
+ "values": {
+  "thin": 0.3,
+  "thick": 0.6
+ }
+}

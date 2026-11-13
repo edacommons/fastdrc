@@ -1,0 +1,135 @@
+{
+ "name": "AN.1",
+ "desc": "Metal-1 area per connected gate area",
+ "shapes": [
+  {
+   "name": "GA",
+   "edges": [
+    {
+     "id": "ga_0",
+     "start": [
+      70,
+      4
+     ],
+     "end": [
+      72,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "ga_1",
+     "start": [
+      72,
+      4
+     ],
+     "end": [
+      72,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "ga_2",
+     "start": [
+      72,
+      8
+     ],
+     "end": [
+      70,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "ga_3",
+     "start": [
+      70,
+      8
+     ],
+     "end": [
+      70,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "MP",
+   "edges": [
+    {
+     "id": "mp_0",
+     "start": [
+      69,
+      11
+     ],
+     "end": [
+      73,
+      11
+     ],
+     "edge": false
+    },
+    {
+     "id": "mp_1",
+     "start": [
+      73,
+      11
+     ],
+     "end": [
+      73,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mp_2",
+     "start": [
+      73,
+      14
+     ],
+     "end": [
+      69,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mp_3",
+     "start": [
+      69,
+      14
+     ],
+     "end": [
+      69,
+      11
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "GA.layer == gate"
+  },
+  {
+   "kind": "match",
+   "expr": "MP.layer == met1"
+  },
+  {
+   "kind": "match",
+   "expr": "PA.net == GA.net"
+  },
+  {
+   "kind": "match",
+   "expr": "KP.net == MP.net"
+  },
+  {
+   "kind": "check",
+   "expr": "MP.area <= 400 * GA.area"
+  }
+ ]
+}

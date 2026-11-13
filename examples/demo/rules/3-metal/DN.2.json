@@ -1,0 +1,135 @@
+{
+ "name": "DN.2",
+ "desc": "Metal-1 density in any 100 x 100 window",
+ "shapes": [
+  {
+   "name": "WIN",
+   "edges": [
+    {
+     "id": "win_0",
+     "start": [
+      130,
+      0
+     ],
+     "end": [
+      150,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "win_1",
+     "start": [
+      150,
+      0
+     ],
+     "end": [
+      150,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "win_2",
+     "start": [
+      150,
+      20
+     ],
+     "end": [
+      130,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "win_3",
+     "start": [
+      130,
+      20
+     ],
+     "end": [
+      130,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "MN",
+   "edges": [
+    {
+     "id": "mn_0",
+     "start": [
+      136,
+      6
+     ],
+     "end": [
+      144,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "mn_1",
+     "start": [
+      144,
+      6
+     ],
+     "end": [
+      144,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mn_2",
+     "start": [
+      144,
+      14
+     ],
+     "end": [
+      136,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mn_3",
+     "start": [
+      136,
+      14
+     ],
+     "end": [
+      136,
+      6
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "WIN.layer == chip"
+  },
+  {
+   "kind": "match",
+   "expr": "MN.layer == met1"
+  },
+  {
+   "kind": "match",
+   "expr": "win_0.length == 100"
+  },
+  {
+   "kind": "match",
+   "expr": "WIN.step == 50"
+  },
+  {
+   "kind": "check",
+   "expr": "MN.density <= 0.9"
+  }
+ ]
+}

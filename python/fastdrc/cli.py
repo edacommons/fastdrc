@@ -143,7 +143,7 @@ def _compile_rules(args):
 
     kw, sheets = {}, []
     for path in args.files:
-        if os.path.isdir(path):                  # a process folder: its sheets, its layer table
+        if os.path.isdir(path) or process.is_zip(path):   # a deck (folder or zip): its rules, its layer table
             proc, found = process.load(path)
             sheets += found
             kw.setdefault("layermap", {}).update({k: tuple(v) for k, v in (proc.get("layers") or {}).items()})
@@ -280,7 +280,7 @@ def main(argv=None):
     rules_p = sub.add_parser(
         "rules", help="Compile drawn rule files (single rules or sheets) into a "
                       "KLayout DRC deck, or into plain-language rule text.")
-    rules_p.add_argument("files", nargs="+", help="rule / sheet .json files, or process folders")
+    rules_p.add_argument("files", nargs="+", help="rule .json files, or decks (folders or .zip)")
     rules_p.add_argument("--to", default="klayout",
                          help="what to produce (default: a KLayout .drc deck)")
     rules_p.add_argument("--layermap", help="JSON file {layer name: [gds layer, datatype]}")
@@ -290,14 +290,14 @@ def main(argv=None):
                               "klayout -b -r deck.drc -rd input=layout.gds -rd report=out.lyrdb")
     rules_p.add_argument("--title", default="FastDRC", help="report title (with --standalone)")
 
-    init_p = sub.add_parser("init", help="Create an empty process folder (process.json, rules/).")
-    init_p.add_argument("process", help="folder to create")
+    init_p = sub.add_parser("init", help="Create an empty deck: a folder (process.json, rules/), or NAME.zip.")
+    init_p.add_argument("process", help="folder to create (or a .zip file)")
     init_p.add_argument("--name", help="process name (default: the folder's name)")
 
     build_p = sub.add_parser(
         "build", help="Compile a process folder: the KLayout deck and the rules as text.")
-    build_p.add_argument("process", nargs="?", default=".", help="process folder (default: here)")
-    build_p.add_argument("-o", "--out", help="output folder (default: <process>/build)")
+    build_p.add_argument("process", nargs="?", default=".", help="deck folder or .zip (default: here)")
+    build_p.add_argument("-o", "--out", help="output folder (default: <deck>/build; for a zip, <name>.build beside it)")
 
     build_p.add_argument("--with", dest="also", metavar="BACKEND[,BACKEND]",
                          help="also write the files of these backends (see `fastdrc backends`)")
@@ -305,22 +305,34 @@ def main(argv=None):
     self_p = sub.add_parser(
         "selftest", help="Generate test cases from the drawings and report which rules behave as drawn "
                          "(needs KLayout).")
-    self_p.add_argument("process", nargs="?", default=".", help="process folder (default: here)")
-    self_p.add_argument("-o", "--out", help="output folder (default: <process>/build)")
+    self_p.add_argument("process", nargs="?", default=".", help="deck folder or .zip (default: here)")
+    self_p.add_argument("-o", "--out", help="output folder (default: <deck>/build; for a zip, <name>.build beside it)")
     self_p.add_argument("-v", "--verbose", action="store_true", help="also list the rules with no generated test")
 
+    pack_p = sub.add_parser("pack", help="Put a deck folder into one zip file (build/ is left out).")
+    pack_p.add_argument("process", nargs="?", default=".", help="deck folder (default: here)")
+    pack_p.add_argument("-o", "--out", help="zip file to write (default: <folder>.zip beside it)")
+
+    unpack_p = sub.add_parser("unpack", help="Extract a zipped deck into a folder.")
+    unpack_p.add_argument("zip", help="deck .zip")
+    unpack_p.add_argument("folder", nargs="?", help="folder to extract into (default: the zip's name, beside it)")
+
     sub.add_parser("backends", help="List the available backends (the shipped ones and installed plugins).")
+
+    split_p = sub.add_parser(
+        "split", help="Rewrite a deck's sheets (several rules on one drawing) as one file per rule.")
+    split_p.add_argument("process", nargs="?", default=".", help="deck folder or .zip (default: here)")
 
     check_p = sub.add_parser(
         "check", help="Run a process's rules on a layout (needs KLayout) and list the violations.")
     check_p.add_argument("layout", help="layout file (GDS / OASIS)")
-    check_p.add_argument("process", nargs="?", default=".", help="process folder (default: here)")
+    check_p.add_argument("process", nargs="?", default=".", help="deck folder or .zip (default: here)")
     check_p.add_argument("--top", help="top cell (default: the layout's)")
     check_p.add_argument("--report", help="report database to write (default: beside the layout)")
 
     gui_p = sub.add_parser(
         "gui", help="Launch the visual rule editor (Tkinter).")
-    gui_p.add_argument("file", nargs="?", help="optional rule .json, or a process folder, to open")
+    gui_p.add_argument("file", nargs="?", help="optional rule .json, or a deck (folder or .zip), to open")
 
     args = parser.parse_args(argv)
     if args.command == "compose":
@@ -339,14 +351,35 @@ def main(argv=None):
     elif args.command == "init":
         from fastdrc import process
         made = process.init(args.process, args.name)
-        print(f"{'created' if made else 'already a process:'} {args.process}/{process.PROCESS_FILE}"
-              f" -- draw sheets into {args.process}/rules/ (fastdrc gui {args.process})")
+        if args.process.lower().endswith(".zip"):
+            print(f"{'created' if made else 'already there:'} {args.process} -- draw rules into it: fastdrc gui {args.process}")
+        else:
+            print(f"{'created' if made else 'already a process:'} {args.process}/{process.PROCESS_FILE}"
+                  f" -- draw rules into {args.process}/rules/ (fastdrc gui {args.process})")
     elif args.command == "build":
         return _build(args)
     elif args.command == "check":
         return _check(args)
     elif args.command == "selftest":
         return _selftest(args)
+    elif args.command == "split":
+        from fastdrc import process
+        n = process.split(args.process)
+        print(f"{n} rule file(s) written: one rule, one file, one drawing" if n
+              else "nothing to do: every rule already has its own file")
+    elif args.command == "pack":
+        from fastdrc import process
+        if not process.is_process(args.process):
+            raise SystemExit(f"fastdrc: {args.process} is not a deck folder (no {process.PROCESS_FILE})")
+        print(process.pack(args.process, args.out))
+    elif args.command == "unpack":
+        from fastdrc import process
+        if not process.is_zip(args.zip):
+            raise SystemExit(f"fastdrc: {args.zip} is not a zip file")
+        target = args.folder or os.path.splitext(os.path.abspath(args.zip))[0]
+        if os.path.isdir(target) and os.listdir(target):
+            raise SystemExit(f"fastdrc: {target} exists and is not empty")
+        print(process.unpack(args.zip, target))
     elif args.command == "backends":
         from fastdrc import backend
         for name in backend.available():

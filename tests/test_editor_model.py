@@ -142,11 +142,12 @@ def test_a_rules_constraints_survive_being_shown_and_typed_back():
     assert parse_rule_constraints("  ") == []
 
 
-def test_the_deck_is_browsed_as_sheets_with_their_rules():
+def test_the_deck_is_browsed_as_sections_of_rule_files():
     from fastdrc import process
     here = os.path.join(HERE, "..", "examples", "demo")
-    _, sheets = process.load(here)
-    tree = [(os.path.basename(p), [r["name"] for r in d.get("rules", [])]) for p, d in sheets]
-    assert tree == [("1-wells.sheet.json", ["NW.1", "NW.2", "NW.3", "NW.4", "LU.1"]),
-                    ("2-devices.sheet.json", ["PO.1", "PO.2", "PO.3", "CO.1", "CO.2", "CO.3", "CO.4"]),
-                    ("3-metal.sheet.json", ["V1.1", "V1.2", "AN.1", "DN.1", "DN.2"])]
+    tree = {}
+    for path in process.rule_files(here):
+        tree.setdefault(process.section_of(path, here), []).append(os.path.basename(path)[:-5])
+    assert tree == {"1-wells": ["LU.1", "NW.1", "NW.2", "NW.3", "NW.4"],
+                    "2-devices": ["CO.1", "CO.2", "CO.3", "CO.4", "PO.1", "PO.2", "PO.3"],
+                    "3-metal": ["AN.1", "DN.1", "DN.2", "V1.1", "V1.2"]}

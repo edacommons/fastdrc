@@ -5,14 +5,18 @@ eighteen rules of every kind, in [`examples/demo/`](../examples/demo) — from t
 manual's page to a KLayout deck that has been run on a layout.
 [`drawing-model.md`](drawing-model.md) is the reference for each convention used here.
 
-## 1. A process is a folder; a section of the manual is a sheet
+## 1. A deck is a folder; a rule is a file
 
-    fastdrc init myprocess
+    fastdrc init mydeck
 
-    myprocess/
-      process.json     said once: layer numbers, legend, table columns
-      rules/           one sheet per section of the manual
-      build/           generated: the deck, and the rules as text
+    mydeck/
+      process.json            said once: layer numbers, legend, table columns, connections
+      rules/
+        1-wells/              a section of the manual is a folder
+          NW.1.json           ONE rule, ONE file, ONE drawing
+          NW.2.json
+        2-devices/ ...
+      build/                  generated: the KLayout script, and the rules as text
 
 `process.json` holds what the manual's front matter holds (in the editor: the
 "Process…" button):
@@ -20,21 +24,28 @@ manual's page to a KLayout deck that has been run on a layout.
     { "name": "Demo",
       "layers":  { "nwell": [1, 0], "diff": [2, 0], ... },                 GDS layer, datatype
       "legend":  { "pdiff": "diff and pimp", "gate": "poly and diff", ... },
-      "columns": { "thin": [["not_interacting", "thick"]], "thick": [["overlapping", "thick"]] } }
+      "columns": { "thin": [["not_interacting", "thick"]], "thick": [["overlapping", "thick"]] },
+      "connect": [["ndiff", "nwell"], ["cont", "ndiff"], ["cont", "met1"], ...] }
 
-A manual gives each section a figure and a table: shapes with lettered arrows, and a
-row per rule. A **sheet** is the same thing: one drawn scene, and a list of rules that
-each say what one arrow (or one shape) must satisfy.
+The folder zipped is the same deck in one file, for passing around: `fastdrc pack
+mydeck` writes `mydeck.zip` (without `build/`), `fastdrc unpack mydeck.zip` gives the
+folder back, and `fastdrc init mydeck.zip` starts an empty one. Every command and the
+editor take the zip where they take the folder — the editor saves straight into it —
+and what is generated goes beside it, in `mydeck.build/`.
 
-    { "name": "Wells",
+A rule file is a drawing and what the manual says about it:
+
+    { "name": "NW.1", "desc": "N-well width",
       "shapes":   [ ... ],          what is drawn
       "measures": [ ... ],          the arrows
-      "constraints": [ ... ],       facts about the scene: which shape is which layer
-      "rules": [ { "name": "NW.1", "desc": "N-well width", "constraints": [...] }, ... ] }
+      "constraints": [ ... ] }      which shape is which layer, and what must hold
 
-Draw it in the editor — `fastdrc gui myprocess` lists the process's sheets and adds
-new ones — or write the JSON; both are the same file. The example has three sheets:
-wells, devices, metal.
+A manual's figure usually shows several rules at once. Here every rule gets its own
+drawing, with only the shapes that rule is about: a drawing is read as a whole, so a
+shape that belongs to another rule must not be in it. Draw it in the editor —
+`fastdrc gui mydeck` lists the deck's sections and rules in one dropdown and shows one
+rule at a time — or write the JSON; both are the same file. The example has three
+sections: wells, devices, metal.
 
 ## 2. Draw what the figure shows
 
@@ -43,12 +54,9 @@ wells, devices, metal.
 - An **arrow** between two edges is a distance. The rule gives it a number.
 - Names the manual uses for combinations go in the process's **legend** once
   (`pdiff = diff and pimp`) and are then drawn like any layer.
-- A table with a value per column (thin / thick oxide, 3.3 V / 5 V) is the process's
-  `"columns"` plus `"values"` on the rule, with `?` where the number goes.
-
-Draw each rule's shapes in their own corner of the sheet. A shape of the same layer
-lying on another rule's arrow becomes part of that rule; `fastdrc rules` warns when
-that happens.
+- A table with a value per column (thin / thick oxide, 3.3 V / 5 V) is the deck's
+  `"columns"` plus `"values"` on the rule, with `?` where the number goes: one rule
+  file, one rule per column in the deck.
 
 ## 3. Say what the manual says
 
@@ -59,7 +67,7 @@ which shapes the rule is about.
 |---|---|---|
 | minimum width / space / enclosure | `check  W >= 0.8` on the arrow | NW.1, NW.2, CO.4 |
 | a value per column | `check  Ep >= ?` and `"values": {"thin": 0.3, "thick": 0.6}` | NW.4 |
-| the same rules for several layers ("intermediate metal: metal2, metal3") | `"each": {"metalint": ["metal2", "metal3"]}`, shapes drawn on `metalint` | (see the reference) |
+| the same rules for several layers ("intermediate metal: metal2, metal3") | `"each": {"metalint": ["metal2", "metal3"]}` in `process.json`, shapes drawn on `metalint` | (see the reference) |
 | extension beyond, end cap | an arrow from the crossed layer's edge to the end; `check  Xp >= 0.2` | PO.2, PO.3 |
 | exact size | `check  ka_0.length == 0.2` on a side | CO.1 |
 | only square ones / bars | `match  ka_0.length == ka_1.length` (or `>`) | the contacts |
@@ -75,11 +83,9 @@ which shapes the rule is about.
 | abutting shapes are fine everywhere | `"touching": "allowed"` in `process.json` | (see the reference) |
 | must not exist / must not straddle | a cross on the shape or on the arrow | (see the reference) |
 
-**Nets.** Rules about nets need to know how layers connect. Draw the stack once, on
-any sheet — a tap in the well, a contact on the tap, metal over the contact — and
-state for each pair that touches that it is one net (`KS.net == TS.net`). It then
-serves every sheet of the process: the example draws it on the metal sheet (shapes
-`WS TS KS MS VS M2` and `GA PA KP MP`) and the net rule NW.3 is on the wells sheet.
+**Nets.** Rules about nets need to know how layers connect: which layers are one net
+where they touch. That is said once for the deck, in `process.json`:
+`"connect": [["ndiff", "nwell"], ["cont", "ndiff"], ["cont", "met1"]]`.
 
 ## 4. Read it back
 
@@ -132,7 +138,7 @@ A few kinds are not generated yet (antenna over several layers or with a diode, 
 lengths, corners, shapes with a hole); `-v` names them, and they need cases of your
 own, as below.
 
-In the editor the same test is the **Test** button, for the sheet being drawn.
+In the editor the same test is the **Test** button, for the rule being drawn.
 
 **Planted errors.** `examples/demo/layout.rb` builds a layout for the example with
 one error per rule and a clean counterpart next to it:

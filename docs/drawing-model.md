@@ -199,12 +199,12 @@ dualgate must not extend beyond it".
 **Shapes that touch.** A minimum distance of exactly 0 — two shapes abutting — is a
 violation unless the rule says otherwise (`E >= v or E == 0`). Some processes treat
 abutting as always allowed; say it once with `"touching": "allowed"` in `process.json`
-(or on a sheet, or a single rule), and every minimum spacing, separation and enclosure
+(or on a single rule), and every minimum spacing, separation and enclosure
 reads "... or exactly 0".
 
 **A family of layers (each on its own).** A manual often gives one set of rules for
 several layers — "intermediate metal: metal2 and metal3". Name the family once, in
-`process.json` or on the sheet: `"each": {"metalint": ["metal2", "metal3"]}`, draw the
+`process.json`: `"each": {"metalint": ["metal2", "metal3"]}`, draw the
 shapes on `metalint`, and every rule that uses it is repeated for each member by
 itself, named `RULE_metal2`, `RULE_metal3`. This is not a layer set: a set (below) is
 *any of them together, as one material* — its spacing would be measured from metal2 to
@@ -438,20 +438,14 @@ filter between the two measured shapes:
 | `A.net == B.net` | pairs on the same net | `… props_eq` |
 | (nothing) | every pair — the usual "equi-potential" minimum | `nwell.space(0.6)` |
 
-What makes a net is process knowledge, given **once** — and it can be drawn like
-everything else. Draw the stack somewhere on the sheet: a tap in the well, a contact on
-the tap, metal over the contact; and state for each pair that touches that it is one
-net:
-
-    T.net == W.net      K.net == T.net      K.net == M.net
-
-Two shapes of different layers drawn touching or overlapping, with their nets equal,
-mean "these layers connect where they meet" → `connect(ntap, nwell)`,
-`connect(cont, ntap)`, `connect(cont, met1)`. (Between shapes drawn *apart* the same
-equality is a filter, as in the table above.) The stack takes part in no rule; it only
-says how nets form. The same can be written as a list instead:
+What makes a net is process knowledge — which layers are one net where they touch —
+and is given **once**, in `process.json`:
 
     "connect": [["nwell", "ntap"], ["ntap", "cont"], ["cont", "met1"]]
+
+(In a drawing it can also be stated as a fact: two shapes of different layers drawn
+touching or overlapping with `K.net == D.net` mean "these layers connect"; between
+shapes drawn *apart* the same equality is a filter, as in the table above.)
 
 Legend names such as `ncomp` may be used. The deck declares the connections before
 the rules.
@@ -568,7 +562,7 @@ A shape normally means "this layer *here*": whatever is drawn under the spot whe
 the arrow touches it combines with it (poly over diffusion is read as the gate). When
 the rule is about the layer wherever it is — "contact on diffusion, space to **poly**",
 drawn at a transistor because that is where it matters — mark the shape as the whole
-layer (`"whole": true` on the shape, or `"whole": ["GATE"]` on one rule of a sheet):
+layer (`"whole": true` on the shape):
 → `cont.and(diff).separation(poly, v)` instead of `…separation(poly.and(diff), v)`.
 Manuals usually say which they mean ("poly **on diffusion**", "gate" vs just "poly").
 
@@ -720,7 +714,7 @@ one visual language, and the model follows it:
 | a big **X** over a shape or a configuration | a **cross**: on the shape, or on the relation that is forbidden |
 | a tick next to an arrangement that is fine | an **allowed example** (the shape's mark) |
 | break lines: "the shape continues" | wavy edges |
-| ONE figure carrying many rules | a **sheet**: one scene, a list of rules (below) |
+| ONE figure carrying many rules | a drawing of its own for each rule, with only that rule's shapes (below) |
 
 And the phrases manuals use map onto drawings like this:
 
@@ -756,32 +750,16 @@ legend entry: `"near_nwell": "nwell + 0.43"` (grown; `-` shrinks).
 Everything on the earlier "not drawn yet" list now has a drawn form; rule kinds
 found missing from here on should be added to this section.
 
-### Sheets — one figure, many rules
+### One rule, one file, one drawing
 
-A manual's figure draws a situation once and hangs many rules on it. A **sheet** is
-that figure: `shapes` + `measures` + the layer facts, and `rules` — each a name with
-its constraint (or its cross) on the scene:
+A manual's figure usually shows several rules on one picture. Here every rule has its
+**own drawing in its own file**, holding only the shapes that rule is about. A drawing
+is read as a whole — what lies inside, across or beside what — so a shape that belongs
+to another rule must not be in it: it could change what this rule says.
 
-```json
-{"name": "SAB", "shapes": [...], "measures": [...], "constraints": [...],
- "rules": [{"name": "SB.6", "desc": "...", "constraints": [{"kind": "check", "expr": "E6 >= 0.22"}]},
-           {"name": "SB.8", "desc": "...", "measures": ["X8"]}]}
-```
-
-Each rule reads only its part of the scene:
-
-- the shapes it measures;
-- anything drawn **over the spot the arrow sits on** — but not a *background*, a
-  shape that holds the whole measured shape (the diffusion under a contact, a well):
-  moving the arrow can say nothing about such a layer, so it takes part only when the
-  rule names it (`"with": ["COMP"]`);
-- for a crossed-out shape, everything it is drawn on;
-- the contexts those shapes are linked to.
-
-The rest of the figure belongs to other rules. `"with"` / `"without"` / `"shapes"`
-on a rule override this; `"cross"` / `"allowed"` put the marks on shapes for that
-rule only. Two entries may share a name — a rule and its crossed-out example.
-`fastdrc rules sheet.json` compiles a sheet to one deck.
+A deck is a folder; a section of the manual is a folder of rule files; what the rules
+share — legend, table columns, families of layers, connections, layer numbers — is
+said once, in `process.json` (see *From drawings to a deck*).
 
 **Where the arrow is put matters**, as in a manual. A measure is read *at its spot*:
 by default the middle of the stretch where its two edges face each other, or where
@@ -790,22 +768,33 @@ you put it — `"at": c`, the coordinate along the edges. The same two poly edge
 diffusion, because the diffusion is then drawn over the measured spot.
 
 **A table of values.** Manuals give most rules as a table: one arrow, a value per
-column (3.3 V, 5 V …). Name each column once by where it applies, and give the rule
-its values with `?` in the constraint:
+column (3.3 V, 5 V …). Name each column once in `process.json` by where it applies,
 
 ```json
-"domains": {"3.3V": [["not_interacting", "v5_xtor"], ["not_interacting", "dualgate"]],
-            "5V":   [["overlapping", "dualgate"]]},
-"rules": [{"name": "PL.4", "constraints": [{"kind": "check", "expr": "E4 >= ?"}],
-           "values": {"3.3V": 0.22, "5V": 0.22}}]
+"columns": {"3.3V": [["not_interacting", "v5_xtor"], ["not_interacting", "dualgate"]],
+            "5V":   [["overlapping", "dualgate"]]}
 ```
 
-→ the rules `PL.4_3.3V` and `PL.4_5V`, each scoped to its column. A rule with no
-number that still holds per column lists them: `"columns": ["3.3V", "5V"]`.
+and give the rule its values with `?` in the constraint:
 
-**A section note** — "these rules do not apply inside OTP_MK" — is `"except":
-["otp_mk"]` on the sheet (every rule) or on one rule, instead of a cutout drawn into
-every shape.
+```json
+{"name": "PL.4", "shapes": [...], "measures": [...],
+ "constraints": [..., {"kind": "check", "expr": "E4 >= ?"}],
+ "values": {"3.3V": 0.22, "5V": 0.22}}
+```
+
+→ the rules `PL.4_3.3V` and `PL.4_5V`, each scoped to its column: one file, one
+drawing, a rule per column. A rule with no number that still holds per column lists
+them: `"columns": ["3.3V", "5V"]`.
+
+**A note** — "this rule does not apply inside OTP_MK" — is `"except": ["otp_mk"]` on
+the rule, instead of a cutout drawn into every shape.
+
+**Sheets (older files).** For a while a file could hold one drawn scene with several
+rules on it (a "sheet"). Such files are still read, but a shape drawn for one rule
+could silently become part of another, so they are not the way to work:
+`fastdrc split mydeck` rewrites every sheet as a folder of rule files, each with the
+shapes its rule was read from.
 
 A column's test is applied to the **marker** of each violation, so the columns of one
 table should cover every case between them: `not_interacting X` / `overlapping X`.
@@ -816,23 +805,29 @@ rules` warns about such a pair.
 
 ## From drawings to a deck
 
-A process is a folder: `process.json` (layer numbers, legend, table columns — said
-once) and `rules/` with a sheet per section of the manual.
+A deck is a folder: `process.json` (layer numbers, legend, table columns, connections
+— said once) and `rules/`, a folder per section of the manual, a file per rule.
 
 ```
-fastdrc init myprocess                     # the skeleton
-fastdrc build myprocess                    # -> build/<name>.drc and build/<name>.md (the rules as sentences)
-fastdrc check chip.gds myprocess           # builds, runs KLayout, lists the violations per rule
+fastdrc init mydeck                     # the skeleton
+fastdrc build mydeck                    # -> build/<name>.drc and build/<name>.md (the rules as sentences)
+fastdrc check chip.gds mydeck           # builds, runs KLayout, lists the violations per rule
 ```
+
+The folder zipped is the same deck in one file: `fastdrc pack mydeck` writes
+`mydeck.zip` (everything but `build/`), `fastdrc unpack mydeck.zip` gives the folder
+back, `fastdrc init mydeck.zip` starts an empty one. `build`, `check`, `selftest`,
+`split`, `rules` and `gui` take the zip wherever they take the folder; generated files
+go beside it, in `mydeck.build/`. A zip made by zipping the folder itself (everything
+under one top folder) is read the same.
 
 `process.json`:
 `{"name": "...", "layers": {"poly": [66, 20], "diff": [65, 20]}, "legend": {"gate": "poly and diff"},
-"columns": {"thin": [["not_interacting", "thick"]], ...}}`. A sheet may carry its own
-legend or columns; the process supplies what it does not, and a layer stack drawn on
-any sheet makes the nets for all of them. Single files still work
-(`fastdrc rules a.sheet.json --layermap layers.json --standalone -o a.drc`, `--to docs`).
+"columns": {"thin": [["not_interacting", "thick"]], ...}, "connect": [["cont", "met1"], ...]}`.
+A single rule file also compiles on its own
+(`fastdrc rules NW.1.json --layermap layers.json --standalone -o a.drc`, `--to docs`).
 
-**Does it behave as drawn?** `fastdrc selftest myprocess` tests every constraint of
+**Does it behave as drawn?** `fastdrc selftest mydeck` tests every constraint of
 every rule on its own, with layouts made from the rule's picture:
 
 - a **check** — the quantity it speaks of put just outside the value, and far outside:
@@ -883,17 +878,17 @@ flags (on the clean layout: nothing, or the drawing says more than the manual).
 
 ## In the editor (`fastdrc gui`)
 
-- **`fastdrc gui myprocess`** opens the whole deck — the folder. The dropdown at the
-  top left is its tree: each sheet opens onto its rules; pick a rule and its sheet is
-  opened and the rule selected. A sheet is one drawing holding several rules: with a
-  rule selected, only its own shapes and arrows are drawn in full and the rest of the
-  sheet is a faint outline; "(the whole sheet)" shows everything ("+ sheet" adds a section; "Process…" edits the name,
-  the layers' GDS numbers, the legend and the columns). **Save** writes the sheet being edited; switching
-  sheets or closing asks about unsaved changes. The text pane at the bottom shows the
-  sheet as part of the process — with its legend, columns, layer numbers, and the layer
-  stack drawn on any other sheet. A single file opens the same way
-  (`fastdrc gui rule.json`); if it lies in a process folder, the process comes with it.
-
+- **`fastdrc gui mydeck`** opens the whole deck — the folder. The dropdown at the top
+  left is its tree: each section opens onto its rules; pick a rule and its file is
+  opened. The canvas always holds ONE rule's drawing. "+ rule" makes a new rule file
+  (in the section of the one open; `section/name` starts another); "Process…" edits
+  the name, the layers' GDS numbers, the legend and the columns. **Save** writes the
+  rule being edited; switching rules or closing asks about unsaved changes. The text
+  pane at the bottom shows the rule as part of its deck — with the deck's legend,
+  columns, layer numbers and connections. A file outside any deck opens the same way
+  (`fastdrc gui rule.json`).
+- **`fastdrc gui mydeck.zip`** (or Open on a `.zip`) is the same on a deck kept in one
+  file: Save, "+ rule" and "Process…" write straight into the zip.
 - **Drag** on empty canvas: a new shape (all edges wavy). **Double-click** an edge:
   straight ↔ wavy. **Right-click** an edge: split it.
 - **Shift-click two edges**: a measure. Two straight edges give a distance (bound it
@@ -904,7 +899,7 @@ flags (on the clean layout: nothing, or the drawing says more than the manual).
 - Each shape shows how it **reads** — subject, operand, combined, cut out, filter,
   forbidden, scope — in the tree and in its properties. This is derived from the
   drawing; if it is not what you meant, the drawing says something else.
-- **Test** (beside the text pane) runs the self-test on the sheet as it is drawn and
+- **Test** (beside the text pane) runs the self-test on the rule as it is drawn and
   lists every constraint: `ok` where the rule behaves as drawn, `WRONG` with the case
   that shows it, and the rules no test can be generated for.
 - A shape's properties also carry its **mark** (✗ forbidden / ✓ allowed), its halo, and

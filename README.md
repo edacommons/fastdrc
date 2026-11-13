@@ -25,11 +25,12 @@ the one or two things the manual says about it (`W >= 0.8`, `A.net != B.net`,
 what lies inside, across or beside what off the drawing and derives the operations.
 
 ```
-fastdrc init myprocess             # a process is a folder: process.json + rules/
-fastdrc gui myprocess              # draw the sheets (one per section of the manual)
-fastdrc build myprocess            # -> build/<name>.drc (KLayout deck), build/<name>.md (the rules as sentences)
-fastdrc selftest myprocess         # does every constraint of every rule behave as drawn?
-fastdrc check chip.gds myprocess   # run the deck on a layout, list the violations per rule
+fastdrc init mydeck             # a deck is a folder: process.json + rules/<section>/<rule>.json
+fastdrc gui mydeck              # draw the rules: one rule, one file, one drawing
+fastdrc build mydeck            # -> build/<name>.drc (KLayout script), build/<name>.md (the rules as sentences)
+fastdrc selftest mydeck         # does every constraint of every rule behave as drawn?
+fastdrc check chip.gds mydeck   # run the deck on a layout, list the violations per rule
+fastdrc pack mydeck             # -> mydeck.zip: the same deck in one file; every command and the editor take it
 ```
 
 `build` and `rules` need nothing but Python; `selftest`, `check` and the editor's
@@ -62,8 +63,8 @@ The pieces (Python):
 python/fastdrc/topology.py        spatial relations off geometry (inside / overlap / ...)
 python/fastdrc/constraint.py      the constraint language (a Python-expression subset, parsed with `ast`)
 python/fastdrc/rule.py            the analyzed-rule API the backends work against
-python/fastdrc/sheet.py           a sheet: one drawn scene, many rules; table columns; layer families
-python/fastdrc/process.py         a process folder: build, check, self-test
+python/fastdrc/sheet.py           rule files: a value per table column, layer families (and older multi-rule sheets)
+python/fastdrc/process.py         a deck folder: build, check, self-test
 python/fastdrc/backend.py         the backend registry and plugin discovery
 python/fastdrc/backend_klayout.py -> a KLayout DRC deck
 python/fastdrc/backend_docs.py    -> the rules as plain sentences
