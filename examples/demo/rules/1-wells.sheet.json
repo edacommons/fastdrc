@@ -286,8 +286,8 @@
   },
   {
    "name": "Sl",
-   "from": "pd_1",
-   "to": "nt_3"
+   "from": "nt_3",
+   "to": "pd_3"
   }
  ],
  "constraints": [
@@ -363,7 +363,7 @@
   },
   {
    "name": "LU.1",
-   "desc": "P+ diffusion to the nearest well tap",
+   "desc": "Any part of a P+ diffusion to the nearest well tap",
    "constraints": [
     {
      "kind": "check",

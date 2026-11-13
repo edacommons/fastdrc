@@ -58,12 +58,13 @@ s = Sheet("Wells", "N-well and what sits in it")
 s.shape("NA", "nwell", 0, 0, 8, 10); s.shape("NB", "nwell", 12, 0, 20, 10)
 s.arrow("Wn", "na_3", "na_1"); s.arrow("Sn", "na_1", "nb_3")
 s.shape("NW", "nwell", 30, 0, 56, 20); s.shape("PD", "pdiff", 34, 6, 40, 14); s.shape("NT", "ndiff", 44, 6, 50, 14)
-s.arrow("Ep", "nw_3", "pd_3"); s.arrow("Sl", "pd_1", "nt_3")
+s.arrow("Ep", "nw_3", "pd_3")
+s.arrow("Sl", "nt_3", "pd_3")        # from the tap to the diffusion's FAR side: every part of it
 s.rule("NW.1", "N-well width", C("Wn >= 0.8"))
 s.rule("NW.2", "N-well space", C("Sn >= 1.0"))
 s.rule("NW.3", "N-well space, wells on different nets", M("NA.net != NB.net"), C("Sn >= 2.0"))
 s.rule("NW.4", "N-well enclosure of P+ diffusion", C("Ep >= ?"), values={"thin": 0.3, "thick": 0.6})
-s.rule("LU.1", "P+ diffusion to the nearest well tap", C("Sl <= 20"), **{"with": ["NW"]})
+s.rule("LU.1", "Any part of a P+ diffusion to the nearest well tap", C("Sl <= 20"), **{"with": ["NW"]})
 s.save("1-wells.sheet.json")
 
 # ---- section 2: poly and contacts

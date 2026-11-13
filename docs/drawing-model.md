@@ -510,7 +510,8 @@ the density is taken is read from the picture:
 The marker is the area (a global rule) or each window that is out of range. Windows
 start at the lower-left corner of the area and never reach outside it; where the last
 step stops short of the far edge, one more row / column is laid against that edge. A
-window exactly at the limit passes. The deck carries the small `out_of_density` helper
+window exactly at the limit passes. An area only one window wide or tall is
+measured window by window (KLayout's own tiling returns nothing for a single row). The deck carries the small `out_of_density` helper
 once, at the top.
 
 ### "On one of two adjacent sides" — either of two arrows is enough
@@ -592,14 +593,16 @@ As a **`check`** (what must hold — where it fails is flagged):
 | `W >= 0.28` | the narrower | `metal1.width(0.28)` |
 | `W <= 5` | the wider (a *maximum* width) | `metal1.drc(width > 5)` |
 | `W >= 0.28 and W <= 5` | both | the two checks above |
-| `S <= 20` (an arrow from A to B) | every part of A farther than 20 from any B — "must be within 20 µm of a tap" | `A.not(B.sized(20))` |
+| `S <= 20`, the arrow between the two **facing** edges of A and B | every A with no B within 20 — "must have a tap within 20 µm" | `A.not_interacting(B.sized(20))` |
+| `S <= 20`, the arrow from B **through** A to its far side | every part of A farther than 20 from any B — "any portion within 20 µm of a tap" | `A.not(B.sized(20))` |
 | `E <= 6` (inner inside outer) | the parts of the outer reaching more than 6 beyond the inner | `outer.not(inner.sized(6))` |
 
-A maximum between two shapes is about **every part** of the first: the far end of a
-long shape is flagged, and so is a shape with no partner near at all. The arrow starts
-at the shape that must be near (the diffusion) and ends at what it must be near to (the
-tap). For "the shape as a whole needs one within reach" use a halo and a cross instead
-(below).
+A maximum between two shapes is read by **where the arrow ends**. Between the facing
+edges it says the shape needs a partner within reach; the arrow starts at the shape
+that needs it. Drawn through a shape to its far side it says *every part* of that shape
+must be within reach, so the far end of a long shape is flagged. (This distinction was
+found by the generated self-test: an arrow between the near edges, exactly at its
+limit, was still reported by the "every part" reading.)
 
 As a **`match`** (a filter — it *selects* the region that satisfies it; a rule with
 only filters flags what they select):
@@ -711,7 +714,8 @@ And the phrases manuals use map onto drawings like this:
 |---|---|---|
 | *A width* / *A space* (notch included) | one shape / two shapes, an arrow | `A.width(v)` / `A.space(v)` |
 | *... with run length > x* | the same, plus the filter `S.run > x` | `A.space(v, projection, projecting > x)` |
-| *space to a line wider than w* | a width arrow on that line with the filter `Ww > w`, the spacing arrow with its check | `A.separation(A.sized(-w/2).sized(w/2), v)` |
+| *space to a line wider than w* | a width arrow on that line with the filter `Ww > w`, the spacing arrow with its check | `A.space(v).polygons.interacting(A.sized(-w/2).sized(w/2))` — the too-small spaces with a wide part on one side |
+| *... at least w wide* | the same with `Ww >= w` — a part exactly w wide is included (the opening is 1 nm smaller) | `A.sized(-(w/2 - 0.001)).sized(w/2 - 0.001)` |
 | *enclosure on one of two adjacent sides* / *endcap enclosure* | an arrow on each of two adjacent sides, `Ea >= v or Eb >= v` | `inner.interacting(<corners where both sides fall short>)` |
 | *space in a 4 × 4 or larger array* | two neighbours, the spacing arrow, the filter `K.rows >= 4 and K.columns >= 4` | `K.inside(<large groups>).space(v)` |
 | *square contacts only* / *contact bar* (a rule per shape class) | the filter that two sides are equal / that one is longer | `A.squares` / `A.non_squares` |
@@ -813,6 +817,32 @@ fastdrc check chip.gds myprocess           # builds, runs KLayout, lists the vio
 legend or columns; the process supplies what it does not, and a layer stack drawn on
 any sheet makes the nets for all of them. Single files still work
 (`fastdrc rules a.sheet.json --layermap layers.json --standalone -o a.drc`, `--to docs`).
+
+**Does it behave as drawn?** `fastdrc selftest myprocess` tests every constraint of
+every rule on its own, with layouts made from the rule's picture:
+
+- a **check** — the quantity it speaks of put just outside the value, and far outside:
+  the rule must report; exactly at the value, and well inside: it must not;
+- a **match** (a filter) — a violation placed just *outside* the filter: the rule must
+  *not* report it (the filter really filters), and just inside: it must;
+- "either of two" — each alone outside: quiet; both outside: reported.
+- a **cross** ("must not exist") — the picture as drawn: reported; the same without the
+  crossed-out shape: quiet.
+
+What the rule must do in each case is computed from the constraints themselves
+(reported = every `match` holds and some `check` does not), not from the deck. `-v`
+lists every constraint tested. Distances, side lengths, areas, "must lie inside",
+counts, arrays (whole arrays are built: the size asked for, one row or column fewer,
+one more), area shares, crosses, density (each case is a layout of its own, since a
+density is taken over the whole area), antenna ratios (the connecting stack is built
+from the process's connections; several layers together and a diode condition
+included), hole areas (rings are built) and run lengths are generated. Not yet:
+corners and gate-edge arrows — these are listed as such, never as passing.
+
+**Backends are plugins.** `fastdrc backends` lists them: `klayout` (the deck), `docs`
+(sentences), `facts`, `cases` (the test cases above). `fastdrc build DIR --with cases`
+writes a backend's files beside the deck. Another package adds one with an entry point
+in the group `fastdrc.backends` naming a `fastdrc.backend.Backend` subclass.
 
 Nothing in the compiler knows any process:
 layer names, values, columns and exemptions all come from the drawings. A rule that

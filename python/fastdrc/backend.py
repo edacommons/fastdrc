@@ -10,6 +10,17 @@ interpretation lives in each backend; the shared substrate is `topology` +
 Backends register by name and are selected at compile time. Because every
 backend consumes the same `Rule`, two can compile the same rule and their
 results compared as a cross-check.
+
+A backend is a PLUGIN. The ones shipped here (``klayout``, ``docs``, ``facts``,
+``cases``) load on first use; any installed package can add one by declaring an entry
+point in the group ``fastdrc.backends``::
+
+    [project.entry-points."fastdrc.backends"]
+    mytarget = "mypackage.mymodule:MyBackend"
+
+where ``MyBackend`` subclasses `Backend`, sets ``name`` and implements ``compile``. It
+then works everywhere a backend is named: ``fastdrc rules ... --to mytarget``,
+``fastdrc build DIR --with mytarget``, the editor's text pane.
 """
 
 from __future__ import annotations
@@ -19,6 +30,14 @@ from .rule import Rule
 
 class Backend:
     name = "abstract"
+    extension = ".txt"        # of the file `fastdrc build` writes for this backend
+    about = ""                # one line for `fastdrc backends`
+
+    def files(self, rules, stem) -> dict:
+        """What this backend writes for a set of rules, as ``{file name: text}`` --
+        one file by default; a backend producing several (a layout generator and what
+        to expect of it) overrides this."""
+        return {stem + self.extension: self.compile_all(rules)}
 
     def compile(self, rule: Rule) -> str:
         raise NotImplementedError
@@ -45,13 +64,55 @@ def register(cls):
     return cls
 
 
+_BUILTIN = ("backend_klayout", "backend_docs", "backend_cases")
+_loaded = False
+
+
+def _discover():
+    """Load the backends shipped with fastdrc and those other packages offer through
+    the ``fastdrc.backends`` entry-point group. A plugin that fails to load is skipped
+    (and named in `problems`), never fatal."""
+    global _loaded
+    if _loaded:
+        return
+    _loaded = True
+    import importlib
+    for mod in _BUILTIN:
+        importlib.import_module(f"{__package__}.{mod}")
+    try:
+        from importlib.metadata import entry_points
+        found = entry_points(group="fastdrc.backends")
+    except Exception:                                   # noqa: BLE001
+        found = []
+    for ep in found:
+        try:
+            cls = ep.load()
+            if not getattr(cls, "name", None) or cls.name == "abstract":
+                cls.name = ep.name
+            _REGISTRY.setdefault(cls.name, cls)
+        except Exception as ex:                         # noqa: BLE001
+            problems.append(f"backend plugin {ep.name!r} could not be loaded: {ex}")
+
+
+problems: list[str] = []
+
+
 def get(name, **kw) -> Backend:
+    """A backend by name. Keyword arguments it does not take are left out, so a caller
+    can offer what it has (a layer map, a title) to any backend."""
+    _discover()
     if name not in _REGISTRY:
-        raise KeyError(f"no backend {name!r}; registered: {sorted(_REGISTRY)}")
-    return _REGISTRY[name](**kw)
+        raise KeyError(f"no backend {name!r}; available: {sorted(_REGISTRY)}")
+    cls = _REGISTRY[name]
+    import inspect
+    params = inspect.signature(cls.__init__).parameters
+    if not any(p.kind is p.VAR_KEYWORD for p in params.values()):
+        kw = {k: v for k, v in kw.items() if k in params}
+    return cls(**kw)
 
 
 def available() -> list[str]:
+    _discover()
     return sorted(_REGISTRY)
 
 
@@ -62,6 +123,8 @@ class FactsBackend(Backend):
     as a swappability check against the real codegen backends."""
 
     name = "facts"
+    extension = ".facts.txt"
+    about = "the facts read from each drawing (for debugging a drawing)"
 
     def compile(self, rule: Rule) -> str:
         lines = [f"rule {rule.name}"] if rule.name else []

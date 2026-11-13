@@ -114,6 +114,7 @@ class Rule:
                             for c in data.get("constraints", [])]
         self._edge_owner = {e["id"]: name
                             for name, s in self.shapes.items() for e in s["edges"]}
+        self._wide_strict = {}   # shape -> its width filter is "wider than" (>), not "at least" (>=)
         self._anchors = {}    # shape -> the point it is checked at, while reading a measure
         self._partners = set()   # shapes of the partner arrow of a "one of two sides" check
 
@@ -448,6 +449,23 @@ class Rule:
         finally:
             self._anchors, self._partners = {}, set()
 
+    def measure_through(self, mname):
+        """The shape an arrow runs THROUGH on its way from one edge to the other -- it
+        ends on that shape's far side -- or None when the two edges simply face each
+        other. For a maximum distance this is the difference between "every part of it
+        within reach" (measured to the far side) and "it has one within reach"."""
+        m = self.measures[mname]
+        sf, st = self.shape_of_edge(m["from"]), self.shape_of_edge(m["to"])
+        if sf == st:
+            return None
+        a, b = self.measure_spots(mname)
+        for t in (0.25, 0.5, 0.75):
+            p = (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
+            for shape in (sf, st):
+                if topology.contains(self.polygon(shape), p):
+                    return shape
+        return None
+
     def _facing_points(self, ea, eb):
         """The pair of points, one on each edge, where a measure between the two edges
         sits: the points of the edges closest to each other, centred on the stretch
@@ -617,6 +635,7 @@ class Rule:
                 x[1]["ands"] or x[1]["nots"] or x[1]["selections"])]
             return {"base": self.layer_of(shape), "ands": ands, "nots": nots,
                     "wide": self.wide_filters().get(shape),
+                    "wide_strict": self._wide_strict.get(shape, False),
                     "form": self.shape_forms().get(shape),
                     "array": self.array_filters().get(shape),
                     "nets": self.net_relation(sf, st) is not None,
@@ -1299,6 +1318,7 @@ class Rule:
                     | {h for h, _, _, _ in self.count_bounds()})
             if sf == st and (sf in held or any(sf in (a, c) for a, c, var in pairs if var != b.var)):
                 out[sf] = b.value
+                self._wide_strict[sf] = b.op == ">"
         return out
 
     def distance_rules(self) -> list:

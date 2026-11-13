@@ -61,7 +61,7 @@ which shapes the rule is about.
 | extension beyond, end cap | an arrow from the crossed layer's edge to the end; `check  Xp >= 0.2` | PO.2, PO.3 |
 | exact size | `check  ka_0.length == 0.2` on a side | CO.1 |
 | only square ones / bars | `match  ka_0.length == ka_1.length` (or `>`) | the contacts |
-| must be within x of | `check  Sl <= 20`, the arrow starting at what must be near | LU.1 |
+| any part within x of | `check  Sl <= 20`, the arrow drawn through the shape to its far side (between the facing edges: "has one within x") | LU.1 |
 | on one of two adjacent sides; in one direction | `check  Ea >= 0.1 or Eb >= 0.1` over two arrows | V1.1, CO.3 |
 | in an N × N or larger array | `match  K.rows >= 4 and K.columns >= 4` | CO.3 |
 | wider than w | a width arrow with `match  Ww >= 2` | V1.2 |
@@ -112,6 +112,22 @@ rule with its name and description.
 ## 6. Check the deck on a layout
 
 A deck is only known to be right once it has been run.
+
+**As drawn.** The quickest check needs nothing from you:
+
+    fastdrc selftest examples/demo
+
+    18 rule(s) behave as drawn, 0 do not, 0 have no generated test yet
+    (18 checks and 5 filters tested one by one).
+
+Every constraint is tested on its own, on layouts made from the rule's picture: a
+`check` with its quantity just outside the value (must be reported) and exactly at it
+(must not); a `match` with a violation just outside the filter (must *not* be
+reported — the filter filters) and just inside it. `-v` lists them. A rule that does
+not behave as drawn means the picture and its meaning disagree; fix the drawing.
+A few kinds are not generated yet (antenna over several layers or with a diode, run
+lengths, corners, shapes with a hole); `-v` names them, and they need cases of your
+own, as below.
 
 **Planted errors.** `examples/demo/layout.rb` builds a layout for the example with
 one error per rule and a clean counterpart next to it:

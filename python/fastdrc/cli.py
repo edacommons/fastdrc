@@ -138,7 +138,7 @@ def _compile_rules(args):
     """`fastdrc rules`: drawn rule files (or a process folder) -> one deck / one text."""
     import json
 
-    from . import backend_docs, backend_klayout, process   # noqa: F401  (register the backends)
+    from . import process
     from .backend import get
 
     kw, sheets = {}, []
@@ -179,12 +179,40 @@ def _compile_rules(args):
 def _build(args):
     """`fastdrc build`: a process folder -> its deck and its rules as text."""
     from . import process
-    deck, text, n, notes = process.build(args.process, args.out)
+    extra = [x for x in (args.also or "").split(",") if x]
+    deck, text, n, notes = process.build(args.process, args.out, extra=extra)
     for note in notes:
         print(f"fastdrc: warning: {note}", file=sys.stderr)
     print(f"{n} rules -> {deck}\n{' ' * len(str(n))}          {text}"
           + (f"\n{len(notes)} warning(s)" if notes else ""))
     return 0
+
+
+def _selftest(args):
+    """`fastdrc selftest`: do the rules behave as drawn?"""
+    from . import process
+    try:
+        res = process.selftest(args.process, args.out)
+    except RuntimeError as ex:
+        raise SystemExit(f"fastdrc: {ex}")
+    for note in res["notes"]:
+        print(f"fastdrc: warning: {note}", file=sys.stderr)
+    tally = {k: sum(1 for v in res["rules"].values() if v == k) for k in ("ok", "wrong", "not generated")}
+    for line in res["wrong"]:
+        print(f"  WRONG  {line}")
+    if args.verbose or not res["wrong"]:
+        for rule, why in res["not_generated"]:
+            print(f"  not tested  {rule}: {why}")
+    if args.verbose:
+        for (rule, testing), state in res["constraints"].items():
+            print(f"  {'ok   ' if state == 'ok' else 'WRONG'}  {rule}  [{testing}]")
+    tested = [t for (_, t) in res["constraints"] if t.startswith(("check ", "match "))]
+    checks, filters = (sum(1 for t in tested if t.startswith(k)) for k in ("check ", "match "))
+    print(f"{tally['ok']} rule(s) behave as drawn, {tally['wrong']} do not, "
+          f"{tally['not generated']} have no generated test yet "
+          f"({checks} checks and {filters} filters tested one by one). "
+          f"Cases: {res['files'].get('layout', res['files']['cases'])}")
+    return 1 if res["wrong"] else 0
 
 
 def _check(args):
@@ -253,7 +281,7 @@ def main(argv=None):
         "rules", help="Compile drawn rule files (single rules or sheets) into a "
                       "KLayout DRC deck, or into plain-language rule text.")
     rules_p.add_argument("files", nargs="+", help="rule / sheet .json files, or process folders")
-    rules_p.add_argument("--to", default="klayout", choices=["klayout", "docs", "facts"],
+    rules_p.add_argument("--to", default="klayout",
                          help="what to produce (default: a KLayout .drc deck)")
     rules_p.add_argument("--layermap", help="JSON file {layer name: [gds layer, datatype]}")
     rules_p.add_argument("-o", "--out", help="write here instead of standard output")
@@ -270,6 +298,18 @@ def main(argv=None):
         "build", help="Compile a process folder: the KLayout deck and the rules as text.")
     build_p.add_argument("process", nargs="?", default=".", help="process folder (default: here)")
     build_p.add_argument("-o", "--out", help="output folder (default: <process>/build)")
+
+    build_p.add_argument("--with", dest="also", metavar="BACKEND[,BACKEND]",
+                         help="also write the files of these backends (see `fastdrc backends`)")
+
+    self_p = sub.add_parser(
+        "selftest", help="Generate test cases from the drawings and report which rules behave as drawn "
+                         "(needs KLayout).")
+    self_p.add_argument("process", nargs="?", default=".", help="process folder (default: here)")
+    self_p.add_argument("-o", "--out", help="output folder (default: <process>/build)")
+    self_p.add_argument("-v", "--verbose", action="store_true", help="also list the rules with no generated test")
+
+    sub.add_parser("backends", help="List the available backends (the shipped ones and installed plugins).")
 
     check_p = sub.add_parser(
         "check", help="Run a process's rules on a layout (needs KLayout) and list the violations.")
@@ -305,6 +345,15 @@ def main(argv=None):
         return _build(args)
     elif args.command == "check":
         return _check(args)
+    elif args.command == "selftest":
+        return _selftest(args)
+    elif args.command == "backends":
+        from fastdrc import backend
+        for name in backend.available():
+            cls = backend._REGISTRY[name]
+            print(f"  {name:10} {cls.about}  ({cls.__module__})")
+        for problem in backend.problems:
+            print(f"fastdrc: warning: {problem}", file=sys.stderr)
     elif args.command == "gui":
         from fastdrc import editor
         editor.run(args.file)

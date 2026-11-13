@@ -36,6 +36,8 @@ _BEYOND = {"<=": ">", "<": ">="}
 @register
 class KLayoutBackend(Backend):
     name = "klayout"
+    extension = ".drc"
+    about = "a KLayout DRC deck"
 
     def __init__(self, layermap=None, metric="euclidian", regions=None, scope_all=None,
                  standalone=False, title="FastDRC"):
@@ -250,7 +252,7 @@ class KLayoutBackend(Backend):
             body, v_scope = dl(sf), "0"
         elif not select and hi is None:                    # MIN check -> violation check
             v = self._fmt(lo.value)
-            within, each_more = None, []
+            within, each_more, touching = None, [], ""
             run = rule.run_bounds().get(var)               # only where the edges run side by
             if run:                                        # side this long
                 mt = f"{mt}, projecting {run[0]} {self._fmt(run[1])}.um"
@@ -287,12 +289,21 @@ class KLayoutBackend(Backend):
                     core = f"{dl(sf)}.space({v}.um, {mt})"
                 else:                                      # diff layers -> separation
                     a, b = dl(sf), dl(st)
-                    if derivs[sf].get("wide") and not derivs[st].get("wide"):
-                        # the wide parts of a layer against that layer: start from the
-                        # whole layer -- seen from the wide part, the layer's own edge
-                        # (the same place) would hide the neighbour behind it
-                        a, b = b, a
-                    core = f"{a}.separation({b}, {v}.um, {mt})"
+                    wide_one = (sf if derivs[sf].get("wide") else st if derivs[st].get("wide") else None)
+                    whole = lambda sh: self._fmt_deriv(dict(derivs[sh], wide=None))   # noqa: E731
+                    if wide_one and bool(derivs[sf].get("wide")) != bool(derivs[st].get("wide")) \
+                            and whole(sf) == whole(st):
+                        # "space to a WIDE part of the same layer": every too-small space
+                        # of the layer that has a wide part on one side. (Measuring the
+                        # layer against its own wide parts would hide a wide neighbour
+                        # behind the wide part's own edge -- two wide lines side by side
+                        # went unreported.)
+                        core = f"{whole(sf)}.space({v}.um, {mt})"
+                        touching = f".interacting({dl(wide_one)})"
+                    else:
+                        if derivs[sf].get("wide") and not derivs[st].get("wide"):
+                            a, b = b, a
+                        core = f"{a}.separation({b}, {v}.um, {mt})"
             # Edge pairs become markers 1 nm fat, so a violation of zero width still
             # shows. The exception: an enclosed region that was CLIPPED by the enclosing
             # layer (`sab.enclosing(poly2.and(sab))`) shares its clip edges with it --
@@ -316,7 +327,7 @@ class KLayoutBackend(Backend):
             bare = self._clipped_inner(core) or lo.zero_ok   # zero distance is not a violation
             if ".separation(" in core and not over and rule.cut_apart(derivs[sf], derivs[st]):
                 bare = True      # one is the rest of a layer after cutting the other out
-            body, v_scope = f"{core}.polygons{'' if bare else '(0.001)'}", v
+            body, v_scope = f"{core}.polygons{'' if bare else '(0.001)'}{touching}", v
             for more in each_more:
                 body += f".or({more}.polygons(0.001))"
             if within:
@@ -329,15 +340,25 @@ class KLayoutBackend(Backend):
             hv = self._fmt(hi.value)
             body, v_scope = f"{subject}.drc({pred} {_BEYOND[hi.op]} {hv}.um)", hv
             if sf != st and dl(sf) != dl(st):
-                # "A at most v from B" / "A reaches at most v beyond B": every part of A
-                # must lie within v of B, so what is left of A outside B grown by v is
-                # the violation -- the far end of a long shape, a shape with no B near.
-                # (A pairwise "distance > v" is not that: it holds for some pair of
-                # edges of any two shapes.) For an enclosure the one reaching out is
-                # the outer shape; for a spacing it is the shape the arrow starts at.
+                # A maximum between two shapes is about B grown by v. (A pairwise
+                # "distance > v" is not that: it holds for some pair of edges of any two
+                # shapes.) WHERE the arrow ends says what is asked: on the far side of a
+                # shape -- every part of it must be inside the grown B; on the edge
+                # facing B -- the shape must reach the grown B at all. For an enclosure
+                # the one reaching out is the outer shape.
                 rel = rule.relation(sf, st)
-                far, near = (st, sf) if rel == "inside" else (sf, st)
-                body = f"{dl(far)}.not({dl(near)}.sized({hv}.um))"
+                through = rule.measure_through(var)
+                if rel in ("inside", "contains"):
+                    far, near = (st, sf) if rel == "inside" else (sf, st)
+                    body = f"{dl(far)}.not({dl(near)}.sized({hv}.um))"
+                elif through:
+                    # the arrow ends on the FAR side of a shape: every part of it
+                    far, near = through, (st if through == sf else sf)
+                    body = f"{dl(far)}.not({dl(near)}.sized({hv}.um))"
+                else:
+                    # facing edges: the shape (the one the arrow starts at) needs one
+                    # within reach -- the others are those with none at all
+                    body = f"{dl(sf)}.not_interacting({dl(st)}.sized({hv}.um))"
         else:                                              # a filter -> .drc() selector
             subject, pred = self._drc_predicate(rule, sf, st, dl)
             if subject is None:
@@ -579,21 +600,29 @@ class KLayoutBackend(Backend):
     # Density windows: stepped across the area from its lower-left corner, none
     # reaching outside it; where the last step stops short of the far edge, one more
     # row / column of windows is laid against that edge so all of the area is seen.
-    # (KLayout places its tiles by their centre, hence the origin; the few windows at
-    # the far edges are measured directly.)
+    # (KLayout places its tiles by their centre, hence the origin; the windows at the
+    # far edges -- and all of them when the area is only one window wide or tall --
+    # are measured directly.)
     _WINDOWS = """out_of_density = lambda do |layer, range, area, size, step|
   b = area.bbox
   nx = [1 + ((b.width - size) / step).floor, 1].max
   ny = [1 + ((b.height - size) / step).floor, 1].max
-  found = layer.without_density(range, tile_size(size), tile_step(step), tile_count(nx, ny),
-                                tile_boundary(area),
-                                tile_origin(b.left + (b.width >= size ? (size - step) / 2.0 : 0.0),
-                                            b.bottom + (b.height >= size ? (size - step) / 2.0 : 0.0)))
   xs = (0...nx).map { |i| b.left + i * step }
   ys = (0...ny).map { |j| b.bottom + j * step }
   far_x = b.width > size + (nx - 1) * step ? [b.right - size] : []
   far_y = b.height > size + (ny - 1) * step ? [b.top - size] : []
-  (far_x.product(ys + far_y) + xs.product(far_y)).each do |x, y|
+  # KLayout's tiling needs at least two windows each way (a single row or column
+  # comes back empty): a narrow area is measured window by window instead
+  tiled = nx >= 2 && ny >= 2
+  found = polygon_layer
+  if tiled
+    found = layer.without_density(range, tile_size(size), tile_step(step), tile_count(nx, ny),
+                                  tile_boundary(area),
+                                  tile_origin(b.left + (size - step) / 2.0, b.bottom + (size - step) / 2.0))
+  end
+  direct = far_x.product(ys + far_y) + xs.product(far_y)
+  direct += xs.product(ys) unless tiled
+  direct.each do |x, y|
     window = polygon_layer
     window.insert(box(x, y, x + size, y + size))
     inside = window & area
@@ -742,7 +771,11 @@ end"""
             expr += (f".overlapping({marker}).not_inside({marker})" if op == "straddling"
                      else f".{op}({marker})")
         if d.get("wide"):                   # only the parts at least this wide (an opening)
-            h = self._fmt(round(float(d["wide"]) / 2, 6))
+            # An opening by half the width keeps what is WIDER than w -- a part exactly
+            # w wide shrinks to nothing. "At least w" therefore opens by one database
+            # unit (1 nm) less: on a grid coarser than 2 nm that is exactly ">= w".
+            less = 0.0 if d.get("wide_strict") else 0.001
+            h = self._fmt(round(float(d["wide"]) / 2 - less, 6))
             expr += f".sized(-{h}.um).sized({h}.um)"
         if d.get("halo"):                   # a signed margin: grow (>0) / shrink (<0) the region
             expr += f".sized({self._fmt(d['halo'])}.um)"

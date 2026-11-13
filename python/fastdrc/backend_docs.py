@@ -61,6 +61,8 @@ def _how_many(lo, hi):
 
 class DocsBackend(Backend):
     name = "docs"
+    extension = ".md"
+    about = "the rules as plain sentences"
 
     def __init__(self, glossary=None, **_):
         # OPTIONAL, PROCESS-SPECIFIC layer glossary {layer_name: human description},
@@ -271,7 +273,12 @@ class DocsBackend(Backend):
             elif subj == arg:
                 core = f"any two shapes of {subj} must be at most {v} µm apart"
             else:
-                core = f"every part of {subj} must be within {v} µm of {arg}"
+                through = rule.measure_through(var)
+                if through:                         # measured to its far side
+                    far, near = (subj, arg) if through == sf else (arg, subj)
+                    core = f"every part of {far} must be within {v} µm of {near}"
+                else:
+                    core = f"every {subj} must have {arg} within {v} µm"
                 return self._with_scope(core + ".", scope)
             return self._with_scope(core + f" ({mt}).", scope)
         over = None if select or hi is not None else rule.overlap_reading(var)
@@ -385,7 +392,8 @@ class DocsBackend(Backend):
             phrase += " (excluding " + _join(sorted(self._name(n) for n in d["nots"])) + ")"
         phrase += clauses(d["selections"])
         if d.get("wide"):
-            phrase += f" at least {_fmt(d['wide'])} µm wide"
+            phrase += (f" wider than {_fmt(d['wide'])} µm" if d.get("wide_strict")
+                       else f" at least {_fmt(d['wide'])} µm wide")
         h = d.get("halo")
         if h:                                # the signed halo / margin (rounded reserved)
             phrase = (f"{phrase} grown by {_fmt(h)} µm" if h > 0

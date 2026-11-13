@@ -65,6 +65,13 @@ def load(folder):
     for p in rule_files(folder):
         with open(p) as f:
             sheets.append((p, json.load(f)))
+    # A legend name means one thing in a process: names defined on any sheet are known
+    # on all of them (the process's own legend first, a sheet's own definition last).
+    shared = {}
+    for _, data in sheets:
+        shared.update(data.get("layers") or {})
+    shared.update(proc.get("legend") or {})
+    proc = dict(proc, legend=shared)
     joined = [tuple(x) for x in proc.get("connect") or []]
     for _, data in sheets:                       # a stack drawn anywhere serves every sheet
         legend = {**(proc.get("legend") or {}), **(data.get("layers") or {})}
@@ -88,7 +95,6 @@ def load(folder):
 
 def rules_and_warnings(sheets):
     """Every rule of the given ``[(path, sheet)]`` and what should be said about them."""
-    from . import backend_docs   # noqa: F401
     from .backend import get
     rules, notes = [], []
     silent = get("docs")
@@ -106,9 +112,9 @@ def rules_and_warnings(sheets):
     return rules, notes
 
 
-def build(folder, out_dir=None):
-    """Compile a process: ``(deck path, text path, number of rules, warnings)``."""
-    from . import backend_klayout   # noqa: F401
+def build(folder, out_dir=None, extra=()):
+    """Compile a process: ``(deck path, text path, number of rules, warnings)``. `extra`
+    names further backends (plugins) whose files are written beside the deck."""
     from .backend import get
     proc, sheets = load(folder)
     name = proc.get("name") or os.path.basename(os.path.abspath(folder))
@@ -128,7 +134,80 @@ def build(folder, out_dir=None):
         f.write(deck)
     with open(text_path, "w") as f:
         f.write(text)
+    for name_ in extra:                              # other backends: whatever files they make
+        for fname, body in get(name_, layermap=layermap, title=name).files(rules, stem).items():
+            with open(os.path.join(out_dir, fname), "w") as f:
+                f.write(body)
     return deck_path, text_path, len(rules), notes
+
+
+def read_markers(path) -> dict:
+    """``{rule: [(x0, y0, x1, y1), ...]}`` -- the bounding box (µm) of every marker in
+    a KLayout report database."""
+    import re
+    out = {}
+    text = open(path, encoding="utf-8").read()
+    for cat, vals in re.findall(r"<item>.*?<category>'?([^<']*)'?</category>.*?<values>(.*?)</values>", text, re.S):
+        pts = [(float(a), float(b)) for a, b in re.findall(r"(-?[\d.]+(?:e-?\d+)?),(-?[\d.]+(?:e-?\d+)?)", vals)]
+        if pts:
+            xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+            out.setdefault(cat, []).append((min(xs), min(ys), max(xs), max(ys)))
+    return out
+
+
+def selftest(folder, out_dir=None):
+    """Do the rules behave as drawn?  Builds the deck, generates test cases from the
+    drawings (the ``cases`` backend), runs the deck on them in KLayout, and compares.
+
+    Returns ``{"rules": {rule: "ok" | "wrong" | "not generated"},
+    "constraints": {(rule, constraint under test): "ok" | "wrong"}, "wrong": [text, ...],
+    "not_generated": [(rule, why), ...], "notes": [...], "files": {...}}``."""
+    import subprocess
+    deck, _, n, notes = build(folder, out_dir, extra=("cases",))
+    out_dir = os.path.dirname(deck)
+    stem = os.path.splitext(os.path.basename(deck))[0]
+    script, expect_path = (os.path.join(out_dir, stem + ext) for ext in (".cases.rb", ".cases.json"))
+    with open(expect_path) as f:
+        expect = json.load(f)
+    result = {"rules": {}, "constraints": {}, "wrong": [], "not_generated": [(x["rule"], x["why"]) for x in expect["not_generated"]],
+              "notes": list(notes), "files": {"deck": deck, "cases": script, "expect": expect_path}}
+    if expect["layers_without_a_number"]:
+        result["notes"].append("no layer number for " + ", ".join(expect["layers_without_a_number"])
+                               + " -- cases on these layers cannot be seen by the deck")
+    for rule, _why in result["not_generated"]:
+        result["rules"][rule] = "not generated"
+    if not expect["cases"]:
+        return result
+    klayout = klayout_binary()
+    if not klayout:
+        raise RuntimeError("KLayout not found -- put `klayout` on the PATH or set KLAYOUT_BIN")
+    layout, report = os.path.join(out_dir, stem + ".cases.gds"), os.path.join(out_dir, stem + ".cases.lyrdb")
+    cells = sorted({c.get("cell", "CASES") for c in expect["cases"]})       # most cases share one cell;
+    runs = [[klayout, "-b", "-r", script, "-rd", f"out={layout}"]]           # a density has its own
+    reports = {cell: (report if cell == "CASES" else os.path.join(out_dir, f"{stem}.cases.{cell}.lyrdb"))
+               for cell in cells}
+    runs += [[klayout, "-b", "-r", deck, "-rd", f"input={layout}", "-rd", f"topcell={cell}",
+              "-rd", f"report={reports[cell]}"] for cell in cells]
+    for cmd in runs:
+        p = subprocess.run(cmd, capture_output=True, text=True)
+        if p.returncode != 0:
+            raise RuntimeError("KLayout failed:\n" + (p.stderr or p.stdout)[-2000:])
+    markers = {cell: read_markers(path) for cell, path in reports.items()}
+    result["files"].update(layout=layout, report=report)
+    for c in expect["cases"]:
+        x0, y0, x1, y1 = (v / 1000.0 for v in c["tile"])
+        flagged = any(x0 <= (b[0] + b[2]) / 2 <= x1 and y0 <= (b[1] + b[3]) / 2 <= y1
+                      for b in markers[c.get("cell", "CASES")].get(c["rule"], []))
+        good = flagged == c["expect"]
+        per = result["constraints"].setdefault((c["rule"], c["testing"]), "ok")
+        if not good:
+            result["constraints"][(c["rule"], c["testing"])] = "wrong"
+            result["wrong"].append(
+                f"{c['rule']}  [{c['testing']}]  {c['case']}: the rule "
+                + ("did not report it" if c["expect"] else "reported it, and should not"))
+        if result["rules"].get(c["rule"]) != "wrong":
+            result["rules"][c["rule"]] = "ok" if good else "wrong"
+    return result
 
 
 def init(folder, name=None):

@@ -275,11 +275,13 @@ def test_spacing_to_a_wide_line_with_a_long_parallel_run():
                               {"kind": "match", "expr": "S.run > 1.0"},
                               {"kind": "check", "expr": "S >= 0.22"}]})
     ops = [ln.split("=", 1)[1].strip() for ln in get("klayout").compile(r).splitlines() if "_l1 =" in ln]
-    # one rule; the whole layer first, so its own edge does not hide the neighbour
-    assert ops == ["Metal1.separation(Metal1.sized(-0.15.um).sized(0.15.um), 0.22.um, projection, "
-                   "projecting > 1.um).polygons(0.001)"]
+    # one rule: the layer's too-small spaces that have a wide part on one side. (Measuring
+    # the layer against its own wide parts missed two WIDE lines side by side -- the wide
+    # part's own edge hid the neighbour; found by the generated self-test.)
+    assert ops == ["Metal1.space(0.22.um, projection, projecting > 1.um).polygons(0.001)"
+                   ".interacting(Metal1.sized(-0.15.um).sized(0.15.um))"]
     en = get("docs").compile(r)
-    assert "Metal1 at least 0.3 µm wide must be at least 0.22 µm from Metal1" in en
+    assert "Metal1 wider than 0.3 µm must be at least 0.22 µm from Metal1" in en
     assert "where the edges run side by side for > 1 µm" in en
 
 
@@ -443,10 +445,18 @@ def test_or_with_zero_is_still_coinciding_allowed():
 
 # --- a MAXIMUM between two shapes: every part of the first within reach of the second ---
 
-def test_every_part_must_be_within_a_distance_of_a_neighbour():
-    # latch-up: "max. distance from any diffusion to a well tap"
-    a, t = _rect("A", 0, 0, 4, 4, {1}), _rect("T", 8, 0, 10, 4, {3})
-    op, en, _ = _compile([a, t], {"from": "a1", "to": "t3"}, {"A": "pdiff", "T": "ntap"}, bound="E <= 20")
+def test_a_maximum_distance_reads_by_where_the_arrow_ends():
+    # latch-up: "max. distance from a diffusion to a well tap". Found by the generated
+    # self-test: with the arrow between the two NEAR edges, "every part within 20"
+    # still fired when the arrow was exactly 20 long.
+    a, t = _rect("A", 0, 0, 4, 4, {1, 3}), _rect("T", 8, 0, 10, 4, {3})
+    layers = {"A": "pdiff", "T": "ntap"}
+    # between the facing edges: the diffusion must have a tap within reach
+    op, en, _ = _compile([a, t], {"from": "a1", "to": "t3"}, layers, bound="E <= 20")
+    assert op == "pdiff.not_interacting(ntap.sized(20.um))"
+    assert en == "• every pdiff must have ntap within 20 µm."
+    # through the diffusion to its far side: every part of it
+    op, en, _ = _compile([a, t], {"from": "t3", "to": "a3"}, layers, bound="E <= 20")
     assert op == "pdiff.not(ntap.sized(20.um))"
     assert en == "• every part of pdiff must be within 20 µm of ntap."
 
@@ -488,6 +498,7 @@ def test_density_in_a_sliding_window():
                              ("match", "W.step == 400"), ("check", "M.density <= 0.65")])
     assert op == "out_of_density.call(met, 0.0 .. 0.65, chip, 800.0, 400.0)"
     assert "out_of_density = lambda do |layer, range, area, size, step|" in deck    # the helper, once
+    assert "tiled = nx >= 2 && ny >= 2" in deck    # an area one window wide is measured directly
     assert deck.count(".output(") == 1                     # the window's size is not a length rule
     assert en == "• met must cover at most 65 % of every 800 × 800 µm window (stepped by 400 µm) of chip."
 
@@ -582,7 +593,7 @@ def _plate(constraints, measures=()):
 def test_what_a_shape_holds_must_take_up_a_share_of_its_area():
     deck, en, r = _plate([("match", "W >= 35"), ("check", "S.area >= 0.06 * P.area")],
                          [{"name": "W", "from": "p3", "to": "p1"}])
-    i = deck.index("r_l1_in = met.sized(-17.5.um).sized(17.5.um)")          # the wide plates
+    i = deck.index("r_l1_in = met.sized(-17.499.um).sized(17.499.um)")          # the wide plates
     assert deck[i + 1:i + 3] == ["r_l1_h1 = slit.and(r_l1_in)", "connect(r_l1_h1, r_l1_in)"]
     assert deck[i + 3] == ("""r_l1 = evaluate_nets(r_l1_in, { "a" => r_l1_h1 }, "put('r', (area(a)) / area)")"""
                            """.selected_if("value('r') < 0.06")""")
