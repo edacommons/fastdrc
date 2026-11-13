@@ -196,6 +196,20 @@ part left outside it":
 → `nat.overlapping(dualgate).not(dualgate)` — with a cross: "nat that overlaps
 dualgate must not extend beyond it".
 
+**Shapes that touch.** A minimum distance of exactly 0 — two shapes abutting — is a
+violation unless the rule says otherwise (`E >= v or E == 0`). Some processes treat
+abutting as always allowed; say it once with `"touching": "allowed"` in `process.json`
+(or on a sheet, or a single rule), and every minimum spacing, separation and enclosure
+reads "... or exactly 0".
+
+**A family of layers (each on its own).** A manual often gives one set of rules for
+several layers — "intermediate metal: metal2 and metal3". Name the family once, in
+`process.json` or on the sheet: `"each": {"metalint": ["metal2", "metal3"]}`, draw the
+shapes on `metalint`, and every rule that uses it is repeated for each member by
+itself, named `RULE_metal2`, `RULE_metal3`. This is not a layer set: a set (below) is
+*any of them together, as one material* — its spacing would be measured from metal2 to
+metal3 as well.
+
 **Several layers at once (a layer set).** When the same shape stands for *any of*
 several layers, give it a set: `X.layer in {mvsd, otp_mk, ymtp_mk}` (or spelled out,
 `X.layer == mvsd or X.layer == otp_mk or …` — the same thing). One cutout with
@@ -831,13 +845,14 @@ every rule on its own, with layouts made from the rule's picture:
 
 What the rule must do in each case is computed from the constraints themselves
 (reported = every `match` holds and some `check` does not), not from the deck. `-v`
-lists every constraint tested. Distances, side lengths, areas, "must lie inside",
-counts, arrays (whole arrays are built: the size asked for, one row or column fewer,
-one more), area shares, crosses, density (each case is a layout of its own, since a
-density is taken over the whole area), antenna ratios (the connecting stack is built
-from the process's connections; several layers together and a diode condition
-included), hole areas (rings are built) and run lengths are generated. Not yet:
-corners and gate-edge arrows — these are listed as such, never as passing.
+lists every constraint tested. Distances (gate-edge arrows included), side lengths,
+areas, "must lie inside", counts, arrays (whole arrays are built: the size asked for,
+one row or column fewer, one more), area shares, crosses, forbidden corners, density
+(each case is a layout of its own, since a density is taken over the whole area),
+antenna ratios (the connecting stack is built from the process's connections; several
+layers together and a diode condition included), hole areas (rings are built) and run
+lengths are generated. A rule the generator cannot build a case for is listed as such,
+never as passing.
 
 **Backends are plugins.** `fastdrc backends` lists them: `klayout` (the deck), `docs`
 (sentences), `facts`, `cases` (the test cases above). `fastdrc build DIR --with cases`
@@ -868,8 +883,12 @@ flags (on the clean layout: nothing, or the drawing says more than the manual).
 
 ## In the editor (`fastdrc gui`)
 
-- **`fastdrc gui myprocess`** opens a process: its sheets are listed top left, one click
-  apart ("+ sheet" adds a section). **Save** writes the sheet being edited; switching
+- **`fastdrc gui myprocess`** opens the whole deck — the folder. The dropdown at the
+  top left is its tree: each sheet opens onto its rules; pick a rule and its sheet is
+  opened and the rule selected. A sheet is one drawing holding several rules: with a
+  rule selected, only its own shapes and arrows are drawn in full and the rest of the
+  sheet is a faint outline; "(the whole sheet)" shows everything ("+ sheet" adds a section; "Process…" edits the name,
+  the layers' GDS numbers, the legend and the columns). **Save** writes the sheet being edited; switching
   sheets or closing asks about unsaved changes. The text pane at the bottom shows the
   sheet as part of the process — with its legend, columns, layer numbers, and the layer
   stack drawn on any other sheet. A single file opens the same way
@@ -885,6 +904,9 @@ flags (on the clean layout: nothing, or the drawing says more than the manual).
 - Each shape shows how it **reads** — subject, operand, combined, cut out, filter,
   forbidden, scope — in the tree and in its properties. This is derived from the
   drawing; if it is not what you meant, the drawing says something else.
+- **Test** (beside the text pane) runs the self-test on the sheet as it is drawn and
+  lists every constraint: `ok` where the rule behaves as drawn, `WRONG` with the case
+  that shows it, and the rules no test can be generated for.
 - A shape's properties also carry its **mark** (✗ forbidden / ✓ allowed), its halo, and
   what it **stands for**: "its layer here" (what lies under the arrow combines with it)
   or "anywhere on its layer".

@@ -41,6 +41,7 @@ MATCH, CHECK = "#ffd633", "#ff6b6b"   # ? = match (yellow), ! = check (red)
 HATCH_ANGLES = [45, 135, 18, 108, 72, 162]  # per-layer hatch direction (see-through)
 SPLITCOL = "#c792ea"                         # split-dot color
 HOLECOL = "#9aa3b2"                          # hole (cutout) boundary color
+FADED = "#39404f"                             # what belongs to other rules of the sheet
 MEASURECOL = "#e8b84b"                        # measure (declared variable) color
 RELCOL = "#7fb6c9"                            # relation (a measure with a wavy end) color
 
@@ -143,6 +144,48 @@ def format_columns(d):
                       for k, v in (d or {}).items())
 
 
+def format_rule_constraints(cons):
+    """A rule's constraints on one line: `match K.rows >= 4; S >= 0.3` -- a filter is
+    marked `match`, a check needs no mark."""
+    return "; ".join(("match " if c.get("kind") == "match" else "") + c.get("expr", "") for c in cons or [])
+
+
+def parse_rule_constraints(text):
+    """The reverse: parts separated by `;`, each a check unless it starts with `match`
+    (or, spelled out, `check`)."""
+    out = []
+    for part in text.split(";"):
+        part = part.strip()
+        if not part:
+            continue
+        kind = "check"
+        for word in ("match", "check"):
+            if part.startswith(word + " "):
+                kind, part = word, part[len(word):].strip()
+        out.append({"kind": kind, "expr": part})
+    return out
+
+
+def parse_layers(text):
+    """One layer per line (or `;`): `nwell 1/0` -> {"nwell": [1, 0]}. A missing datatype
+    is 0; lines that do not read as a name and a number are left out."""
+    out = {}
+    for part in text.replace(";", "\n").splitlines():
+        words = part.replace("=", " ").replace(",", " ").split()
+        if len(words) < 2:
+            continue
+        nums = words[1].split("/") if "/" in words[1] else words[1:3]
+        try:
+            out[words[0]] = [int(nums[0]), int(nums[1]) if len(nums) > 1 else 0]
+        except ValueError:
+            pass
+    return out
+
+
+def format_layers(d):
+    return "\n".join(f"{k} {v[0]}/{v[1]}" for k, v in (d or {}).items())
+
+
 def parse_values(text):
     """`3.3V=0.22, 5V=0.3` -> {"3.3V": 0.22, "5V": 0.3}"""
     out = {}
@@ -238,6 +281,7 @@ class Editor:
         # canvas shows one case at a time; `cases` holds them all as rule JSON.
         self.cases, self.case, self.top_meta = None, 0, {}
         self._roles = {}                       # shape name -> how the compiler reads it
+        self._focus = None                     # (shape names, measure names) of the selected rule
         self.sel, self._newk = None, "check"   # _newk = kind for the next new constraint
         self._dir = os.getcwd()                # Save/Open start in the launch dir, then last-used
         self._path = None                      # the file being edited (Save writes here)
@@ -273,12 +317,17 @@ class Editor:
         self.proc_title = tk.Label(self.proc_frame, text="", bg=PANEL, fg="#8b93a7", anchor="w",
                                    font=("TkDefaultFont", 9, "bold"))
         self.proc_title.pack(fill="x", padx=6, pady=(6, 2))
-        self.proc_list = tk.Listbox(self.proc_frame, height=6, bg="#0b0d12", fg=INK, exportselection=False,
-                                    selectbackground="#2d5a88", selectforeground="#ffffff",
-                                    highlightthickness=0, borderwidth=0, activestyle="none")
-        self.proc_list.pack(fill="x", padx=4)
-        self.proc_list.bind("<<ListboxSelect>>", self.on_sheet_pick)
-        tk.Button(self.proc_frame, text="+ sheet", command=self.new_sheet).pack(anchor="w", padx=4, pady=4)
+        # one dropdown for the whole deck: its sheets, and under each sheet its rules
+        self.rule_pick = tk.Menubutton(self.proc_frame, text="", relief="raised", anchor="w", bg="#0b0d12", fg=INK,
+                                       activebackground="#2d5a88", activeforeground="#ffffff", padx=6, pady=3)
+        self.rule_pick.pack(fill="x", padx=4)
+        self.rule_menu = tk.Menu(self.rule_pick, tearoff=0)
+        self.rule_pick.config(menu=self.rule_menu)
+        self._proc_rules = {}                          # sheet path -> [(rule name, description)]
+        bar = tk.Frame(self.proc_frame, bg=PANEL)
+        bar.pack(fill="x", padx=4, pady=4)
+        tk.Button(bar, text="+ sheet", command=self.new_sheet).pack(side="left")
+        tk.Button(bar, text="Process…", command=self.edit_process).pack(side="left", padx=4)
         self._proc_files = []
         self.tree = ttk.Treeview(tree_frame, show="tree", selectmode="browse", style="FD.Treeview")
         self.tree.pack(fill="both", expand=True)
@@ -350,6 +399,7 @@ class Editor:
         tk.OptionMenu(bar, self._backend, *names,
                       command=lambda _: self._update_text()).pack(side="right")
         tk.Label(bar, text="backend", bg=PANEL, fg="#8b93a7").pack(side="right", padx=(0, 4))
+        tk.Button(bar, text="Test", command=self.run_selftest).pack(side="left", padx=10)
         sb = tk.Scrollbar(frame, orient="vertical")
         sb.pack(side="right", fill="y")
         self.text = tk.Text(frame, height=6, wrap="word", bg="#0b0d12", fg=INK, bd=0,
@@ -358,7 +408,53 @@ class Editor:
         self.text.pack(fill="both", expand=True)
         sb.config(command=self.text.yview)
         self.text.tag_configure("err", foreground=CHECK)
+        self.text.tag_configure("ok", foreground="#7fd68a")
         self.text.bind("<Button-1>", lambda e: self.text.focus_set())   # select + copy
+
+    def selftest_report(self):
+        """Do the rules of this sheet behave as drawn?  Lines ``(text, tag)`` for the
+        text pane: every constraint tested, what went wrong, what could not be tested."""
+        import tempfile
+
+        from . import process
+        from .sheet import rules_of
+        data = self.in_process(self.serialize())
+        if not data.get("shapes") and not data.get("or"):
+            return [("(nothing drawn yet)", "")]
+        rules = rules_of(data)
+        with tempfile.TemporaryDirectory() as tmp:
+            res = process.selftest_rules(rules, self._ctx.get("layers"), tmp)
+        lines = []
+        for (rule, testing), state in res["constraints"].items():
+            lines.append((f"{'ok   ' if state == 'ok' else 'WRONG'}  {rule}   {testing}", "ok" if state == "ok" else "err"))
+        for text in res["wrong"]:
+            lines.append((f"   -> {text}", "err"))
+        for rule, why in res["not_generated"]:
+            lines.append((f"no test  {rule}: {why}", ""))
+        for note in res["notes"]:
+            lines.append((f"note: {note}", ""))
+        good = sum(1 for v in res["rules"].values() if v == "ok")
+        bad = sum(1 for v in res["rules"].values() if v == "wrong")
+        lines.insert(0, (f"{good} rule(s) behave as drawn, {bad} do not, "
+                         f"{len(res['not_generated'])} have no generated test.", "err" if bad else "ok"))
+        return lines
+
+    def run_selftest(self):
+        """The Test button: run the self-test on what is drawn and show it in the pane."""
+        try:
+            lines = self.selftest_report()
+        except Exception as ex:                # KLayout missing, a half-typed constraint ...
+            lines = [(f"{type(ex).__name__}: {ex}", "err")]
+        if self._text_job:
+            self.root.after_cancel(self._text_job)
+            self._text_job = None
+        self._text_shown = ("selftest", "")     # the next edit brings the rule text back
+        t = self.text
+        t.config(state="normal")
+        t.delete("1.0", "end")
+        for text, tag in lines:
+            t.insert("end", text + "\n", tag)
+        t.config(state="disabled")
 
     def _schedule_text(self):
         """Debounced: every model change funnels through draw_canvas / _refresh_tree,
@@ -429,14 +525,18 @@ class Editor:
             from .sheet import rules_of
             cur = model_to_json(self.meta, self.shapes, self.measures, self.constraints)
             i = self.sel_rule()
+            self._focus = None
             if i is None:
                 self._roles = Rule(cur).shape_roles()
             else:                              # a sheet rule is selected: ITS reading
+                cur = {k: v for k, v in cur.items() if k != "each"}     # one rule, not one per family member
                 part = Rule(rules_of(cur)[self._expanded_index(cur, i)])
                 self._roles = {s.get("name", ""): "not part of this rule" for s in self.shapes}
                 self._roles.update(part.shape_roles())
+                # what the canvas shows in full while this rule is selected
+                self._focus = (set(part.shapes), set(part.measures))
         except Exception:                      # e.g. a half-typed constraint
-            self._roles = {}
+            self._roles, self._focus = {}, None
 
     # ---- sheet rules (one drawn scene, many rules) ----
     def sheet_rules(self):
@@ -930,6 +1030,13 @@ class Editor:
                 x, y = i * cell + ox, j * cell + oy
                 c.create_oval(x - 1, y - 1, x + 1, y + 1, fill="#2b313f", outline="")
 
+        # A sheet holds several rules in one drawing. With a rule selected, only what
+        # that rule is about is drawn in full; the rest of the sheet is a faint outline.
+        if self.sel_rule() is not None or self._focus is not None:
+            self._compute_roles()
+        focus = self._focus if self.sel_rule() is not None else None
+        faded = (lambda s: s.get("name", "").split(".void")[0] not in focus[0]) if focus else (lambda s: False)
+
         # precompute geometry + scalloped outline for every shape
         geo = []
         for s in self.shapes:
@@ -946,6 +1053,11 @@ class Editor:
         # material shapes first; same-layer cut shapes punch holes via even-odd
         for idx, (s, vpx, cx, cy, outline) in enumerate(geo):
             if s.get("cut"):
+                continue
+            if faded(s):                               # belongs to other rules of the sheet
+                c.create_polygon([q for pt in outline for q in pt], fill="", outline=FADED, width=1)
+                c.create_text(vpx[0][0] + 5, vpx[0][1] + 4, text=s.get("name", ""), fill=FADED,
+                              anchor="nw", font=("TkDefaultFont", 10))
                 continue
             col = s.get("color") or COLORS[idx % len(COLORS)]   # per-shape color, else auto
             holes = [o for (s2, _, _, _, o) in geo if s2.get("cut")]   # punch by the hole's outline
@@ -972,7 +1084,7 @@ class Editor:
 
         # cut shapes (holes) on top: dashed boundary in hole color, no fill
         for s, vpx, cx, cy, outline in geo:
-            if not s.get("cut"):
+            if not s.get("cut") or faded(s):
                 continue
             self._draw_edges(c, s, vpx, cx, cy, HOLECOL, HOLECOL, (3, 2))
             c.create_text(vpx[0][0] + 5, vpx[0][1] + 4, text="∅" + s.get("name", ""),
@@ -981,6 +1093,8 @@ class Editor:
 
         self._label_meta = {}
         for m in self.measures:
+            if focus and m["var"] not in focus[1]:     # another rule's arrow
+                continue
             g = self._measure_geom(m)
             if not g or not g[0] or not g[1]:
                 continue
@@ -1164,6 +1278,8 @@ class Editor:
         if new == self.sel:                       # unchanged (e.g. tree rebuilt) -> don't clobber edits
             return
         self.sel = new
+        if self._process:
+            self._mark_current()                 # the dropdown names the rule in hand
         self.draw_canvas(); self.show_props()
 
     # ---- drag a tree item to reorder within its category ----
@@ -1234,9 +1350,10 @@ class Editor:
         if ri is not None:                                     # a rule of the sheet
             r = self.sheet_rules()[ri]
 
-            def set_expr(txt):                                 # its check, in one line
-                if txt.strip():
-                    r["constraints"] = [{"kind": "check", "expr": txt.strip()}]
+            def set_expr(txt):                                 # its constraints, in one line
+                cons = parse_rule_constraints(txt)
+                if cons:
+                    r["constraints"] = cons
                 else:
                     r.pop("constraints", None)
 
@@ -1252,7 +1369,7 @@ class Editor:
             name(0, "rule"); ent(0, r.get("name", ""), lambda x: r.__setitem__("name", x))
             name(1, "description"); ent(1, r.get("desc", ""), lambda x: r.__setitem__("desc", x))
             name(2, "check")
-            ent(2, "; ".join(c.get("expr", "") for c in r.get("constraints", [])), set_expr)
+            ent(2, format_rule_constraints(r.get("constraints")), set_expr)
             name(3, "values"); ent(3, format_values(r.get("values")), set_values)
             def set_cross(txt):                                # shapes, or crossed measures
                 words = parse_names(txt)
@@ -1606,6 +1723,8 @@ class Editor:
                              "layers": {k: tuple(v) for k, v in (proc.get("layers") or {}).items()},
                              "connect": next((d["connect"] for _, d in sheets if d.get("connect")), [])}
                 self._proc_files = [p for p, _ in sheets]
+                self._proc_rules = {p: [(r.get("name", ""), r.get("desc", "")) for r in d.get("rules", [])]
+                                    for p, d in sheets}
                 self.proc_title.config(text=(proc.get("name") or os.path.basename(os.path.abspath(folder))).upper())
             except Exception as ex:                    # noqa: BLE001
                 messagebox.showerror("Process", str(ex))
@@ -1614,19 +1733,60 @@ class Editor:
             self.proc_frame.pack_forget()
             return
         self.proc_frame.pack(fill="x", before=self.tree)
-        self.proc_list.delete(0, "end")
-        for p in self._proc_files:
-            self.proc_list.insert("end", os.path.basename(p).replace(".sheet.json", "").replace(".json", ""))
+        self._fill_rule_menu()
         self._mark_current()
 
+    @staticmethod
+    def _sheet_label(path):
+        return os.path.basename(path).replace(".sheet.json", "").replace(".json", "")
+
+    def deck_tree(self):
+        """The deck as it is browsed: ``[(sheet path, sheet label, [(rule name, description)])]``."""
+        return [(p, self._sheet_label(p), self._proc_rules.get(p, [])) for p in self._proc_files]
+
+    def _fill_rule_menu(self):
+        """The dropdown: a sheet per entry, opening onto that sheet's rules."""
+        menu = self.rule_menu
+        menu.delete(0, "end")
+        for path, label, rules in self.deck_tree():
+            sub = tk.Menu(menu, tearoff=0)
+            sub.add_command(label="(the whole sheet)", command=lambda p=path: self.goto_rule(p, None))
+            if rules:
+                sub.add_separator()
+            for i, (name, desc) in enumerate(rules):
+                sub.add_command(label=f"{name}    {desc}" if desc else name,
+                                command=lambda p=path, i=i: self.goto_rule(p, i))
+            menu.add_cascade(label=f"{label}    ({len(rules)})", menu=sub)
+
+    def goto_rule(self, path, index):
+        """Open `path` if it is not the sheet being edited (offering to save what
+        changed), then select its rule number `index` (None: the sheet itself)."""
+        if not (self._path and os.path.abspath(path) == os.path.abspath(self._path)):
+            if not self.may_leave():
+                return False
+            try:
+                self.open_path(path)
+            except Exception as ex:                    # noqa: BLE001
+                messagebox.showerror("Open failed", str(ex))
+                return False
+        rules = self.sheet_rules() or []
+        self.sel = f"rule:{index}" if index is not None and 0 <= index < len(rules) else None
+        self.draw_canvas()
+        self.show_props()                              # the rule's own properties
+        self._refresh_tree()
+        self._mark_current()
+        return True
+
     def _mark_current(self):
-        self.proc_list.selection_clear(0, "end")
-        here = os.path.abspath(self._path) if self._path else None
-        for i, p in enumerate(self._proc_files):
-            if os.path.abspath(p) == here:
-                self.proc_list.selection_set(i)
         name = os.path.basename(self._path) if self._path else "untitled"
         self.root.title(f"{name} — FastDRC rule editor")
+        if not self._path:
+            self.rule_pick.config(text="choose a rule  ▾")
+            return
+        i = self.sel_rule()
+        rules = self.sheet_rules() or []
+        rule = f"  ›  {rules[i].get('name', '')}" if i is not None and i < len(rules) else ""
+        self.rule_pick.config(text=f"{self._sheet_label(self._path)}{rule}  ▾")
 
     def changed(self):
         """Does what is drawn differ from the file on disk?"""
@@ -1663,21 +1823,6 @@ class Editor:
             self.set_process(folder)
         self._mark_current()
 
-    def on_sheet_pick(self, _event=None):
-        pick = self.proc_list.curselection()
-        if not pick:
-            return
-        path = self._proc_files[pick[0]]
-        if self._path and os.path.abspath(path) == os.path.abspath(self._path):
-            return
-        if not self.may_leave():
-            self._mark_current()
-            return
-        try:
-            self.open_path(path)
-        except Exception as ex:                        # noqa: BLE001
-            messagebox.showerror("Open failed", str(ex))
-
     def new_sheet(self):
         """A new, empty sheet in the process's rules/ folder."""
         from tkinter import simpledialog
@@ -1696,6 +1841,70 @@ class Editor:
         with open(path, "w") as f:
             json.dump({"name": name.strip(), "shapes": [], "measures": [], "constraints": [], "rules": []}, f, indent=2)
         self.open_path(path)
+
+    def edit_process(self):
+        """What the process says once -- its name, the layers' GDS numbers, the legend
+        and the table columns -- in one window; saved to process.json."""
+        from . import process
+        if not self._process:
+            return
+        path = os.path.join(self._process, process.PROCESS_FILE)
+        try:
+            with open(path) as f:
+                proc = json.load(f)
+        except (OSError, ValueError):
+            proc = {}
+        win = tk.Toplevel(self.root)
+        win.title("Process")
+        win.configure(bg=PANEL)
+        fields = {}
+
+        def row(label, hint, text, height):
+            tk.Label(win, text=label, bg=PANEL, fg=INK, anchor="w",
+                     font=("TkDefaultFont", 10, "bold")).pack(fill="x", padx=10, pady=(8, 0))
+            tk.Label(win, text=hint, bg=PANEL, fg="#8b93a7", anchor="w", justify="left").pack(fill="x", padx=10)
+            box = tk.Text(win, height=height, width=64, bg="#0b0d12", fg=INK, insertbackground=INK,
+                          highlightthickness=0, borderwidth=0)
+            box.insert("1.0", text)
+            box.pack(fill="both", expand=height > 2, padx=10, pady=2)
+            fields[label] = box
+        row("Name", "the process", proc.get("name", ""), 1)
+        row("Layers", "one per line:  name  gds-layer/datatype      e.g.  nwell 1/0",
+            format_layers(proc.get("layers")), 10)
+        row("Legend", "names for combinations, one per line:  pdiff = diff and pimp",
+            "\n".join(f"{k} = {v}" for k, v in (proc.get("legend") or {}).items()), 5)
+        row("Columns", "a table's columns, one per line:  thin: not_interacting thick",
+            "\n".join(f"{k}: " + ", ".join(f"{op} {layer}" for op, layer in v)
+                      for k, v in (proc.get("columns") or {}).items()), 3)
+
+        def text_of(label):
+            return fields[label].get("1.0", "end").strip()
+
+        def done():
+            new = self.process_from_text(text_of("Name"), text_of("Layers"), text_of("Legend"), text_of("Columns"),
+                                         proc)
+            with open(path, "w") as f:
+                json.dump(new, f, indent=1)
+                f.write("\n")
+            win.destroy()
+            self.set_process(self._process)
+            self.redraw()
+        buttons = tk.Frame(win, bg=PANEL)
+        buttons.pack(fill="x", padx=10, pady=8)
+        tk.Button(buttons, text="Save", command=done).pack(side="right")
+        tk.Button(buttons, text="Cancel", command=win.destroy).pack(side="right", padx=6)
+        return win, fields, done
+
+    @staticmethod
+    def process_from_text(name, layers, legend, columns, old=None):
+        """The process.json content from the settings window's four texts (anything
+        else already in the file -- a connect list -- is kept)."""
+        new = dict(old or {})
+        new["name"] = name
+        new["layers"] = parse_layers(layers)
+        new["legend"] = parse_legend(legend.replace("\n", ";"))
+        new["columns"] = parse_columns(columns.replace("\n", "|"))
+        return new
 
     def save(self):
         """Write to the file being edited (asks where the first time). True if saved."""

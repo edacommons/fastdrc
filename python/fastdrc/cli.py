@@ -227,8 +227,8 @@ def _check(args):
     if not klayout:
         raise SystemExit("fastdrc: KLayout not found -- put `klayout` on the PATH or set KLAYOUT_BIN.\n"
                          f"         The deck is ready: klayout -b -r {deck} -rd input={args.layout}")
-    report = args.report or os.path.splitext(args.layout)[0] + ".lyrdb"
-    cmd = [klayout, "-b", "-r", deck, "-rd", f"input={args.layout}", "-rd", f"report={report}"]
+    report = os.path.abspath(args.report or os.path.splitext(args.layout)[0] + ".lyrdb")
+    cmd = [klayout, "-b", "-r", deck, "-rd", f"input={os.path.abspath(args.layout)}", "-rd", f"report={report}"]
     if args.top:
         cmd += ["-rd", f"topcell={args.top}"]
     p = subprocess.run(cmd, capture_output=True, text=True)

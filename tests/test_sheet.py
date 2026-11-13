@@ -384,3 +384,20 @@ def test_cumulative_antenna_ratio_with_and_without_a_diode():
     en = get("docs").compile_data(sheet)
     assert ("the area of met1 and met2 together connected to gate must be at most 200 times the area of "
             "that gate, on nets with less than 0.16 µm² of ndiff (antenna ratio).") in en
+
+
+def test_a_rule_drawn_on_a_family_of_layers_is_repeated_for_each_member():
+    # "intermediate metal (metal2, metal3)": one drawing, the rules of each layer on its own
+    sheet = {"name": "MI", "each": {"metalint": ["metal2", "metal3"]},
+             "shapes": [_rect("A", 0, 0, 3, 20), _rect("B", 6, 0, 9, 20), _rect("P", 20, 0, 23, 20)],
+             "measures": [{"name": "W", "from": "a3", "to": "a1"}, {"name": "S", "from": "a1", "to": "b3"},
+                          {"name": "Wp", "from": "p3", "to": "p1"}],
+             "constraints": [M("A.layer == metalint"), M("B.layer == metalint"), M("P.layer == poly")],
+             "rules": [{"name": "MI.1", "constraints": [C("W >= 0.07")]},
+                       {"name": "MI.2", "constraints": [C("S >= 0.07")]},
+                       {"name": "PO.1", "constraints": [C("Wp >= 0.05")]}]}
+    assert [r["name"] for r in rules_of(sheet)] == ["MI.1_metal2", "MI.1_metal3", "MI.2_metal2", "MI.2_metal3", "PO.1"]
+    ops = _ops(get("klayout").compile_data(sheet))
+    assert ops["mi_2_metal2_l1"] == "metal2.space(0.07.um, euclidian).polygons(0.001)"     # never metal2 to metal3
+    assert ops["mi_2_metal3_l1"] == "metal3.space(0.07.um, euclidian).polygons(0.001)"
+    assert ops["po_1_l1"] == "poly.width(0.05.um, euclidian).polygons(0.001)"

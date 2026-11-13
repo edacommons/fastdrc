@@ -14,7 +14,8 @@ manual's page to a KLayout deck that has been run on a layout.
       rules/           one sheet per section of the manual
       build/           generated: the deck, and the rules as text
 
-`process.json` holds what the manual's front matter holds:
+`process.json` holds what the manual's front matter holds (in the editor: the
+"Process…" button):
 
     { "name": "Demo",
       "layers":  { "nwell": [1, 0], "diff": [2, 0], ... },                 GDS layer, datatype
@@ -58,6 +59,7 @@ which shapes the rule is about.
 |---|---|---|
 | minimum width / space / enclosure | `check  W >= 0.8` on the arrow | NW.1, NW.2, CO.4 |
 | a value per column | `check  Ep >= ?` and `"values": {"thin": 0.3, "thick": 0.6}` | NW.4 |
+| the same rules for several layers ("intermediate metal: metal2, metal3") | `"each": {"metalint": ["metal2", "metal3"]}`, shapes drawn on `metalint` | (see the reference) |
 | extension beyond, end cap | an arrow from the crossed layer's edge to the end; `check  Xp >= 0.2` | PO.2, PO.3 |
 | exact size | `check  ka_0.length == 0.2` on a side | CO.1 |
 | only square ones / bars | `match  ka_0.length == ka_1.length` (or `>`) | the contacts |
@@ -70,6 +72,7 @@ which shapes the rule is about.
 | density, over the chip or per window | `check  M.density >= 0.2`, the material drawn inside the area or window | DN.1, DN.2 |
 | area per connected gate area | `check  M.area <= 400 * G.area` | AN.1 |
 | share of a plate's area | `check  S.area >= 0.06 * P.area`, S drawn inside P | (see the reference) |
+| abutting shapes are fine everywhere | `"touching": "allowed"` in `process.json` | (see the reference) |
 | must not exist / must not straddle | a cross on the shape or on the arrow | (see the reference) |
 
 **Nets.** Rules about nets need to know how layers connect. Draw the stack once, on
@@ -128,6 +131,8 @@ not behave as drawn means the picture and its meaning disagree; fix the drawing.
 A few kinds are not generated yet (antenna over several layers or with a diode, run
 lengths, corners, shapes with a hole); `-v` names them, and they need cases of your
 own, as below.
+
+In the editor the same test is the **Test** button, for the sheet being drawn.
 
 **Planted errors.** `examples/demo/layout.rb` builds a layout for the example with
 one error per rule and a clean counterpart next to it:

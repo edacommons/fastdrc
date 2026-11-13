@@ -12,48 +12,70 @@ A fast **design-rule-check (DRC)** toolkit for IC/PCB layout, in two parts:
 > compiled `.tiles` format, and does layer algebra on it (`or` / `and` / `sub` /
 > `xor`, grow / shrink). The checks themselves are not in the core yet
 > (`Layout::check` is a stub). The rule compiler has a working **KLayout `.drc`
-> backend** (the bootstrap target, validated rule-by-rule against a production
-> foundry deck) and is structured so the C++ engine becomes a second, swappable
-> backend.
+> backend** (the bootstrap target, compared rule by rule with the public decks of
+> several open processes) and is structured so the C++ engine becomes a second,
+> swappable backend.
 
 ## Authoring rules by drawing
 
-You describe a rule by **drawing real shapes of real layers** in a spatial
-relationship and adding a few constraints — *not* by writing `.and` / `.not` /
-`.inside` / `.outside`. The compiler reads the topology off the drawing and
-*derives* the operations needed to implement the check.
+You describe a rule the way a design manual does: **draw the shapes** of the layers in
+the situation the rule is about, put an **arrow** where a distance matters, and write
+the one or two things the manual says about it (`W >= 0.8`, `A.net != B.net`,
+`Count(V) >= 2`). You do *not* write `.and` / `.not` / `.inside`: the compiler reads
+what lies inside, across or beside what off the drawing and derives the operations.
+
+```
+fastdrc init myprocess             # a process is a folder: process.json + rules/
+fastdrc gui myprocess              # draw the sheets (one per section of the manual)
+fastdrc build myprocess            # -> build/<name>.drc (KLayout deck), build/<name>.md (the rules as sentences)
+fastdrc selftest myprocess         # does every constraint of every rule behave as drawn?
+fastdrc check chip.gds myprocess   # run the deck on a layout, list the violations per rule
+```
+
+`build` and `rules` need nothing but Python; `selftest`, `check` and the editor's
+**Test** button run [KLayout](https://www.klayout.de) (`klayout` on the PATH, or
+`KLAYOUT_BIN`).
 
 > **Start with [docs/from-a-manual.md](docs/from-a-manual.md)** — one invented process
 > taken from the manual's page to a deck that has been run, with every kind of rule
 > ([`examples/demo/`](examples/demo)): `fastdrc build examples/demo`.
 >
-> **📐 See [docs/drawing-model.md](docs/drawing-model.md)** — the reference for how
-> each rule type is drawn: wavy vs straight edges, measures (a real distance vs a
-> topological assertion), `match` vs `check` constraints, and a recipe per rule
-> family (width / space / separation / enclosing / area, layer overlap & removal,
-> inside/outside/interacting selections, domain markers, angle, corner, edge
-> length, narrow-region/range selectors, OR-of-variants) — each with what the
-> compiler derives from it.
+> **📐 [docs/drawing-model.md](docs/drawing-model.md)** is the reference: how each kind
+> of rule is drawn and what the compiler derives from it — widths, spacings,
+> enclosures and extensions; a value per table column; exact sizes, squares and bars;
+> arrays and counts; "on one of two sides"; maximum distances; density; nets and
+> antenna ratios; rules for a family of layers; and the cross ("must not exist").
+
+**The self-test.** For each constraint of each rule, `selftest` builds small layouts
+from the rule's own picture — a `check` with its quantity just outside the value (must
+be reported) and exactly at it (must not), a `match` with a violation just outside the
+filter (must *not* be reported) — and runs the deck on them. What the rule must do is
+computed from the constraints, not from the deck. Rules it cannot build a case for are
+listed, never counted as passing.
+
+**Backends are plugins.** `fastdrc backends` lists them (`klayout`, `docs`, `facts`,
+`cases`); another package adds one through the entry-point group `fastdrc.backends`.
 
 The pieces (Python):
 
 ```
-python/fastdrc/topology.py        spatial relations off geometry (inside/overlap/…)
-python/fastdrc/constraint.py      the constraint DSL (a Python-expression subset, parsed with `ast`)
+python/fastdrc/topology.py        spatial relations off geometry (inside / overlap / ...)
+python/fastdrc/constraint.py      the constraint language (a Python-expression subset, parsed with `ast`)
 python/fastdrc/rule.py            the analyzed-rule API the backends work against
-python/fastdrc/backend.py         backend registry (swappable targets)
-python/fastdrc/backend_klayout.py compile a drawn rule -> a KLayout .drc deck
-tools/validate_klayout.py         round-trip each deck rule (draw -> recompile -> diff)
-tools/behavioral_validate.py      run both decks in KLayout, compare violations
-tools/audit_corpus.py             load the drawn-rule corpus and validate it
+python/fastdrc/sheet.py           a sheet: one drawn scene, many rules; table columns; layer families
+python/fastdrc/process.py         a process folder: build, check, self-test
+python/fastdrc/backend.py         the backend registry and plugin discovery
+python/fastdrc/backend_klayout.py -> a KLayout DRC deck
+python/fastdrc/backend_docs.py    -> the rules as plain sentences
+python/fastdrc/backend_cases.py   -> test layouts made from the drawings, with what to expect
+python/fastdrc/editor.py          the visual editor (Tkinter)
+tools/compare_reports.py          two DRC runs of one layout, compared rule by rule, by place
+tools/cells_in_a_row.rb           a cell library laid out flat, to try a deck on
+tools/perturb_layout.rb           random small errors put into a layout
 ```
 
-The `tools/` scripts read a reference deck and drawn-rule corpus from
-`docs/gf180mcu/`, which is not part of this repository; place them there to run
-the validation.
-
-`fastdrc gui [rule.json]` opens the visual rule editor (Tkinter); its bottom pane
-shows the drawn rule compiled live by the selected backend.
+The other `tools/` scripts validate the compiler against a reference deck and a
+drawn-rule corpus read from `docs/gf180mcu/`, which is not part of this repository.
 
 ## Layout
 
@@ -115,10 +137,13 @@ steps).
 ## Compiling a drawn rule
 
 ```python
-import fastdrc.backend_klayout                 # registers the "klayout" backend
-from fastdrc.backend import get
+from fastdrc.backend import get                # backends load on first use
 from fastdrc.rule import Rule
 
 # a drawn rule = shapes (edges) + measures + constraints; see docs/drawing-model.md
 deck = get("klayout", layermap={"metal1": (34, 0)}).compile(Rule(my_drawn_rule))
+text = get("docs").compile(Rule(my_drawn_rule))     # the same rule as a sentence
+
+from fastdrc import process                    # a whole process folder
+deck_path, text_path, n_rules, warnings = process.build("examples/demo")
 ```

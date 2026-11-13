@@ -150,10 +150,13 @@ def test_a_count_is_tested_with_one_fewer_copy_and_with_none():
 
 
 def test_a_rule_it_cannot_build_is_said_so_and_never_passed():
-    corner = {"name": "p.11", "shapes": [_rect("A", 0, 0, 4, 10)], "measures": [],
-              "constraints": [M("A.layer == poly"), C("a0.corner != 90")]}
-    cases, skipped = get("cases").plan([corner])
-    assert cases == [] and skipped == [("p.11", "condition not built yet: a0.corner != 90")]
+    # a hole rule together with another area condition: beyond what is arranged today
+    ring = _rect("R", 0, 0, 10, 10)
+    ring["hole_loops"] = [_rect("H", 3, 3, 7, 7)["edges"]]
+    rule = {"name": "h.2", "shapes": [ring], "measures": [],
+            "constraints": [M("R.layer == met"), M("R.area >= 4"), C("R.holes.area >= 0.25")]}
+    cases, skipped = get("cases").plan([rule])
+    assert cases == [] and skipped == [("h.2", "a hole rule with further conditions is not built yet")]
 
 
 def test_spacing_to_a_wide_line_is_tested_for_width_run_and_space():
@@ -380,3 +383,27 @@ def test_antenna_over_two_metals_with_a_diode_condition():
     with_diode = by["a diode exactly at its value, the collected area just above the ratio"]
     assert with_diode["testing"] == "match D.area < 0.16" and not with_diode["expect"]
     assert by["a diode just below its value, the collected area just above the ratio"]["expect"]
+
+
+@pytest.mark.skipif(not process.klayout_binary(), reason="KLayout is not installed")
+def test_the_self_test_runs_on_rules_at_hand(tmp_path):
+    # what the editor's Test button does: the open sheet, as part of its process
+    proc, sheets = process.load(DEMO)
+    devices = next(d for p, d in sheets if p.endswith("2-devices.sheet.json"))
+    from fastdrc.sheet import rules_of
+    res = process.selftest_rules(rules_of(devices), proc["layers"], str(tmp_path))
+    assert res["wrong"] == [] and set(res["rules"]) == {"PO.1", "PO.2", "PO.3", "CO.1", "CO.2", "CO.3", "CO.4"}
+    assert ("CO.2", "match ka_0.length == ka_1.length") in res["constraints"]
+
+
+def test_a_forbidden_corner_is_tested_where_it_is_and_where_it_is_not():
+    # "no 90-degree turn of poly on diffusion"
+    pts = [(4, 0), (6, 0), (6, 6), (12, 6), (12, 8), (4, 8)]                 # an L of poly
+    poly = {"name": "LP", "edges": [{"id": f"lp{i}", "start": list(pts[i]), "end": list(pts[(i + 1) % 6]), "edge": False}
+                                    for i in range(6)]}
+    rule = {"name": "p.11", "shapes": [_rect("D", 0, -2, 16, 12), poly], "measures": [],
+            "constraints": [M("D.layer == diff"), M("LP.layer == poly"), C("lp1.corner != 90")]}
+    got, skipped, cases = _plan(rule)
+    assert skipped == [] and got == [("check lp1.corner != 90", "the corner as drawn", True),
+                                     ("check lp1.corner != 90", "the same without D", False)]
+    assert [sorted(s["layer"] for s in c["shapes"]) for c in cases] == [["diff", "poly"], ["poly"]]

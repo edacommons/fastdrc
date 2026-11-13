@@ -36,6 +36,12 @@ A sheet does the same. ``"domains"`` names each column once by where it applies 
 the value in its constraint (``"E >= ?"``). It becomes one rule per column, named
 ``<rule>_<column>`` and scoped to that column.
 
+A manual also gives one set of rules for a FAMILY of layers ("intermediate metal:
+metal2 and metal3"). ``"each": {"metalint": ["metal2", "metal3"]}`` names the family:
+draw the shapes on ``metalint`` and every rule that uses it is repeated for each
+member on its own, named ``<rule>_<member>``. (A layer SET, ``in {a, b}``, is something
+else: any of them together, as one material.)
+
 A section note such as "these rules do not apply inside OTP_MK" is ``"except":
 [layers]`` on the sheet (every rule) or on one rule.
 
@@ -118,6 +124,34 @@ def rules_of(data) -> list:
     """The rules a file holds, each as a complete rule dict."""
     if not is_sheet(data):
         return [data]
+    out = []
+    for rule in _rules_of_sheet(data):
+        out += _per_family_member(rule, data.get("each") or {})
+    return out
+
+
+def _per_family_member(rule, families):
+    """A rule drawn on a FAMILY of layers, once per member: the family's name is
+    replaced by the member wherever a layer is named, and the rule takes the member's
+    name. A rule that uses no family comes back as it is."""
+    import re
+    text = " ".join(c.get("expr", "") for c in rule.get("constraints", []))
+    used = [f for f in families if re.search(rf"(?<![\w.]){re.escape(f)}(?![\w.])", text)]
+    if not used:
+        return [rule]
+    family = used[0]
+    out = []
+    for member in families[family]:
+        swap = lambda t: re.sub(rf"(?<![\w.]){re.escape(family)}(?![\w.])", member, t)   # noqa: E731
+        one = dict(rule, name=f"{rule.get('name', '')}_{member}",
+                   constraints=[dict(c, expr=swap(c.get("expr", ""))) for c in rule.get("constraints", [])])
+        if rule.get("connect"):
+            one["connect"] = [[swap(a), swap(b)] for a, b in rule["connect"]]
+        out += _per_family_member(one, {k: v for k, v in families.items() if k != family})
+    return out
+
+
+def _rules_of_sheet(data) -> list:
     # the scene, knowing every rule's bounds: an arrow that ANY rule gives a number to is
     # a distance for all of them, never a link another rule would follow
     everything = list(data.get("constraints", [])) + [
@@ -217,6 +251,8 @@ def rules_of(data) -> list:
             rule["layers"] = data["layers"]
         if joined:                                   # listed, or drawn in the scene
             rule["connect"] = joined
+        if "touching" not in rule and data.get("touching"):   # abutting shapes: a violation or not
+            rule["touching"] = data["touching"]
         skip_under = list(data.get("except") or []) + list(r.get("except") or [])
         if skip_under:                               # the section note + the rule's own
             rule["except"] = sorted(set(skip_under))

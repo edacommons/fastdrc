@@ -759,7 +759,14 @@ end"""
             own += self._holding(*d["count"], select=True)
         keep = ""
         if d.get("nets"):                            # shapes carrying the net they belong to
-            own, keep = own + ".nets", ", props_copy"   # ... through the layer algebra
+            keep = ", props_copy"                    # ... through the layer algebra
+            members = (d["base"] or "").split("|")
+            if len(members) > 1 and not (d.get("form") or d.get("array") or d.get("count")):
+                # "any of these layers": nets can only be taken from each layer itself
+                # (not from their union), so take them one by one and put them together
+                own = "(" + " + ".join(f"{self._layer_var(m)}.nets" for m in sorted(members)) + ")"
+            else:
+                own += ".nets"
         expr = own + "".join(                        # base, then sorted ANDs
             f".and({v}{keep})" for v in sorted(self._layer_var(a) for a in d["ands"]))
         for op, marker in sorted((o, self._fmt_deriv(m)) for o, m in d.get("pre_selections", [])):

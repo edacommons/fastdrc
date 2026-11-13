@@ -11,6 +11,8 @@
      "layers":  {"nwell": [1, 0], "diff": [2, 0], ...},        layer name -> GDS layer, datatype
      "legend":  {"pdiff": "diff and pimp", ...},                names for combinations
      "columns": {"thin": [["not_interacting", "thick"]], ...},  the table columns (domains)
+     "each":    {"metalint": ["metal2", "metal3"]},             families a rule is repeated for
+     "touching": "allowed",                                     abutting shapes never violate a minimum distance
      "connect": [["nwell", "ndiff"], ...]}                      optional; or draw the stack
 
 A sheet may still carry its own legend / columns / connections; the process supplies
@@ -87,6 +89,11 @@ def load(folder):
             d["layers"] = legend
         if columns:
             d["domains"] = columns
+        if proc.get("touching") and "touching" not in d:
+            d["touching"] = proc["touching"]
+        each = {**(proc.get("each") or {}), **(data.get("each") or {})}
+        if each:                                 # families of layers a rule is repeated for
+            d["each"] = each
         if joined:
             d["connect"] = [list(x) for x in joined]
         merged.append((p, d))
@@ -126,7 +133,8 @@ def build(folder, out_dir=None, extra=()):
         notes.append("no layer number for " + ", ".join(sorted(kl.unmapped))
                      + f" -- add to \"layers\" in {PROCESS_FILE}")
     text = f"# {name} — design rules\n\n" + get("docs").compile_all(rules)
-    out_dir = out_dir or os.path.join(folder, "build")
+    # absolute: KLayout resolves a report path against the deck's folder, not the caller's
+    out_dir = os.path.abspath(out_dir or os.path.join(folder, "build"))
     os.makedirs(out_dir, exist_ok=True)
     stem = "".join(c if c.isalnum() or c in "-_" else "_" for c in name).lower() or "deck"
     deck_path, text_path = os.path.join(out_dir, stem + ".drc"), os.path.join(out_dir, stem + ".md")
@@ -162,8 +170,28 @@ def selftest(folder, out_dir=None):
     Returns ``{"rules": {rule: "ok" | "wrong" | "not generated"},
     "constraints": {(rule, constraint under test): "ok" | "wrong"}, "wrong": [text, ...],
     "not_generated": [(rule, why), ...], "notes": [...], "files": {...}}``."""
-    import subprocess
     deck, _, n, notes = build(folder, out_dir, extra=("cases",))
+    return _run_selftest(deck, notes)
+
+
+def selftest_rules(rules, layers, out_dir, name="rules"):
+    """`selftest` for rules already at hand (the sheet open in the editor, with its
+    process's legend / columns / connections merged in): same result."""
+    from .backend import get
+    layermap = {k: tuple(v) for k, v in (layers or {}).items()}
+    out_dir = os.path.abspath(out_dir)
+    os.makedirs(out_dir, exist_ok=True)
+    deck = os.path.join(out_dir, name + ".drc")
+    with open(deck, "w") as f:
+        f.write(get("klayout", layermap=layermap, standalone=True, title=name).compile_all(rules))
+    for fname, body in get("cases", layermap=layermap).files(rules, name).items():
+        with open(os.path.join(out_dir, fname), "w") as f:
+            f.write(body)
+    return _run_selftest(deck, [])
+
+
+def _run_selftest(deck, notes):
+    import subprocess
     out_dir = os.path.dirname(deck)
     stem = os.path.splitext(os.path.basename(deck))[0]
     script, expect_path = (os.path.join(out_dir, stem + ext) for ext in (".cases.rb", ".cases.json"))

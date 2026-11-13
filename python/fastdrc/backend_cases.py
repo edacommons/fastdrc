@@ -310,7 +310,7 @@ class CasesBackend(Backend):
         from .backend import get
         r = Rule(rule_dict)
         try:
-            for special in (self._presence_cases, self._hole_cases, self._array_cases, self._share_cases,
+            for special in (self._presence_cases, self._corner_cases, self._hole_cases, self._array_cases, self._share_cases,
                             self._density_cases, self._antenna_cases):
                 made = special(r, rule_dict)
                 if made is not None:
@@ -318,6 +318,8 @@ class CasesBackend(Backend):
             self._needs_more_than_its_picture(r)
             self._marks_it_cannot_build(r, rule_dict)
             constraints = [(c.get("kind", "check"), c["expr"], parse(c["expr"])) for c in rule_dict.get("constraints", [])]
+            if rule_dict.get("touching") == "allowed":     # every minimum distance: "... or exactly 0"
+                constraints = [(k, e, self._or_zero(r, a) if k == "check" else a) for k, e, a in constraints]
             numbers = [abs(n) for _, _, ast in constraints for n in self._numbers(ast) if n]
             unit_nm = ROOM * round(max(numbers) * 1000) if numbers else 1000
             self._presets = []                             # sizes fixed before anything is stepped
@@ -490,6 +492,19 @@ class CasesBackend(Backend):
         return out, None
 
     # -- what a constraint is made of
+    @staticmethod
+    def _or_zero(r, ast):
+        """`ast` with every minimum on an arrow between two different shapes made
+        "... or exactly 0" (what "touching": "allowed" says for the whole process)."""
+        if isinstance(ast, dict) and ast.get("op") == "and":
+            return dict(ast, args=[CasesBackend._or_zero(r, a) for a in ast["args"]])
+        if isinstance(ast, dict) and ast.get("op") in (">=", ">"):
+            ref = ast["args"][0].get("ref") if isinstance(ast["args"][0], dict) else None
+            m = r.measures.get(ref)
+            if m and "num" in ast["args"][1] and r.shape_of_edge(m["from"]) != r.shape_of_edge(m["to"]):
+                return {"op": "or", "args": [ast, {"op": "==", "args": [{"ref": ref}, {"num": 0}]}]}
+        return ast
+
     @staticmethod
     def _numbers(ast):
         if isinstance(ast, dict):
@@ -692,6 +707,36 @@ class CasesBackend(Backend):
             raise _CannotBuild("a density rule this generator does not arrange yet")
         if r.antenna_bounds():
             raise _CannotBuild("an antenna rule this generator does not arrange yet")
+
+    def _corner_cases(self, r, rule_dict):
+        """"No corner of this angle here" (no 90-degree turn of poly on diffusion): the
+        picture shows such a corner, so as drawn it must be reported; with the shape it
+        lies in taken away the corner is no longer "here" and must not be."""
+        corners = [(e, angle) for e, angle, others in r.corner_bounds() if not others]
+        if not corners:
+            return None
+        if len(corners) != 1 or any(list(self._numbers(a)) != [corners[0][1]] and list(self._numbers(a))
+                                    for _, a in r.constraints):
+            raise _CannotBuild("a corner rule with further conditions is not built yet")
+        edge, angle = corners[0]
+        shape = r.shape_of_edge(edge)
+        if abs(abs(r.corner_angle(edge) or 0) - angle) > 1e-6:      # an inner or an outer corner
+            raise _CannotBuild("the corner drawn is not the angle the rule speaks of")
+        pic = _Picture(r, rule_dict, 1000)
+        outlines = pic.outlines()
+        check = next(c["expr"] for c in rule_dict["constraints"] if ".corner" in c["expr"])
+        around = [n for n in r.shapes if n != shape and r.relation(shape, n) in ("inside", "overlap")]
+
+        def case(what, expect, without=()):
+            layers = self._real_layers(r, [(n, p) for n, p in outlines if n not in without])
+            if layers is None:
+                raise _CannotBuild("a layer of the picture is defined in a way that cannot be drawn directly")
+            return {"rule": r.name, "testing": f"check {check}", "case": what, "expect": expect, "shapes": layers,
+                    "markers": [lay for op, lay in (rule_dict.get("scope") or []) if op in _INSIDE_OPS]}
+        out = [case("the corner as drawn", True)]
+        if around:
+            out.append(case(f"the same without {', '.join(around)}", False, without=around))
+        return out
 
     def _hole_cases(self, r, rule_dict):
         """"Every enclosed hole must be at least so large": a ring of the layer -- four
@@ -1037,7 +1082,7 @@ class CasesBackend(Backend):
             raise _CannotBuild("a rule with alternative cases")
         by_area = Rule._filtered_shapes(rule_dict)
         for name, m in r.measures.items():
-            if (m.get("crossed") and not m.get("of_shape")) or m.get("edges"):
+            if m.get("crossed") and not m.get("of_shape"):
                 raise _CannotBuild("an arrow carries a mark this generator does not build yet")
         for name, s in r.shapes.items():
             if (s.get("crossed") and name not in by_area) or s.get("flagged") is False or s.get("hole_loops") or s.get("halo"):

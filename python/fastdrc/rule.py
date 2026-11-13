@@ -1220,8 +1220,12 @@ class Rule:
         left (so ``2 < W`` reads as ``W > 2``)."""
         out = []
         names = set(self.measures)
+        # "touching": "allowed" on the rule (or, through its sheet, on the process): shapes
+        # that exactly abut never violate a minimum distance -- as if every such check
+        # said "... or exactly 0"
+        everywhere = self.data.get("touching") == "allowed"
         for kind, ast in self.constraints:
-            zero_ok = False
+            zero_ok = everywhere and kind == "check"
             if isinstance(ast, dict) and ast.get("op") == "or":
                 # `E >= v or E == 0`: the distance must reach v -- or be exactly zero
                 # (the two edges coincide, which a manual calls "coinciding permitted")

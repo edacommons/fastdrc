@@ -116,3 +116,37 @@ def test_the_whole_layer_mark_survives_open_and_save():
     rule = {"name": "R.2", "desc": "d", "shapes": [D, G], "measures": [],
             "constraints": [{"kind": "match", "expr": "G.layer == poly"}]}
     assert _roundtrip(rule) == rule
+
+
+def test_process_settings_read_from_text():
+    from fastdrc.editor import Editor, format_layers, parse_layers
+    assert parse_layers("nwell 1/0\ndiff 2\n\nmet1 = 6/20 ; junk\nbad x/y") == {"nwell": [1, 0], "diff": [2, 0], "met1": [6, 20]}
+    assert parse_layers(format_layers({"a": [1, 0], "b": [66, 44]})) == {"a": [1, 0], "b": [66, 44]}
+    proc = Editor.process_from_text("Demo", "nwell 1/0\ndiff 2/0", "pdiff = diff and pimp\ngate = poly and diff",
+                                    "thin: not_interacting thick\nthick: overlapping thick",
+                                    {"connect": [["a", "b"]], "name": "old"})
+    assert proc == {"connect": [["a", "b"]], "name": "Demo", "layers": {"nwell": [1, 0], "diff": [2, 0]},
+                    "legend": {"pdiff": "diff and pimp", "gate": "poly and diff"},
+                    "columns": {"thin": [["not_interacting", "thick"]], "thick": [["overlapping", "thick"]]}}
+
+
+def test_a_rules_constraints_survive_being_shown_and_typed_back():
+    # the rule panel shows them on one line; a filter must come back as a filter
+    from fastdrc.editor import format_rule_constraints, parse_rule_constraints
+    cons = [{"kind": "match", "expr": "KA.rows >= 4 and KA.columns >= 4"}, {"kind": "match", "expr": "ka_0.length == 0.2"},
+            {"kind": "check", "expr": "Sk >= 0.3 or Sk2 >= 0.3"}]
+    line = format_rule_constraints(cons)
+    assert line == "match KA.rows >= 4 and KA.columns >= 4; match ka_0.length == 0.2; Sk >= 0.3 or Sk2 >= 0.3"
+    assert parse_rule_constraints(line) == cons
+    assert parse_rule_constraints("W >= 0.8") == [{"kind": "check", "expr": "W >= 0.8"}]
+    assert parse_rule_constraints("  ") == []
+
+
+def test_the_deck_is_browsed_as_sheets_with_their_rules():
+    from fastdrc import process
+    here = os.path.join(HERE, "..", "examples", "demo")
+    _, sheets = process.load(here)
+    tree = [(os.path.basename(p), [r["name"] for r in d.get("rules", [])]) for p, d in sheets]
+    assert tree == [("1-wells.sheet.json", ["NW.1", "NW.2", "NW.3", "NW.4", "LU.1"]),
+                    ("2-devices.sheet.json", ["PO.1", "PO.2", "PO.3", "CO.1", "CO.2", "CO.3", "CO.4"]),
+                    ("3-metal.sheet.json", ["V1.1", "V1.2", "AN.1", "DN.1", "DN.2"])]

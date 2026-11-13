@@ -606,3 +606,28 @@ def test_a_share_given_as_a_quotient_and_as_a_maximum():
     deck, en, _ = _plate([("check", "S.area / P.area <= 0.2")])
     assert any("""selected_if("value('r') > 0.2")""" in ln for ln in deck)
     assert en == "• slit must take up at most 20 % of the area of every met."
+
+
+def test_a_net_condition_on_a_layer_set_takes_the_nets_of_each_member():
+    # found by a blind test: "wells (nwell or pwell) at different potential" produced a
+    # deck KLayout rejects -- nets cannot be taken from a union of layers
+    a, b = _rect("A", 0, 0, 8, 10, {1}), _rect("B", 12, 0, 20, 10, {3})
+    rule = {"name": "R", "desc": "r", "shapes": [a, b], "measures": [{"name": "S", "from": "a1", "to": "b3"}],
+            "connect": [["nwell", "ntap"], ["pwell", "ptap"]],
+            "constraints": [{"kind": "match", "expr": "A.layer in {nwell, pwell}"},
+                            {"kind": "match", "expr": "B.layer in {nwell, pwell}"},
+                            {"kind": "match", "expr": "A.net != B.net"}, {"kind": "check", "expr": "S >= 0.225"}]}
+    out = get("klayout").compile(Rule(rule))
+    assert "r_l1 = (nwell.nets + pwell.nets).space(0.225.um, euclidian, props_ne).polygons(0.001)" in out
+
+
+def test_touching_allowed_makes_every_minimum_distance_or_exactly_zero():
+    # a process in which abutting shapes are never a spacing violation
+    a, b = _rect("A", 0, 0, 4, 10, {1}), _rect("B", 6, 0, 10, 10, {3})
+    rule = {"name": "R", "desc": "r", "shapes": [a, b], "measures": [{"name": "S", "from": "a1", "to": "b3"}],
+            "constraints": [{"kind": "match", "expr": "A.layer == imp"}, {"kind": "match", "expr": "B.layer == cont"},
+                            {"kind": "check", "expr": "S >= 0.025"}]}
+    assert "imp.separation(cont, 0.025.um, euclidian).polygons(0.001)" in get("klayout").compile(Rule(rule))
+    allowed = Rule(dict(rule, touching="allowed"))
+    assert "r_l1 = imp.separation(cont, 0.025.um, euclidian).polygons\n" in get("klayout").compile(allowed)
+    assert "or exactly 0 (coinciding edges are allowed)" in get("docs").compile(allowed)
