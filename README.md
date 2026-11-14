@@ -54,9 +54,10 @@ filter (must *not* be reported) — and runs the deck on them. What the rule mus
 computed from the constraints, not from the deck. Rules it cannot build a case for are
 listed, never counted as passing.
 
-**Backends are plugins.** `fastdrc backends` lists them (`klayout`, `docs`, `facts`,
-`cases`); another package adds one through the entry-point group `fastdrc.backends`.
-A backend may also *run* the deck it writes on a layout: `build`, `check` and
+**Backends are plugins.** `fastdrc backends` lists them (`klayout`, `docs`, `svg`,
+`facts`, `cases`); another package adds one through the entry-point group `fastdrc.backends`.
+A backend may use another (`get("svg")` for a rule's figure, `get("docs")` for its
+sentence). A backend may also *run* the deck it writes on a layout: `build`, `check` and
 `selftest` take `--backend NAME` and go through that one for both. KLayout is the one
 shipped here that does, and the default; the C++ core will be another.
 
@@ -71,6 +72,7 @@ python/fastdrc/process.py         a deck folder: build, check, self-test
 python/fastdrc/backend.py         the backend registry and plugin discovery
 python/fastdrc/backend_klayout.py -> a KLayout DRC deck
 python/fastdrc/backend_docs.py    -> the rules as plain sentences
+python/fastdrc/backend_svg.py     -> each rule's drawing as a picture
 python/fastdrc/backend_cases.py   -> test layouts made from the drawings, with what to expect
 python/fastdrc/editor.py          the visual editor (Tkinter)
 tools/compare_reports.py          two DRC runs of one layout, compared rule by rule, by place

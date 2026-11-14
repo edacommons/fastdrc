@@ -99,7 +99,7 @@ def register(cls):
     return cls
 
 
-_BUILTIN = ("backend_klayout", "backend_docs", "backend_cases")
+_BUILTIN = ("backend_klayout", "backend_docs", "backend_cases", "backend_svg")
 _loaded = False
 
 

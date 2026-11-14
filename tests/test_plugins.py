@@ -6,6 +6,7 @@ import pytest
 
 from fastdrc import backend, process
 from fastdrc.backend import Backend, get
+from fastdrc.rule import Rule
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEMO = os.path.join(HERE, "..", "examples", "demo")
@@ -20,7 +21,7 @@ def _rect(name, x0, y0, x1, y1):
 
 
 def test_the_shipped_backends_load_by_themselves():
-    assert {"klayout", "docs", "facts", "cases"} <= set(backend.available())
+    assert {"klayout", "docs", "facts", "cases", "svg"} <= set(backend.available())
     assert get("docs", layermap={"a": (1, 0)}, title="x").name == "docs"     # offers it does not take are dropped
 
 
@@ -455,3 +456,37 @@ def test_a_forbidden_corner_is_tested_where_it_is_and_where_it_is_not():
     assert skipped == [] and got == [("check lp1.corner != 90", "the corner as drawn", True),
                                      ("check lp1.corner != 90", "the same without D", False)]
     assert [sorted(s["layer"] for s in c["shapes"]) for c in cases] == [["diff", "poly"], ["poly"]]
+
+
+def test_the_drawing_as_a_picture_is_a_backend_others_can_use(tmp_path):
+    """`svg` turns a rule's drawing into a figure; any backend gets it by name."""
+    import xml.etree.ElementTree as ET
+    rule = {"name": "w.1", "desc": "width & <more>",
+            "shapes": [dict(_rect("A", 0, 0, 4, 10), crossed=True)],
+            "measures": [{"name": "W", "from": "a3", "to": "a1"}],
+            "constraints": [M("A.layer == met"), C("W >= 0.2")]}
+    rule["shapes"][0]["edges"][1]["edge"] = rule["shapes"][0]["edges"][3]["edge"] = True    # the measured sides
+    svg = get("svg").compile(Rule(rule))
+    root = ET.fromstring(svg)                                    # well-formed, whatever the text holds
+    ns = "{http://www.w3.org/2000/svg}"
+    texts = [t.text for t in root.iter(ns + "text")]
+    assert texts == ["met", "W"] and root.find(ns + "title").text == "w.1 — width & <more>"
+    assert len(list(root.iter(ns + "line"))) == 3                # two straight sides and the arrow
+    assert len(list(root.iter(ns + "polyline"))) == 2            # two wavy sides
+    assert get("svg", labels="name").compile(Rule(rule)).count(">A<") == 1
+    from fastdrc.backend_svg import colour_of
+    assert colour_of("met") == colour_of("met") and colour_of("met") in svg      # one colour per layer, deck-wide
+
+    class Page(Backend):                                         # a backend made of two others
+        name, extension = "page", ".html"
+
+        def compile(self, rule):
+            return get("svg").compile(rule) + "<p>" + get("docs").compile(rule).splitlines()[1].strip() + "</p>"
+
+    page = Page().compile(Rule(rule))
+    assert page.startswith("<svg") and "<p>•" in page
+    deck, _, n, _ = process.build(DEMO, str(tmp_path), extra=("svg",))
+    figures = sorted(f for f in os.listdir(tmp_path) if f.endswith(".svg"))
+    assert len(figures) == n == 18 and "demo.NW.1.svg" in figures
+    for f in figures:
+        ET.parse(os.path.join(tmp_path, f))

@@ -888,7 +888,10 @@ lengths are generated. A rule the generator cannot build a case for is listed as
 never as passing.
 
 **Backends are plugins.** `fastdrc backends` lists them: `klayout` (the deck), `docs`
-(sentences), `facts`, `cases` (the test cases above). `fastdrc build DIR --with cases`
+(sentences), `svg` (each rule's drawing as a picture, shapes named by their layer, one
+colour per layer across the deck), `facts`, `cases` (the test cases above). A backend may
+use another by name -- a document backend takes its figures from `get("svg")` and its
+text from `get("docs")`. `fastdrc build DIR --with cases`
 writes a backend's files beside the deck. Another package adds one with an entry point
 in the group `fastdrc.backends` naming a `fastdrc.backend.Backend` subclass.
 
