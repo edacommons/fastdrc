@@ -148,8 +148,7 @@ class SvgBackend(Backend):
             text = ("hole in " if sh.get("cut") and self.labels == "layer" else "") + str(text)
             if sh.get("halo"):
                 text += f"  ±{abs(sh['halo']):g}"
-            small = max(xs) - min(xs) < 7.2 * len(text) + 12 or max(ys) - min(ys) < 26
-            tx, ty = (min(xs), min(ys) - 6) if small else (min(xs) + 5, min(ys) + 14)    # a small shape: its name above it
+            tx, ty = verts[0][0] + 5, verts[0][1] + 15       # where the editor writes it: at the first corner
             body.append(f'<text x="{tx:.1f}" y="{ty:.1f}" fill="{col}" font-weight="600">{escape(text)}</text>')
             marks += [(tx, ty - 12), (tx + 7.2 * len(text), ty)]
 
