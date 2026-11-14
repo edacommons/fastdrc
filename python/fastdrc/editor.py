@@ -593,7 +593,17 @@ class Editor:
         return s["sides"][i]["kind"] if s else None
 
     def is_relation(self, m):
-        """A measure with a WAVY end is not a distance but a relation between shapes."""
+        """A measure with a WAVY end that no constraint gives a number is not a distance
+        but a relation between shapes. Once a constraint names it (``Sl <= 20``) it is a
+        distance, whatever its ends look like -- that is how the rule is compiled."""
+        import re
+        var = m.get("var")
+        if var and any(re.search(rf"(?<![\w.]){re.escape(var)}(?![\w.(])", c.get("expr", ""))
+                       for c in self.constraints):
+            return False
+        sa, sb = self.find_side(m["from"])[0], self.find_side(m["to"])[0]
+        if sa is not None and sa is sb:                # across ONE shape: its width, never a relation
+            return False
         return not (self._side_kind(m["from"]) == "straight" == self._side_kind(m["to"]))
 
     # ---- view transform (grid units <-> canvas pixels) ----
@@ -834,8 +844,9 @@ class Editor:
             self.sel = r[1]
             m = self.find_measure(r[1])
             gg = self._measure_geom(m)
-            if gg and gg[2] is not None and not self.is_relation(m):
-                # drag a dimension arrow along its edges: where it sits is what it measures
+            if gg and gg[2] is not None:
+                # drag an arrow along its edges (a new one lands mid-way, often on another):
+                # where it sits is what it measures
                 self.moving = {"kind": "arrow", "mid_id": m["id"],
                                "axis": "y" if abs(gg[0][1] - gg[1][1]) < 0.5 else "x"}
         elif r and r[0] == "shape":
@@ -914,6 +925,8 @@ class Editor:
 
     def on_double(self, e):
         # double-click an edge -> flip straight <-> wavy
+        if e.state & 0x0001:                           # two quick shift-clicks are two picks for a
+            return self.on_measure(e)                  # measure, never a flip of the edge
         s, i = self.hit_side(e.x, e.y)
         if s:
             self.moving = self.drag = None
@@ -1135,9 +1148,15 @@ class Editor:
 
         if self.pending and "side" in self.pending:
             s, i = self.find_side(self.pending["side"])
-            if s:
+            if s:                                      # the edge picked first, in its own form
                 a, b = self.side_pts_px(s, i)
-                c.create_line(*a, *b, fill=ACCENT, width=4)
+                if s["sides"][i]["kind"] == "wavy":
+                    vpx = [self.px(v) for v in s["verts"]]
+                    cx, cy = sum(q[0] for q in vpx) / len(vpx), sum(q[1] for q in vpx) / len(vpx)
+                    pts = self._scallop(a, b, cx, cy, end=True)
+                    c.create_line([co for q in pts for co in q], fill=ACCENT, width=4)
+                else:
+                    c.create_line(*a, *b, fill=ACCENT, width=4)
         if self.drag:
             x0, y0 = self.px((min(self.drag[0], self.drag[2]), min(self.drag[1], self.drag[3])))
             x1, y1 = self.px((max(self.drag[0], self.drag[2]), max(self.drag[1], self.drag[3])))
@@ -1411,7 +1430,8 @@ class Editor:
                     ex.pop(key, None)
 
             name(0, "name"); ent(0, m["var"], lambda x: m.__setitem__("var", x))
-            name(1, "relation" if rel else "distance"); ro(1, f"{m['from']} → {m['to']}")
+            same = self.find_side(m["from"])[0] is self.find_side(m["to"])[0]
+            name(1, "relation" if rel else "width" if same else "distance"); ro(1, f"{m['from']} → {m['to']}")
             # the CROSS: this measure is the rule's check with the bound "never" -- the
             # drawn relation (or, across one shape, its region) must not exist
             name(2, "cross")

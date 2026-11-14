@@ -608,7 +608,8 @@ As a **`check`** (what must hold — where it fails is flagged):
 A maximum between two shapes is read by **where the arrow ends**. Between the facing
 edges it says the shape needs a partner within reach; the arrow starts at the shape
 that needs it. Drawn through a shape to its far side it says *every part* of that shape
-must be within reach, so the far end of a long shape is flagged. (This distinction was
+must be within reach, so the far end of a long shape is flagged; there the shape the
+arrow crosses is the one meant, whichever end the arrow was started from. (This distinction was
 found by the generated self-test: an arrow between the near edges, exactly at its
 limit, was still reported by the "every part" reading.)
 
@@ -891,9 +892,25 @@ flags (on the clean layout: nothing, or the drawing says more than the manual).
   file: Save, "+ rule" and "Process…" write straight into the zip.
 - **Drag** on empty canvas: a new shape (all edges wavy). **Double-click** an edge:
   straight ↔ wavy. **Right-click** an edge: split it.
-- **Shift-click two edges**: a measure. Two straight edges give a distance (bound it
-  with a constraint); a wavy end gives a **link** (a relation, no constraint). Select
+- **Shift-click two edges**: a measure. Give it a number in a constraint and it is a
+  distance; with a wavy end and no constraint it is a **link** (a relation). Select
   the measure to set a **cross**, the metric, or edge-to-edge.
+- **Drag an arrow** to slide it along its two edges (a new one lands mid-way, often on
+  top of another); "arrow at" in its properties is the same position as a number.
+  Where an arrow sits can matter: what lies under it combines with what it measures.
+  **Drag its name** to move only the label.
+- **An arrow's properties** (select it). Only the name is needed for most rules:
+
+  | property | what it sets | when to change it |
+  |---|---|---|
+  | **name** | the variable the constraints use (`Sl`, `Ww`) | always |
+  | **width / distance / relation** (shown, not set) | across one shape it is a width; between two shapes a distance once a constraint gives it a number, else a relation (a link) | — it follows from the drawing |
+  | **cross** | "never (forbidden)": what the arrow shows must not exist; for a relation also "never straddle (inside is fine)" | "must not overlap", "must not straddle" — the cross is the check, no constraint needed (see *the cross*) |
+  | **metric** | how the distance is measured: default, euclidian, projection, square (KLayout's own) | the manual names it: "projection check", "square check" |
+  | **between** | "shapes": the polygons; "edges": edge to edge, in one direction | gate length — poly's width only where it crosses diffusion |
+  | **enclosure** | "margin only", or "within: no straddling" — the inner shape lying across the outer's edge is flagged too | "G within H by x", "H overlap of G" |
+  | **arrow at** | where the arrow sits along its two edges (blank: where they face each other); the same as dragging it | to clear other arrows; what lies under an arrow combines with what it measures |
+
 - **`h`** on a shape: a hole. Lying inside a shape it is that shape's **void**
   (`A.holes`) and moves with it.
 - Each shape shows how it **reads** — subject, operand, combined, cut out, filter,
