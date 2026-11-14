@@ -423,6 +423,17 @@ def test_enclosure_on_one_of_two_adjacent_sides():
     assert out.count(".output(") == 1                       # one rule, not one per arrow
     assert get("docs").compile(r).splitlines()[1].strip() == (
         "• met must enclose via by at least 0.06 µm on at least one of any two adjacent sides.")
+    # two values: "by less than 0.04 on one side -> the sides next to it need 0.06"
+    two = Rule(dict(rule, constraints=rule["constraints"][:2] + [{"kind": "check", "expr": "Ea >= 0.04 or Eb >= 0.06"}]))
+    out = get("klayout").compile(two)
+    assert ("r_l1 = via.interacting(met.enclosing(via, 0.04.um, projection, whole_edges).second_edges"
+            ".overlap(met.enclosing(via, 0.06.um, projection, whole_edges).second_edges, angle_limit(100.0), 1.dbu)"
+            ".polygons(0.001))") in out and out.count(".output(") == 1
+    assert get("klayout").compile(Rule(dict(rule, constraints=rule["constraints"][:2] + [
+        {"kind": "check", "expr": "Ea >= 0.06 or Eb >= 0.04"}]))) == out          # whichever arrow is named first
+    assert get("docs").compile(two).splitlines()[1].strip() == (
+        "• where met encloses via by less than 0.04 µm on one side, it must enclose it by at least 0.06 µm "
+        "on the sides next to that one.")
 
 
 def test_spacing_in_at_least_one_direction():

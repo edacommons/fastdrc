@@ -176,7 +176,11 @@ class DocsBackend(Backend):
             ds, dt, consumed = rule.measure_derivations(a.var)
             other = self._fmt_deriv_en(dt if shape == sf else ds)
             me, v = self._fmt_deriv_en(ds if shape == sf else dt), _fmt(a.value)
-            if rule.relation(sf, st) in ("inside", "contains"):
+            lo_, hi_ = sorted((a.value, b.value))
+            if rule.relation(sf, st) in ("inside", "contains") and lo_ != hi_:
+                core = (f"where {other} encloses {me} by less than {_fmt(lo_)} µm on one side, it must enclose "
+                        f"it by at least {_fmt(hi_)} µm on the sides next to that one")
+            elif rule.relation(sf, st) in ("inside", "contains"):
                 core = (f"{other} must enclose {me} by at least {v} µm on at least one of any two "
                         f"adjacent sides")
             elif me == other:

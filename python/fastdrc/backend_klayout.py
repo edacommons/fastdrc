@@ -202,7 +202,8 @@ class KLayoutBackend(Backend):
             self._emit(rule, expr, off + k, total, rule.name or f"{shape} {form}")
         off += len(forms)
         for k, (a, b, shape) in enumerate(eithers):
-            expr = self._check_expr(rule, a.var, a, None, corner_of=shape)
+            expr = self._check_expr(rule, a.var, min(a, b, key=lambda x: x.value), None, corner_of=shape,
+                                    corner_other=max(a.value, b.value))
             if expr:
                 self._emit(rule, expr, off + k, total, rule.name or f"{a.var} or {b.var}")
         off += len(eithers)
@@ -259,7 +260,7 @@ class KLayoutBackend(Backend):
         out += checks
         return "\n".join(out) + "\n"
 
-    def _check_expr(self, rule, var, lo, hi, select=False, corner_of=None):
+    def _check_expr(self, rule, var, lo, hi, select=False, corner_of=None, corner_other=None):
         """Full KLayout expression for one entry of `rule.distance_rules` (derived
         layer + selections + op + scope), WITHOUT output/forget. Not `select`: a CHECK
         -- a MIN bound is the violation check (width/space/sep/enclosing), a MAX bound
@@ -392,8 +393,15 @@ class KLayoutBackend(Backend):
                 short = ".second_edges" if ".enclosing(" in core else ".edges"
                 who = self._fmt_deriv(derivs[corner_of])
                 mine = "" if short == ".second_edges" else f".and({who}.edges)"
-                body = (f"{who}.interacting({core}{short}{mine}"
-                        f".width(angle_limit(100.0), 1.dbu).polygons(0.001))")
+                if corner_other is not None and corner_other != lo.value:
+                    # two values -- "less than a on one side: the sides next to it need b":
+                    # a side short of a meeting, at a corner, a side short of b
+                    more = core.replace(f", {v}.um, ", f", {self._fmt(corner_other)}.um, ", 1)
+                    body = (f"{who}.interacting({core}{short}{mine}"
+                            f".overlap({more}{short}{mine}, angle_limit(100.0), 1.dbu).polygons(0.001))")
+                else:
+                    body = (f"{who}.interacting({core}{short}{mine}"
+                            f".width(angle_limit(100.0), 1.dbu).polygons(0.001))")
                 suffix = "".join(f".{op}({mk})" for op, mk in self._scope(rule, consumed, scope_from))
                 return body + suffix
             bare = self._clipped_inner(core) or lo.zero_ok   # zero distance is not a violation
@@ -976,7 +984,8 @@ end"""
         v = f"{self._fmt(next(b.value for b in rule.bounds() if b.var == var and b.is_min))}.um"
         rid = rule.name or f"{var}.eol"
         desc = rule.desc or rid
-        cond, eol = f"eol{idx}_cond", f"eol{idx}"
+        res = self._result_var(rid, idx, total)
+        cond, eol = f"{res}_cond", f"{res}_eol"            # the rule's own names: two such rules in one deck
         self._checks.append(f"{cond} = {L}.drc(width <= {weol}).with_length({slen}, nil, both)")
         self._checks.append(
             f"{eol} = {L}.edges.with_length(nil, {weol})"
@@ -984,7 +993,6 @@ end"""
             f".not({cond}.first_edges).not({cond}.second_edges)")
         op = "enclosing" if rule.relation(sf, st) in ("contains", "inside") else "separation"
         arg = f"{self._layer_var(rule.layer_of(st))}.edges"
-        res = self._result_var(rid, idx, total)
         self._checks.append(f"{res} = {eol}.{op}({arg}, {v}, {mt}).polygons(0.001)")
         self._checks.append(self._output(res, rid, desc))
         for fv in (res, eol, cond):

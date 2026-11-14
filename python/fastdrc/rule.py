@@ -1243,12 +1243,13 @@ class Rule:
 
     def _either(self, ast):
         """If `ast` is ``Ea >= v or Eb >= v`` over two arrows on ADJACENT sides of one
-        shape (the measured edges of that shape are perpendicular), the two bounds."""
+        shape (the measured edges of that shape are perpendicular), the two bounds. The
+        two values may differ (``Ea >= 0.04 or Eb >= 0.06``): "where one side has less
+        than 0.04, the sides next to it need 0.06"."""
         if not (isinstance(ast, dict) and ast.get("op") == "or" and len(ast["args"]) == 2):
             return None
         a, b = (_bound(x, set(self.measures)) for x in ast["args"])
-        if not (a and b and a.var != b.var and a.is_min and b.is_min and a.value == b.value
-                and a.value != 0):
+        if not (a and b and a.var != b.var and a.is_min and b.is_min and a.value != 0 and b.value != 0):
             return None
         ma, mb = self.measures[a.var], self.measures[b.var]
         found = []

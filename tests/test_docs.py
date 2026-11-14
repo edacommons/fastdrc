@@ -72,12 +72,19 @@ def test_eol_construction():
                          {"kind": "check", "expr": "R >= 0.06"}]}
     drc = get("klayout", layermap={"metal1": (34, 0), "contact": (33, 0)}).compile(Rule(r))
     assert "metal1.drc(width <= 0.34.um).with_length(0.24.um, nil, both)" in drc
-    assert (".edges.with_length(nil, 0.34.um).interacting(eol0_cond.first_edges)"
-            ".interacting(eol0_cond.second_edges).not(eol0_cond.first_edges)"
-            ".not(eol0_cond.second_edges)") in drc
-    assert "eol0.enclosing(contact.edges, 0.06.um, projection).polygons(0.001)" in drc
+    assert (".edges.with_length(nil, 0.34.um).interacting(co_6a_l1_cond.first_edges)"
+            ".interacting(co_6a_l1_cond.second_edges).not(co_6a_l1_cond.first_edges)"
+            ".not(co_6a_l1_cond.second_edges)") in drc
+    assert "co_6a_l1_eol.enclosing(contact.edges, 0.06.um, projection).polygons(0.001)" in drc
     d = get("docs").compile(Rule(r))
     assert "end-of-line edge of a narrow metal1 wire" in d and "must enclose contact" in d
+    # two such rules in one deck keep their helper layers apart (and the deck stays one graph)
+    kl = get("klayout", layermap={"metal1": (34, 0), "contact": (33, 0)}, optimise=True)
+    other = dict(r, name="CO.6b", constraints=r["constraints"][:2] + [
+        {"kind": "match", "expr": "a3.length <= 0.5"}, {"kind": "match", "expr": "a0.length >= 0.24"},
+        {"kind": "check", "expr": "R >= 0.06"}])
+    both = kl.compile_all([r, other])
+    assert kl.problems == [] and "co_6b_l1_cond = " in both and "co_6a_l1_cond = " in both
     # ONE rule, one sentence: the qualifying lengths and the measure are not restated
     # as rules of their own
     assert d.count("•") == 1

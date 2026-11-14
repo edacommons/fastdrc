@@ -534,6 +534,11 @@ The shape fails where two of its sides that meet at a corner both fall short (a 
 falls short if any part of it does):
 → `via.interacting(met.enclosing(via, v, projection, whole_edges).second_edges.width(angle_limit(100), 1.dbu).polygons(0.001))`
 
+The two values may differ — *if the overlap is less than 0.04 on one side, the adjacent
+sides need 0.06*: `Ea >= 0.04 or Eb >= 0.06`. A side short of the smaller value that
+meets, at a corner, a side short of the larger one is the violation (which arrow carries
+which value does not matter).
+
 The same form works for a spacing in two directions — "the spacing is only required in
 one direction": arrows to the neighbour beside and the neighbour above, `Sx >= v or
 Sy >= v`. (`E >= v or E == 0` on a *single* arrow is something else: coinciding edges
