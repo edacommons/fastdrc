@@ -354,6 +354,8 @@ def main(argv=None):
     gui_p.add_argument("file", nargs="?", help="optional rule .json, or a deck (folder or .zip), to open")
 
     args = parser.parse_args(argv)
+    if args.command in ("compose", "run", "boolean", "inflate") and not fastdrc.has_core():
+        raise SystemExit(f"fastdrc {args.command}: {fastdrc.NO_CORE}.")
     if args.command == "compose":
         compose(args.config, args.out)
     elif args.command == "run":

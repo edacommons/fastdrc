@@ -1,11 +1,13 @@
+# The Python package is PURE PYTHON: `pip install` needs no compiler. The C++ core is
+# built separately with CMake (README, "Build the C++ core") and is not in the wheel.
 [build-system]
-requires = ["scikit-build-core >=0.10", "nanobind >=2.0"]
-build-backend = "scikit_build_core.build"
+requires = ["hatchling >=1.24"]
+build-backend = "hatchling.build"
 
 [project]
 name = "fastdrc"
 version = "0.0.1"
-description = "Fast design-rule-check (DRC) engine for IC/PCB layout — C++ with Python bindings"
+description = "Design rules (DRC) drawn by example and compiled to a working KLayout deck"
 readme = "README.md"
 requires-python = ">=3.11"       # tomllib (CLI + flow configs)
 dependencies = [
@@ -16,7 +18,6 @@ authors = [{ email = "s.rabykin@gmail.com" }]
 keywords = ["EDA", "DRC", "design-rule-check", "IC", "PCB", "layout"]
 classifiers = [
   "Development Status :: 2 - Pre-Alpha",
-  "Programming Language :: C++",
   "Programming Language :: Python :: 3",
   "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
 ]
@@ -25,20 +26,18 @@ classifiers = [
 gds = ["rawast>=0.1.1"]          # GDSII reader, only for `fastdrc compose`
 
 [dependency-groups]
-dev = ["pytest>=8", "rawast>=0.1.1"]
+dev = ["pytest>=8", "rawast>=0.1.1", "nanobind>=2.0"]   # nanobind: only to build the C++ core
 
 [project.scripts]
 fastdrc = "fastdrc.cli:main"
 
-[tool.scikit-build]
-minimum-version = "0.10"
-build-dir = "build/{wheel_tag}"
-wheel.packages = ["python/fastdrc"]
+[tool.hatch.build.targets.wheel]
+packages = ["python/fastdrc"]
+# a core built in place for development (python/fastdrc/_fastdrc.*.so) stays out of the wheel
+exclude = ["*.so", "*.pyd", "*.dylib"]
 
-# Compile only the Python module (not the C++ test suite) inside the wheel.
-[tool.scikit-build.cmake.define]
-FASTDRC_BUILD_PYTHON = "ON"
-FASTDRC_BUILD_TESTS = "OFF"
+[tool.hatch.build.targets.sdist]
+exclude = ["/build", "/docs/gf180mcu", "/docs/sky130", "/docs/ihp", "/docs/fp45", "*.so", "*.pyd", "*.dylib"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

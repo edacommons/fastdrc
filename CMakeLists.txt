@@ -43,7 +43,8 @@ target_compile_features(fastdrc_core PUBLIC cxx_std_20)
 set_target_properties(fastdrc_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # ---------------------------------------------------------------------------
-# Python module (nanobind) — enabled by scikit-build-core during `pip install`
+# Python module (nanobind) — optional: cmake -DFASTDRC_BUILD_PYTHON=ON (needs `pip install nanobind`).
+# It is written into python/fastdrc/, where `import fastdrc` finds it; the wheel does not hold it.
 # ---------------------------------------------------------------------------
 if(FASTDRC_BUILD_PYTHON)
   find_package(Python 3.11 REQUIRED COMPONENTS Interpreter Development.Module)
@@ -56,6 +57,15 @@ if(FASTDRC_BUILD_PYTHON)
 
   nanobind_add_module(_fastdrc STABLE_ABI NB_STATIC bindings/module.cpp)
   target_link_libraries(_fastdrc PRIVATE fastdrc::core)
+  set_target_properties(_fastdrc PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/python/fastdrc"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/python/fastdrc")
+  foreach(cfg ${CMAKE_CONFIGURATION_TYPES})
+    string(TOUPPER "${cfg}" cfg)
+    set_target_properties(_fastdrc PROPERTIES
+      LIBRARY_OUTPUT_DIRECTORY_${cfg} "${CMAKE_CURRENT_SOURCE_DIR}/python/fastdrc"
+      RUNTIME_OUTPUT_DIRECTORY_${cfg} "${CMAKE_CURRENT_SOURCE_DIR}/python/fastdrc")
+  endforeach()
 
   install(TARGETS _fastdrc LIBRARY DESTINATION fastdrc)
 endif()

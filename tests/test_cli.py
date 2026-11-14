@@ -13,6 +13,10 @@ rawast = pytest.importorskip("rawast")
 
 from fastdrc.cli import _chdir, compose  # noqa: E402
 
+import fastdrc  # noqa: E402
+
+pytestmark = pytest.mark.skipif(not fastdrc.has_core(), reason="the C++ core is not built (cmake -DFASTDRC_BUILD_PYTHON=ON)")
+
 
 def _write_gds(path):
     """Mint a tiny 2-layer GDS using rawast's bidirectional save."""

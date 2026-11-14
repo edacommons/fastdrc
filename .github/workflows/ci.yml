@@ -30,5 +30,13 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: Install
         run: uv sync
-      - name: Test
+      - name: Test (pure Python; the tests of the C++ core are skipped)
         run: uv run pytest -q
+      - name: Build the C++ core into the package
+        run: |
+          uv run cmake -S . -B build-py -DFASTDRC_BUILD_PYTHON=ON -DFASTDRC_BUILD_TESTS=OFF
+          cmake --build build-py -j
+      - name: Test with the core
+        run: |
+          uv run python -c "import fastdrc; assert fastdrc.has_core()"
+          uv run pytest -q

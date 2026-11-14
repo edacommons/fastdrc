@@ -4,7 +4,11 @@ No rawast / GDS needed — uses pre-made layer files, so it exercises the DAG
 engine, ref resolution, and incremental (content-hash) up-to-date behaviour.
 """
 
+import pytest
+
 import fastdrc
+
+pytestmark = pytest.mark.skipif(not fastdrc.has_core(), reason="the C++ core is not built (cmake -DFASTDRC_BUILD_PYTHON=ON)")
 from fastdrc import flow
 
 

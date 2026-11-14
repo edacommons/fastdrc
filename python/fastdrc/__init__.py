@@ -1,26 +1,47 @@
-"""FastDRC — fast design-rule-check (DRC) engine for IC/PCB layout.
+"""FastDRC — design rules drawn by example, compiled to a working DRC deck.
 
-A C++ core exposed to Python through nanobind. The native extension lives in
-:mod:`fastdrc._fastdrc`; this package re-exports its public API.
+The rule compiler (drawings -> a KLayout deck, the rules as sentences, test cases) is
+pure Python: :mod:`fastdrc.process`, :mod:`fastdrc.backend`, :mod:`fastdrc.editor`.
 
-Producer side: build a :class:`Design` from geometry (per layer), then serialize
-it to the compiled-geometry (FDCG) format. The :mod:`fastdrc.cli` front-end
-loads a GDS via ``rawast`` and feeds shapes in:
+The C++ checking core is in development and is NOT part of the Python package: it is
+built separately with CMake (see the README) and loaded only when it is asked for.
+Today it is the geometry layer -- build a :class:`Design` per layer, write the compiled
+``.tiles`` form, do layer algebra on it:
 
     import fastdrc
 
     d = fastdrc.Design(dbu_per_micron=1000)
     m1 = d.add_layer(gds_layer=10, gds_datatype=0, name="metal1")
     m1.add_rect(0, 0, 10, 10)
-    m1.add_polygon([fastdrc.Coord2D(0, 0), fastdrc.Coord2D(10, 0),
-                    fastdrc.Coord2D(10, 4), fastdrc.Coord2D(0, 4)])
-
     fastdrc.write_split(d, "layout_dir")     # one pure .tiles per layer + index.json
 """
 
 from __future__ import annotations
 
-from ._fastdrc import Coord2D, Design, Region, boolean, inflate, write_split
-
-__all__ = ["Coord2D", "Design", "Region", "boolean", "inflate", "write_split"]
+__all__ = ["Coord2D", "Design", "Region", "boolean", "inflate", "write_split", "has_core"]
 __version__ = "0.0.1"
+
+_CORE = ("Coord2D", "Design", "Region", "boolean", "inflate", "write_split")
+NO_CORE = ("the C++ core is not built here -- it is in development and not part of this release. "
+           "Drawing rules, building decks, `check` and `selftest` do not need it; `compose`, "
+           "`boolean`, `inflate` and `run` do (to build it: see \"Build the C++ core\" in the README)")
+
+
+def has_core() -> bool:
+    """Is the C++ core (the compiled module ``fastdrc._fastdrc``) built and importable?"""
+    try:
+        from . import _fastdrc  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+def __getattr__(name):
+    # the core's names stay importable from `fastdrc`, and load it on first use
+    if name in _CORE:
+        try:
+            from . import _fastdrc
+        except ImportError as ex:
+            raise ImportError(NO_CORE) from ex
+        return getattr(_fastdrc, name)
+    raise AttributeError(f"module 'fastdrc' has no attribute {name!r}")

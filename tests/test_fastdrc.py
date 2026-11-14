@@ -6,7 +6,11 @@ serialize to the FDCG format (single + split forms).
 
 import json
 
+import pytest
+
 import fastdrc
+
+pytestmark = pytest.mark.skipif(not fastdrc.has_core(), reason="the C++ core is not built (cmake -DFASTDRC_BUILD_PYTHON=ON)")
 
 
 def test_coord2d():
