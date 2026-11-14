@@ -30,6 +30,7 @@ fastdrc gui mydeck              # draw the rules: one rule, one file, one drawin
 fastdrc build mydeck            # -> build/<name>.drc (KLayout script), build/<name>.md (the rules as sentences)
 fastdrc selftest mydeck         # does every constraint of every rule behave as drawn?
 fastdrc check chip.gds mydeck   # run the deck on a layout, list the violations per rule
+fastdrc check chip.gds mydeck --only "3-metal,NW.*"   # part of the deck: one script fitted to that set
 fastdrc pack mydeck             # -> mydeck.zip: the same deck in one file; every command and the editor take it
 ```
 

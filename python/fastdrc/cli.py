@@ -176,11 +176,25 @@ def _compile_rules(args):
     return 0
 
 
+def _set(args):
+    """Which rules, and how the script is fitted to them (`--only`, `--skip`, `--no-optimise`)."""
+    return {"only": args.only, "skip": args.skip, "optimise": not args.no_optimise}
+
+
+def _set_options(p):
+    p.add_argument("--only", action="append", metavar="RULES",
+                   help="build these rules alone: names or sections, comma-separated, * and ? allowed "
+                        "(NW.*, 3-metal, 2-devices/CO.1)")
+    p.add_argument("--skip", action="append", metavar="RULES", help="leave these rules out (same form)")
+    p.add_argument("--no-optimise", action="store_true",
+                   help="write every rule out in full instead of computing once what several rules need")
+
+
 def _build(args):
     """`fastdrc build`: a process folder -> its deck and its rules as text."""
     from . import process
     extra = [x for x in (args.also or "").split(",") if x]
-    deck, text, n, notes = process.build(args.process, args.out, extra=extra)
+    deck, text, n, notes = process.build(args.process, args.out, extra=extra, **_set(args))
     for note in notes:
         print(f"fastdrc: warning: {note}", file=sys.stderr)
     print(f"{n} rules -> {deck}\n{' ' * len(str(n))}          {text}"
@@ -192,7 +206,7 @@ def _selftest(args):
     """`fastdrc selftest`: do the rules behave as drawn?"""
     from . import process
     try:
-        res = process.selftest(args.process, args.out)
+        res = process.selftest(args.process, args.out, **_set(args))
     except RuntimeError as ex:
         raise SystemExit(f"fastdrc: {ex}")
     for note in res["notes"]:
@@ -220,7 +234,7 @@ def _check(args):
     import subprocess
 
     from . import process
-    deck, _, n, notes = process.build(args.process)
+    deck, _, n, notes = process.build(args.process, **_set(args))
     for note in notes:
         print(f"fastdrc: warning: {note}", file=sys.stderr)
     klayout = process.klayout_binary()
@@ -299,6 +313,7 @@ def main(argv=None):
     build_p.add_argument("process", nargs="?", default=".", help="deck folder or .zip (default: here)")
     build_p.add_argument("-o", "--out", help="output folder (default: <deck>/build; for a zip, <name>.build beside it)")
 
+    _set_options(build_p)
     build_p.add_argument("--with", dest="also", metavar="BACKEND[,BACKEND]",
                          help="also write the files of these backends (see `fastdrc backends`)")
 
@@ -307,6 +322,7 @@ def main(argv=None):
                          "(needs KLayout).")
     self_p.add_argument("process", nargs="?", default=".", help="deck folder or .zip (default: here)")
     self_p.add_argument("-o", "--out", help="output folder (default: <deck>/build; for a zip, <name>.build beside it)")
+    _set_options(self_p)
     self_p.add_argument("-v", "--verbose", action="store_true", help="also list the rules with no generated test")
 
     pack_p = sub.add_parser("pack", help="Put a deck folder into one zip file (build/ is left out).")
@@ -327,6 +343,7 @@ def main(argv=None):
         "check", help="Run a process's rules on a layout (needs KLayout) and list the violations.")
     check_p.add_argument("layout", help="layout file (GDS / OASIS)")
     check_p.add_argument("process", nargs="?", default=".", help="deck folder or .zip (default: here)")
+    _set_options(check_p)
     check_p.add_argument("--top", help="top cell (default: the layout's)")
     check_p.add_argument("--report", help="report database to write (default: beside the layout)")
 

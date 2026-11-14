@@ -311,14 +311,56 @@ def split(folder) -> int:
     return written
 
 
-def rules_and_warnings(sheets):
-    """Every rule of the given ``[(path, sheet)]`` and what should be said about them."""
+def _patterns(text):
+    """``"NW.*, 3-metal"`` (or a list of such) -> ``["NW.*", "3-metal"]``."""
+    if not text:
+        return []
+    items = [text] if isinstance(text, str) else list(text)
+    return [p.strip() for item in items for p in item.split(",") if p.strip()]
+
+
+def _section_in_path(path):
+    parts = os.path.normpath(path).split(os.sep)
+    if "rules" in parts[:-1]:
+        at = len(parts) - 2 - parts[-2::-1].index("rules")
+        return "/".join(parts[at + 1:-1])
+    return ""
+
+
+def chosen(name, section, only=None, skip=None, hit=None) -> bool:
+    """Is the rule `name` of `section` in the set being built?  `only` / `skip` are
+    patterns (``*`` and ``?`` as in file names) matched against the rule's name, its
+    section, or ``section/name``; `only` empty means every rule. `hit` collects the
+    patterns that matched something."""
+    import fnmatch
+
+    def matching(patterns):
+        found = [p for p in patterns
+                 if any(fnmatch.fnmatchcase(x, p) for x in (name, section, f"{section}/{name}") if x)]
+        if hit is not None:
+            hit.update(found)
+        return found
+    only, skip = _patterns(only), _patterns(skip)
+    wanted = bool(matching(only)) if only else True          # both are asked, so both are recorded
+    return not matching(skip) and wanted
+
+
+def rules_and_warnings(sheets, only=None, skip=None):
+    """Every rule of the given ``[(path, sheet)]`` and what should be said about them.
+    With `only` / `skip` (see `chosen`): the rules of that set."""
     from .backend import get
     rules, notes = [], []
     silent = get("docs")
+    hit, total = set(), 0
     for path, data in sheets:
+        section = _section_in_path(path)
+        picked = [r for r in rules_of(data)]
+        total += len(picked)
+        picked = [r for r in picked if chosen(r.get("name") or "", section, only, skip, hit)]
+        if not picked:
+            continue
         notes += [f"{os.path.basename(path)}: {n}" for n in sheet_warnings(data)]
-        for r in rules_of(data):
+        for r in picked:
             name = r.get("name") or "(unnamed)"
             rules.append(r)
             if not Rule(r).connections() and any(".net" in c.get("expr", "") for c in r.get("constraints", [])):
@@ -327,19 +369,39 @@ def rules_and_warnings(sheets):
             notes += [f"rule {name}: {n}" for n in r.get("warnings", [])]
             if "(no checkable assertion found)" in silent.compile(Rule(r)):
                 notes.append(f"rule {name} checks nothing -- no bound, cross or 'in' applies to what is drawn")
+    for p in _patterns(only) + _patterns(skip):
+        if p not in hit:
+            notes.append(f"no rule or section is called {p!r}")
     return rules, notes
 
 
-def build(folder, out_dir=None, extra=()):
+def build(folder, out_dir=None, extra=(), only=None, skip=None, optimise=True):
     """Compile a process: ``(deck path, text path, number of rules, warnings)``. `extra`
-    names further backends (plugins) whose files are written beside the deck."""
+    names further backends (plugins) whose files are written beside the deck.
+
+    `only` / `skip` choose the rules (see `chosen`): the deck and the text hold that set
+    alone, and only the layers it needs are read. With `optimise`, the chosen rules
+    are one graph (ir.py): what several of them need is computed once, so the script is
+    fitted to the set."""
     from .backend import get
     proc, sheets = load(folder)
     name = proc.get("name") or deck_name(folder)
-    rules, notes = rules_and_warnings(sheets)
+    rules, notes = rules_and_warnings(sheets, only, skip)
     layermap = {k: tuple(v) for k, v in (proc.get("layers") or {}).items()}
-    kl = get("klayout", layermap=layermap, standalone=True, title=name)
+    kl = get("klayout", layermap=layermap, standalone=True, title=name, optimise=optimise)
     deck = kl.compile_all(rules)
+    notes += kl.problems
+    if kl.graph:
+        st = kl.graph.stats
+        deck = deck.replace("\n", f"\n# {st['written']} layer operations as the rules are written, "
+                                  f"{st['after']} run: what several rules need is computed once"
+                                  + (f"; nets extracted {st['nets']} time(s) instead of {st['nets_written']}"
+                                     if st.get("nets_written", 0) > st.get("nets", 0) else "") + "\n", 1)
+    if _patterns(only) or _patterns(skip):
+        every = sum(len(rules_of(d)) for _, d in sheets)
+        said = "; ".join(x for x in ("only " + ", ".join(_patterns(only)) if _patterns(only) else "",
+                                     "without " + ", ".join(_patterns(skip)) if _patterns(skip) else "") if x)
+        deck = deck.replace("\n", f"\n# {len(rules)} of the deck's {every} rules: {said}\n", 1)
     if kl.unmapped:
         notes.append("no layer number for " + ", ".join(sorted(kl.unmapped))
                      + f" -- add to \"layers\" in {PROCESS_FILE}")
@@ -374,14 +436,14 @@ def read_markers(path) -> dict:
     return out
 
 
-def selftest(folder, out_dir=None):
+def selftest(folder, out_dir=None, only=None, skip=None, optimise=True):
     """Do the rules behave as drawn?  Builds the deck, generates test cases from the
     drawings (the ``cases`` backend), runs the deck on them in KLayout, and compares.
 
     Returns ``{"rules": {rule: "ok" | "wrong" | "not generated"},
     "constraints": {(rule, constraint under test): "ok" | "wrong"}, "wrong": [text, ...],
     "not_generated": [(rule, why), ...], "notes": [...], "files": {...}}``."""
-    deck, _, n, notes = build(folder, out_dir, extra=("cases",))
+    deck, _, n, notes = build(folder, out_dir, extra=("cases",), only=only, skip=skip, optimise=optimise)
     return _run_selftest(deck, notes)
 
 

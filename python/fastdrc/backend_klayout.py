@@ -40,7 +40,9 @@ class KLayoutBackend(Backend):
     about = "a KLayout DRC deck"
 
     def __init__(self, layermap=None, metric="euclidian", regions=None, scope_all=None,
-                 standalone=False, title="FastDRC"):
+                 standalone=False, title="FastDRC", optimise=False):
+        # optimise: the rules as one graph -- what several need is computed once (ir.py)
+        self.optimise, self.shared, self.graph, self.problems = optimise, {}, None, []
         self.layermap = dict(layermap or {})
         self.unmapped = []    # layers used by the rules that the layer map does not give
         self.metric = metric
@@ -177,14 +179,29 @@ class KLayoutBackend(Backend):
                     " [-rd topcell=<name>]",
                     "if $topcell", "  source($input, $topcell)", "else", "  source($input)", "end",
                     f'report("{self._q(self.title)}", $report || "fastdrc_report.lyrdb")', ""]
-        out += self._decls
-        out += [f"{name} = {defn}" for name, defn in self.regions.items()]
-        out += [f"{name} = {expr}" for expr, name in self._named.items()]
+        named = [f"{name} = {expr}" for expr, name in self._named.items()]
+        top = self._decls + [f"{name} = {defn}" for name, defn in self.regions.items()] + named
+        checks = self._checks
+        self.shared, self.graph = {}, None
+        if self.optimise:                         # the rules as ONE graph, optimised, written back (ir.py)
+            from .ir import Deck, ParseError
+            try:
+                graph = Deck()
+                graph.add(top, top=True)
+                graph.add(checks)
+                graph.optimise()
+                top, checks, self.shared = graph.lines()
+                self.graph = graph
+            except ParseError as ex:           # a statement the graph cannot read: the deck as written
+                self.problems.append(f"not optimised ({ex})")
+                top = self._decls + [f"{name} = {defn}" for name, defn in self.regions.items()] + named
+                checks = self._checks
+        out += top
         for text in self._helpers.values():
             out += ["", *text.splitlines()]
-        if self._decls or self.regions or self._named:
+        if top:
             out.append("")
-        out += self._checks
+        out += checks
         return "\n".join(out) + "\n"
 
     def _check_expr(self, rule, var, lo, hi, select=False, corner_of=None):

@@ -112,6 +112,18 @@ nothing, a layer with no number, columns that leave a gap, a net rule with no st
     fastdrc build examples/demo                  ->  build/demo.drc, build/demo.md
     fastdrc check layout.gds examples/demo       builds, runs KLayout, lists the violations
 
+**Part of the deck.** `build`, `check` and `selftest` take the rules to build:
+
+    fastdrc check layout.gds examples/demo --only 3-metal          one section
+    fastdrc check layout.gds examples/demo --only "NW.*,CO.1"      rules by name (* and ? as in file names)
+    fastdrc build examples/demo --skip "DN.*,AN.1"                 everything but these
+
+The script is made for that set: only its rules, only the layers they need. The set is
+compiled as one graph of layer operations, so what several rules need —
+`cont.squares`, `pdiff.and(nwell)` — is computed once and released after its last use,
+instead of once per rule. What can be shared depends on the set, so it is worked out at
+every build; `--no-optimise` writes each rule out in full.
+
 `check` needs KLayout (`klayout` on the PATH, or `KLAYOUT_BIN`). Without it, run the
 deck yourself — it is plain KLayout DRC: the layers, the legend, and one statement per
 rule with its name and description.

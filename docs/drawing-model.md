@@ -815,6 +815,43 @@ fastdrc build mydeck                    # -> build/<name>.drc and build/<name>.m
 fastdrc check chip.gds mydeck           # builds, runs KLayout, lists the violations per rule
 ```
 
+**One script for the set being run.** `build`, `check` and `selftest` take `--only`
+and `--skip`: rule names or sections, comma-separated, `*` and `?` as in file names
+(`--only 3-metal`, `--only "NW.*,CO.1"`, `--skip "DN.*"`, `--only 2-devices/CO.1`). The
+deck holds those rules alone and reads only the layers they need; its first lines say
+which set it is.
+
+The rules of the set are compiled as **one graph** (`python/fastdrc/ir.py`), the way a
+compiler treats a program: a node per layer operation, its inputs as edges, the rules'
+outputs and connections as the steps to perform. In a graph the same expression in two
+rules is one node, so it is computed once. Passes then rewrite the graph:
+
+| pass | what it does |
+|---|---|
+| (by construction) | the same expression, wherever it occurs, is one node |
+| one spelling | `b.and(a)` is `a.and(b)`; layers cut out of a shape may be cut in any order |
+| build on what is there | `comp.not(mvsd).not(otp)` becomes `comp.not(otp).not(mvsd)` when `comp.not(otp)` is needed anyway — one operation on a smaller layer |
+| nets once | everything read off the nets (`.nets`, antenna ratios, shares of a plate) is collected by the set of connections it is read under; each set is declared once — a larger one built on the smaller — and the nets are extracted once per set, not once per rule |
+| schedule | each node is computed just before it is first needed and released after its last use |
+
+```
+cont_squares = cont.squares
+co_1_l1 = cont_squares.edges.without_length(0.2.um).extended(0, 0, 0.001, 0.001)
+...
+co_4_l1 = diff.enclosing(cont_squares, 0.1.um, euclidian).polygons(0.001)
+cont_squares.forget
+```
+
+A rule's result never changes by this — only how often an operation runs; the deck's
+second line counts it (`364 layer operations as the rules are written, 259 run`). What
+is shared depends on the set, so it is worked out at every build. `connect` changes
+what `.nets` and the antenna checks mean, so such a node belongs to the connections it
+was written under: it is shared with a rule that reads the same thing under the same
+connections, never across different ones, and a layer a connection holds is never
+released. (Extracting the nets is the most expensive single step of a deck with antenna
+rules — on the IHP deck, eleven extractions written, four run.) `--no-optimise` writes every rule out in full (one self-contained statement
+per rule, as `fastdrc rules` prints it).
+
 The folder zipped is the same deck in one file: `fastdrc pack mydeck` writes
 `mydeck.zip` (everything but `build/`), `fastdrc unpack mydeck.zip` gives the folder
 back, `fastdrc init mydeck.zip` starts an empty one. `build`, `check`, `selftest`,

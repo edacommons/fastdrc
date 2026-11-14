@@ -21,7 +21,8 @@ def test_the_example_builds_without_a_warning(tmp_path):
     assert notes == [] and n == 18                                  # NW.4 is two columns
     deck = open(deck_path).read()
     assert deck.count(".output(") == 18 and "nwell = polygons(1, 0)" in deck
-    for line in ["nw_3_l1 = nwell.nets.space(2.um, euclidian, props_ne).polygons(0.001)",
+    for line in ["nwell_nets = nwell.nets",                         # the nets are read once, with their connections
+                 "nw_3_l1 = nwell_nets.space(2.um, euclidian, props_ne).polygons(0.001)",
                  "lu_1_l1 = pdiff.and(nwell).not(ndiff.and(nwell).sized(20.um))",
                  "v1_2_l1 = met1.sized(-0.999.um).sized(0.999.um).not_interacting(via1, 2)",
                  "an_1_l1 = antenna_check(gate, met1, 400.0)",
