@@ -8,48 +8,48 @@
     {
      "id": "ka_0",
      "start": [
-      44,
-      3
+      0,
+      0
      ],
      "end": [
-      45,
-      3
+      4,
+      0
      ],
-     "edge": false
+     "edge": true
     },
     {
      "id": "ka_1",
      "start": [
-      45,
-      3
+      4,
+      0
      ],
      "end": [
-      45,
+      4,
       4
      ],
-     "edge": false
+     "edge": true
     },
     {
      "id": "ka_2",
      "start": [
-      45,
+      4,
       4
      ],
      "end": [
-      44,
+      0,
       4
      ],
-     "edge": false
+     "edge": true
     },
     {
      "id": "ka_3",
      "start": [
-      44,
+      0,
       4
      ],
      "end": [
-      44,
-      3
+      0,
+      0
      ],
      "edge": false
     }
@@ -61,48 +61,48 @@
     {
      "id": "kb_0",
      "start": [
-      44,
-      7
+      0,
+      8
      ],
      "end": [
-      45,
-      7
+      4,
+      8
      ],
-     "edge": false
+     "edge": true
     },
     {
      "id": "kb_1",
      "start": [
-      45,
-      7
-     ],
-     "end": [
-      45,
+      4,
       8
      ],
-     "edge": false
+     "end": [
+      4,
+      12
+     ],
+     "edge": true
     },
     {
      "id": "kb_2",
      "start": [
-      45,
-      8
+      4,
+      12
      ],
      "end": [
-      44,
-      8
+      0,
+      12
      ],
      "edge": false
     },
     {
      "id": "kb_3",
      "start": [
-      44,
-      8
+      0,
+      12
      ],
      "end": [
-      44,
-      7
+      0,
+      8
      ],
      "edge": false
     }
@@ -114,50 +114,50 @@
     {
      "id": "kc_0",
      "start": [
-      48,
-      7
+      8,
+      8
      ],
      "end": [
-      49,
-      7
+      12,
+      8
      ],
-     "edge": false
+     "edge": true
     },
     {
      "id": "kc_1",
      "start": [
-      49,
-      7
-     ],
-     "end": [
-      49,
+      12,
       8
      ],
-     "edge": false
+     "end": [
+      12,
+      12
+     ],
+     "edge": true
     },
     {
      "id": "kc_2",
      "start": [
-      49,
-      8
+      12,
+      12
      ],
      "end": [
-      48,
-      8
+      8,
+      12
      ],
      "edge": false
     },
     {
      "id": "kc_3",
      "start": [
-      48,
-      8
+      8,
+      12
      ],
      "end": [
-      48,
-      7
+      8,
+      8
      ],
-     "edge": false
+     "edge": true
     }
    ]
   }

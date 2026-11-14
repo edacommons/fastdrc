@@ -8,35 +8,35 @@
     {
      "id": "ka_0",
      "start": [
-      44,
-      3
+      0,
+      0
      ],
      "end": [
-      45,
-      3
+      4,
+      0
      ],
-     "edge": false
+     "edge": true
     },
     {
      "id": "ka_1",
      "start": [
-      45,
-      3
+      4,
+      0
      ],
      "end": [
-      45,
+      4,
       4
      ],
-     "edge": false
+     "edge": true
     },
     {
      "id": "ka_2",
      "start": [
-      45,
+      4,
       4
      ],
      "end": [
-      44,
+      0,
       4
      ],
      "edge": false
@@ -44,12 +44,12 @@
     {
      "id": "ka_3",
      "start": [
-      44,
+      0,
       4
      ],
      "end": [
-      44,
-      3
+      0,
+      0
      ],
      "edge": false
     }

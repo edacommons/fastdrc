@@ -78,6 +78,7 @@ python/fastdrc/editor.py          the visual editor (Tkinter)
 tools/compare_reports.py          two DRC runs of one layout, compared rule by rule, by place
 tools/cells_in_a_row.rb           a cell library laid out flat, to try a deck on
 tools/perturb_layout.rb           random small errors put into a layout
+tools/tidy_drawings.py            a deck's drawings redrawn neatly, their meaning unchanged
 ```
 
 The other `tools/` scripts validate the compiler against a reference deck and a

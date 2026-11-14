@@ -8,11 +8,11 @@
     {
      "id": "pw_0",
      "start": [
-      26,
+      0,
       0
      ],
      "end": [
-      28,
+      4,
       0
      ],
      "edge": false
@@ -20,38 +20,38 @@
     {
      "id": "pw_1",
      "start": [
-      28,
+      4,
       0
      ],
      "end": [
-      28,
-      16
+      4,
+      6
      ],
-     "edge": false
+     "edge": true
     },
     {
      "id": "pw_2",
      "start": [
-      28,
-      16
+      4,
+      6
      ],
      "end": [
-      26,
-      16
+      0,
+      6
      ],
      "edge": false
     },
     {
      "id": "pw_3",
      "start": [
-      26,
-      16
+      0,
+      6
      ],
      "end": [
-      26,
+      0,
       0
      ],
-     "edge": false
+     "edge": true
     }
    ]
   }

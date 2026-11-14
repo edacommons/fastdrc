@@ -12,7 +12,7 @@
       0
      ],
      "end": [
-      8,
+      6,
       0
      ],
      "edge": false
@@ -20,24 +20,24 @@
     {
      "id": "na_1",
      "start": [
-      8,
+      6,
       0
      ],
      "end": [
-      8,
-      10
+      6,
+      6
      ],
-     "edge": false
+     "edge": true
     },
     {
      "id": "na_2",
      "start": [
-      8,
-      10
+      6,
+      6
      ],
      "end": [
       0,
-      10
+      6
      ],
      "edge": false
     },
@@ -45,13 +45,13 @@
      "id": "na_3",
      "start": [
       0,
-      10
+      6
      ],
      "end": [
       0,
       0
      ],
-     "edge": false
+     "edge": true
     }
    ]
   }
