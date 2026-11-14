@@ -41,7 +41,7 @@ int main() {
   assert(shared_pt->edges().size() == 3);  // (4,0) now also on e3
 
   // A perpendicular edge lies on a different line.
-  const auto e4 = pool.edge({0, 0}, {0, 5});
+  const auto e4 = pool.edge(Coord2D{0, 0}, Coord2D{0, 5});  // spelled out: {0, n} also reads as a null pointer
   assert(e4->line != e1->line);
   assert(pool.line_count() == 2);
 
