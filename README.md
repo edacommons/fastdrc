@@ -9,13 +9,11 @@ the whole deck, or part of it — so what several rules need is computed once.
 
     pip install .                # from a checkout (not on PyPI yet); pure Python, no compiler needed
 
-> Status: pre-alpha. This release is the **rule compiler** with its **KLayout
-> backend** (compared rule by rule with the public decks of several open processes),
-> the self-test and the editor. Backends are plugins. A **C++ checking core** is in
-> development in this repository as a second backend; it is not part of the Python
-> package and nothing here needs it. Today it is a geometry layer only (merge, layer
-> algebra, grow / shrink on a compiled `.tiles` format; `Layout::check` is a stub) —
-> see [Build the C++ core](#build-the-c-core).
+> Status: pre-alpha. This is the **rule compiler** with its **KLayout backend**
+> (compared rule by rule with the public decks of several open processes), the
+> self-test and the editor. Backends are plugins. A C++ checking core is being
+> developed separately, on the `cpp-core` branch, to become a second backend; it is
+> not part of `main` and nothing here needs it.
 
 ## Authoring rules by drawing
 
@@ -86,14 +84,11 @@ drawn-rule corpus read from `docs/gf180mcu/`, which is not part of this reposito
 ## Layout
 
 ```
-include/fastdrc/   public C++ headers
-src/               C++ core implementation  -> fastdrc::core
-bindings/          nanobind module          -> fastdrc._fastdrc (optional)
-python/fastdrc/    Python package: the rule compiler, its backends, the editor
-tools/             rule-compiler validation against a reference deck
-docs/              docs (see docs/drawing-model.md)
-tests/             C++ (CTest) + Python (pytest) tests
-examples/          usage examples
+python/fastdrc/    the Python package: the rule compiler, its backends, the editor
+examples/demo/     a complete deck for an invented process, with every kind of rule
+docs/              the tutorial (from-a-manual.md) and the reference (drawing-model.md)
+tools/             validation of the compiler against a reference deck
+tests/             pytest
 ```
 
 ## Compiling a drawn rule
@@ -112,54 +107,12 @@ deck_path, text_path, n_rules, warnings = process.build("examples/demo")
 
 ## Install for development
 
-Requires Python 3.11+.
+Requires Python 3.11+; pure Python, no compiler.
 
 ```bash
-pip install -e . pytest          # editable install, pure Python
-pytest                           # the tests of the C++ core are skipped until it is built
+pip install -e . pytest
+pytest
 ```
 
-With [uv](https://docs.astral.sh/uv/): `uv sync` then `uv run pytest`.
-
-## Build the C++ core
-
-The core is in development and optional. It is a C++ library (`fastdrc::core`) with a
-[nanobind](https://nanobind.readthedocs.io) Python module, built with CMake:
-
-```bash
-cmake -S . -B build              # the library + the C++ tests
-cmake --build build
-ctest --test-dir build --output-on-failure
-```
-
-To use it from Python, build the module too; it is written into `python/fastdrc/`,
-where an editable install finds it (`fastdrc.has_core()` then says `True`):
-
-```bash
-pip install nanobind 'rawast>=0.1.1'     # rawast: the GDS reader, for `fastdrc compose`
-cmake -S . -B build -DFASTDRC_BUILD_PYTHON=ON
-cmake --build build
-python examples/basic.py
-```
-
-```python
-import fastdrc
-
-d = fastdrc.Design(dbu_per_micron=1000)
-m1 = d.add_layer(gds_layer=10, gds_datatype=0, name="metal1")
-m1.add_rect(0, 0, 10, 10)
-m1.add_rect(5, 5, 15, 15)                  # overlaps -> merged into one region
-via = d.add_layer(gds_layer=11, gds_datatype=0, name="via1")
-via.add_rect(2, 2, 8, 8)
-
-fastdrc.write_split(d, "out")              # out/metal1.tiles, out/via1.tiles, out/index.json
-fastdrc.boolean("out/metal1.tiles", "out/via1.tiles", "sub", "out/m1_not_via.tiles")
-fastdrc.inflate("out/via1.tiles", 2, "out/via_halo.tiles")   # d < 0 shrinks
-```
-
-The same from the command line: `fastdrc compose config.toml` (GDS -> `.tiles`),
-`fastdrc boolean`, `fastdrc inflate`, and `fastdrc run deck.toml` (a DAG of such
-steps). Without the core these four say so; every other command works.
-
-To consume the library from another CMake project, link `fastdrc::core` and include the
-headers you need from `<fastdrc/...>` (e.g. `design.hpp`, `sweep.hpp`, `layer_ops.hpp`).
+With [uv](https://docs.astral.sh/uv/): `uv sync` then `uv run pytest`. Tests that run a
+deck need [KLayout](https://www.klayout.de) and are skipped without it.

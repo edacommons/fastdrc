@@ -455,30 +455,3 @@ def test_a_forbidden_corner_is_tested_where_it_is_and_where_it_is_not():
     assert skipped == [] and got == [("check lp1.corner != 90", "the corner as drawn", True),
                                      ("check lp1.corner != 90", "the same without D", False)]
     assert [sorted(s["layer"] for s in c["shapes"]) for c in cases] == [["diff", "poly"], ["poly"]]
-
-
-def test_the_compiler_does_not_need_the_cpp_core(monkeypatch, capsys):
-    """The package is pure Python: importing it, and everything from a drawing to a deck,
-    works without the compiled core; only the geometry commands ask for it, and say so."""
-    import builtins
-    import sys
-
-    import fastdrc
-    from fastdrc import cli
-    real = builtins.__import__
-
-    def no_core(name, globals=None, locals=None, fromlist=(), level=0):
-        if name.endswith("_fastdrc") or (level and "_fastdrc" in (fromlist or ())):
-            raise ImportError("no compiled core")
-        return real(name, globals, locals, fromlist, level)
-
-    monkeypatch.setattr(builtins, "__import__", no_core)
-    monkeypatch.delitem(sys.modules, "fastdrc._fastdrc", raising=False)
-    monkeypatch.delattr(fastdrc, "_fastdrc", raising=False)
-    assert not fastdrc.has_core()
-    with pytest.raises(ImportError, match="C\\+\\+ core is not built"):
-        fastdrc.Design
-    with pytest.raises(SystemExit, match="fastdrc boolean: the C\\+\\+ core is not built"):
-        cli.main(["boolean", "--a", "a", "--b", "b", "--op", "and", "--out", "c"])
-    assert cli.main(["rules", os.path.join(DEMO, "rules", "1-wells", "NW.1.json"), "--to", "docs"]) in (0, None)
-    assert "nwell" in capsys.readouterr().out

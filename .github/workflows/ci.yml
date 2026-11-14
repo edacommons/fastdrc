@@ -6,17 +6,6 @@ on:
   pull_request:
 
 jobs:
-  cpp:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Configure
-        run: cmake -S . -B build
-      - name: Build
-        run: cmake --build build -j
-      - name: Test
-        run: ctest --test-dir build --output-on-failure
-
   python:
     runs-on: ubuntu-latest
     strategy:
@@ -30,13 +19,5 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: Install
         run: uv sync
-      - name: Test (pure Python; the tests of the C++ core are skipped)
+      - name: Test
         run: uv run pytest -q
-      - name: Build the C++ core into the package
-        run: |
-          uv run cmake -S . -B build-py -DFASTDRC_BUILD_PYTHON=ON -DFASTDRC_BUILD_TESTS=OFF
-          cmake --build build-py -j
-      - name: Test with the core
-        run: |
-          uv run python -c "import fastdrc; assert fastdrc.has_core()"
-          uv run pytest -q
