@@ -21,6 +21,11 @@ point in the group ``fastdrc.backends``::
 where ``MyBackend`` subclasses `Backend`, sets ``name`` and implements ``compile``. It
 then works everywhere a backend is named: ``fastdrc rules ... --to mytarget``,
 ``fastdrc build DIR --with mytarget``, the editor's text pane.
+
+A backend may also RUN what it compiles on a layout (``runs = True``, with `ready` and
+`run`). ``fastdrc build | check | selftest --backend NAME`` then compile the deck with
+it and run it with it; KLayout is the one shipped here that does, and nothing else in
+the tool names it.
 """
 
 from __future__ import annotations
@@ -28,10 +33,35 @@ from __future__ import annotations
 from .rule import Rule
 
 
+class RunError(RuntimeError):
+    """A backend could not run a deck (not installed, or it failed)."""
+
+
 class Backend:
     name = "abstract"
     extension = ".txt"        # of the file `fastdrc build` writes for this backend
     about = ""                # one line for `fastdrc backends`
+    runs = False              # can it also RUN the deck it compiles on a layout?
+
+    # ---- running a deck: what `fastdrc check` and `fastdrc selftest` ask of a backend that `runs` ----
+    def ready(self):
+        """None if the backend can run its deck here; otherwise what is missing, as a sentence."""
+        return f"the {self.name} backend writes a file; it does not run one"
+
+    def by_hand(self, deck, layout) -> str:
+        """How to run the deck oneself (shown when the backend is not `ready`); may be ''."""
+        return ""
+
+    def run(self, deck, layout, top=None, report=None) -> dict:
+        """Run the compiled `deck` (a file this backend wrote) on `layout`, a GDS / OASIS
+        file; `top` names the cell to check (default: the layout's), `report` where to
+        leave the backend's own report, if it writes one. Returns::
+
+            {"rules": {rule name: (description, [(x0, y0, x1, y1) | None, ...])},   # µm, one box per violation (None: no place);
+             "report": path or None}                                         # every rule of the deck, clean ones with []
+
+        Raises `RunError` if it cannot run or fails."""
+        raise RunError(self.ready() or f"the {self.name} backend has no run step")
 
     def files(self, rules, stem) -> dict:
         """What this backend writes for a set of rules, as ``{file name: text}`` --
@@ -41,6 +71,11 @@ class Backend:
 
     def compile(self, rule: Rule) -> str:
         raise NotImplementedError
+
+    def headed(self, text, about) -> str:
+        """The compiled deck with lines `about` it (which rules of the process it holds)
+        put at its head, in this target's comment form. Default: left as it is."""
+        return text
 
     def compile_all(self, rules) -> str:
         """Compile several rules (rule dicts or `Rule`s) into one output. A backend
@@ -114,6 +149,15 @@ def get(name, **kw) -> Backend:
 def available() -> list[str]:
     _discover()
     return sorted(_REGISTRY)
+
+
+def runner(name, **kw) -> Backend:
+    """A backend that runs what it compiles, by name."""
+    b = get(name, **kw)
+    if not b.runs:
+        raise KeyError(f"the {name!r} backend does not run decks; these do: "
+                       + ", ".join(n for n in available() if _REGISTRY[n].runs))
+    return b
 
 
 @register

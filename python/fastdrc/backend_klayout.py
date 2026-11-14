@@ -23,7 +23,9 @@ from __future__ import annotations
 
 import re
 
-from .backend import register, Backend
+import os
+
+from .backend import register, Backend, RunError
 from .rule import Rule, rel_to_sel as _rel_to_sel   # selection classification lives on the Rule
 
 # flip a comparison so the value can move to the left of a .drc() range predicate
@@ -38,6 +40,59 @@ class KLayoutBackend(Backend):
     name = "klayout"
     extension = ".drc"
     about = "a KLayout DRC deck"
+    runs = True
+
+    def headed(self, text, about):
+        about = list(about)
+        if self.graph:
+            st = self.graph.stats
+            about.append(f"{st['written']} layer operations as the rules are written, "
+                         f"{st['after']} run: what several rules need is computed once"
+                         + (f"; nets extracted {st['nets']} time(s) instead of {st['nets_written']}"
+                            if st.get("nets_written", 0) > st.get("nets", 0) else ""))
+        return text.replace("\n", "\n" + "".join(f"# {line}\n" for line in about), 1) if about else text
+
+    # ---- running the deck: KLayout in batch mode, its report database read back ----
+    @staticmethod
+    def binary():
+        """The KLayout executable: ``$KLAYOUT_BIN``, else ``klayout`` on the PATH, else None."""
+        import shutil
+        return os.environ.get("KLAYOUT_BIN") or shutil.which("klayout")
+
+    def ready(self):
+        return None if self.binary() else "KLayout not found -- put `klayout` on the PATH or set KLAYOUT_BIN"
+
+    def by_hand(self, deck, layout):
+        return f"klayout -b -r {deck} -rd input={layout}"
+
+    def run(self, deck, layout, top=None, report=None):
+        import subprocess
+        if not self.binary():
+            raise RunError(self.ready())
+        # absolute: KLayout resolves a report path against the deck's folder, not the caller's
+        report = os.path.abspath(report or os.path.splitext(layout)[0] + ".lyrdb")
+        cmd = [self.binary(), "-b", "-r", deck, "-rd", f"input={os.path.abspath(layout)}", "-rd", f"report={report}"]
+        if top:
+            cmd += ["-rd", f"topcell={top}"]
+        p = subprocess.run(cmd, capture_output=True, text=True)
+        if p.returncode != 0 or not os.path.exists(report):
+            raise RunError("KLayout failed:\n" + (p.stderr or p.stdout)[-2000:])
+        return {"rules": self.read(report), "report": report}
+
+    @staticmethod
+    def read(path) -> dict:
+        """``{rule: (description, [(x0, y0, x1, y1), ...])}`` of a KLayout report database
+        (.lyrdb): every rule the deck declared, in that order, with the bounding box (µm)
+        of each of its markers (None for a marker that is a value, not a place)."""
+        text = open(path, encoding="utf-8").read()
+        head = text.split("<cells>")[0]
+        out = {n: (d, []) for n, d in re.findall(
+            r"<category>\s*<name>([^<]*)</name>\s*<description>([^<]*)</description>", head)}
+        for cat, vals in re.findall(r"<item>.*?<category>'?([^<']*)'?</category>.*?<values>(.*?)</values>", text, re.S):
+            pts = [(float(a), float(b)) for a, b in re.findall(r"(-?[\d.]+(?:e-?\d+)?),(-?[\d.]+(?:e-?\d+)?)", vals)]
+            xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+            out.setdefault(cat, ("", []))[1].append((min(xs), min(ys), max(xs), max(ys)) if pts else None)
+        return out
 
     def __init__(self, layermap=None, metric="euclidian", regions=None, scope_all=None,
                  standalone=False, title="FastDRC", optimise=False):

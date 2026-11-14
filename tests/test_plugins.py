@@ -49,6 +49,54 @@ def test_another_package_can_add_a_backend(monkeypatch):
     assert get("shout").files([rule], "deck") == {"deck.shout.txt": "W.1"}
 
 
+def test_another_package_can_add_a_backend_that_runs_its_deck(monkeypatch, tmp_path, capsys):
+    """A backend may also RUN the deck it compiles: build, check and selftest go through
+    the backend chosen, and nothing but that backend is asked how."""
+    ran = []
+
+    class Toy(Backend):
+        name, extension, about, runs = "toy", ".toy", "rule names, one per line", True
+
+        def __init__(self, title="deck"):
+            self.title = title
+
+        def compile(self, rule):
+            return rule.name
+
+        def ready(self):
+            return None
+
+        def run(self, deck, layout, top=None, report=None):
+            ran.append((os.path.basename(deck), os.path.basename(layout), top))
+            names = open(deck).read().split()
+            return {"rules": {n: ("", [(0.0, 0.0, 1.0, 1.0)] if n == "NW.1" else []) for n in names}, "report": None}
+
+    monkeypatch.setitem(backend._REGISTRY, "toy", Toy)
+    assert backend.runner("toy").name == "toy" and backend.runner("klayout").runs
+    with pytest.raises(KeyError, match="does not run decks; these do: klayout, toy"):
+        backend.runner("docs")
+    assert "does not run" in get("docs").ready()
+    with pytest.raises(backend.RunError):
+        get("docs").run("x", "y")
+
+    deck, text, n, notes = process.build(DEMO, str(tmp_path), backend="toy")
+    assert deck.endswith("demo.toy") and n == 18 and "NW.1" in open(deck).read().split()
+    assert os.path.exists(text)                                  # the rules as sentences, whatever the backend
+
+    from fastdrc import cli
+    layout = tmp_path / "chip.gds"
+    layout.write_bytes(b"")
+    import shutil
+    mine = str(tmp_path / "demo")                                # `check` builds beside the deck
+    shutil.copytree(DEMO, mine, ignore=shutil.ignore_patterns("build"))
+    assert cli.main(["check", str(layout), mine, "--backend", "toy", "--only", "NW.*"]) == 1
+    out = capsys.readouterr().out
+    assert "NW.1" in out and "1 violation(s) of 1 rule(s); 4 of 5 rules clean." in out and "Report" not in out
+    assert ran[-1][1:] == ("chip.gds", None)
+    with pytest.raises(SystemExit, match="the 'docs' backend does not run decks"):
+        cli.main(["check", str(layout), DEMO, "--backend", "docs"])
+
+
 def _plan(rule):
     cases, skipped = get("cases").plan([rule])
     return [(c["testing"], c["case"], c["expect"]) for c in cases], skipped, cases

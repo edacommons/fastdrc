@@ -178,7 +178,12 @@ def _compile_rules(args):
 
 def _set(args):
     """Which rules, and how the script is fitted to them (`--only`, `--skip`, `--no-optimise`)."""
-    return {"only": args.only, "skip": args.skip, "optimise": not args.no_optimise}
+    from .backend import runner
+    try:
+        runner(args.backend)
+    except KeyError as ex:
+        raise SystemExit(f"fastdrc: {ex.args[0]}")
+    return {"only": args.only, "skip": args.skip, "optimise": not args.no_optimise, "backend": args.backend}
 
 
 def _set_options(p):
@@ -188,6 +193,8 @@ def _set_options(p):
     p.add_argument("--skip", action="append", metavar="RULES", help="leave these rules out (same form)")
     p.add_argument("--no-optimise", action="store_true",
                    help="write every rule out in full instead of computing once what several rules need")
+    p.add_argument("--backend", default="klayout", metavar="NAME",
+                   help="the backend that compiles the deck and runs it (default: klayout; see `fastdrc backends`)")
 
 
 def _build(args):
@@ -231,30 +238,25 @@ def _selftest(args):
 
 def _check(args):
     """`fastdrc check`: build the process, run its deck on a layout, say what it found."""
-    import subprocess
-
     from . import process
+    from .backend import RunError, runner
     deck, _, n, notes = process.build(args.process, **_set(args))
     for note in notes:
         print(f"fastdrc: warning: {note}", file=sys.stderr)
-    klayout = process.klayout_binary()
-    if not klayout:
-        raise SystemExit("fastdrc: KLayout not found -- put `klayout` on the PATH or set KLAYOUT_BIN.\n"
-                         f"         The deck is ready: klayout -b -r {deck} -rd input={args.layout}")
-    report = os.path.abspath(args.report or os.path.splitext(args.layout)[0] + ".lyrdb")
-    cmd = [klayout, "-b", "-r", deck, "-rd", f"input={os.path.abspath(args.layout)}", "-rd", f"report={report}"]
-    if args.top:
-        cmd += ["-rd", f"topcell={args.top}"]
-    p = subprocess.run(cmd, capture_output=True, text=True)
-    if p.returncode != 0 or not os.path.exists(report):
-        raise SystemExit("fastdrc: KLayout failed:\n" + (p.stderr or p.stdout)[-2000:])
-    counts = process.read_report(report)
-    hit = {r: v for r, v in counts.items() if v[0]}
+    eng = runner(args.backend)
+    if eng.ready():
+        by_hand = eng.by_hand(deck, args.layout)
+        raise SystemExit(f"fastdrc: {eng.ready()}." + (f"\n         The deck is ready: {by_hand}" if by_hand else ""))
+    try:
+        res = eng.run(deck, args.layout, top=args.top, report=args.report)
+    except RunError as ex:
+        raise SystemExit(f"fastdrc: {ex}")
+    hit = {r: v for r, v in res["rules"].items() if v[1]}
     width = max((len(r) for r in hit), default=0)
-    for r, (c, desc) in hit.items():
-        print(f"  {r:{width}}  {c:5}  {desc}")
-    print(f"{sum(c for c, _ in hit.values())} violation(s) of {len(hit)} rule(s); {len(counts) - len(hit)} of "
-          f"{len(counts)} rules clean. Report: {report}")
+    for r, (desc, boxes) in hit.items():
+        print(f"  {r:{width}}  {len(boxes):5}  {desc}")
+    print(f"{sum(len(b) for _, b in hit.values())} violation(s) of {len(hit)} rule(s); {len(res['rules']) - len(hit)} of "
+          f"{len(res['rules'])} rules clean." + (f" Report: {res['report']}" if res.get("report") else ""))
     return 1 if hit else 0
 
 
@@ -401,7 +403,7 @@ def main(argv=None):
         from fastdrc import backend
         for name in backend.available():
             cls = backend._REGISTRY[name]
-            print(f"  {name:10} {cls.about}  ({cls.__module__})")
+            print(f"  {name:10} {cls.about}{'; runs it on a layout' if cls.runs else ''}  ({cls.__module__})")
         for problem in backend.problems:
             print(f"fastdrc: warning: {problem}", file=sys.stderr)
     elif args.command == "gui":

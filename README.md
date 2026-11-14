@@ -57,6 +57,9 @@ listed, never counted as passing.
 
 **Backends are plugins.** `fastdrc backends` lists them (`klayout`, `docs`, `facts`,
 `cases`); another package adds one through the entry-point group `fastdrc.backends`.
+A backend may also *run* the deck it writes on a layout: `build`, `check` and
+`selftest` take `--backend NAME` and go through that one for both. KLayout is the one
+shipped here that does, and the default; the C++ core will be another.
 
 The pieces (Python):
 

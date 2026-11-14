@@ -375,42 +375,41 @@ def rules_and_warnings(sheets, only=None, skip=None):
     return rules, notes
 
 
-def build(folder, out_dir=None, extra=(), only=None, skip=None, optimise=True):
+def build(folder, out_dir=None, extra=(), only=None, skip=None, optimise=True, backend="klayout"):
     """Compile a process: ``(deck path, text path, number of rules, warnings)``. `extra`
     names further backends (plugins) whose files are written beside the deck.
 
     `only` / `skip` choose the rules (see `chosen`): the deck and the text hold that set
     alone, and only the layers it needs are read. With `optimise`, the chosen rules
     are one graph (ir.py): what several of them need is computed once, so the script is
-    fitted to the set."""
-    from .backend import get
+    fitted to the set.
+
+    `backend` names the backend that compiles the deck and will run it (a plugin, see
+    `fastdrc.backend`); KLayout unless said otherwise."""
+    from .backend import get, runner
     proc, sheets = load(folder)
     name = proc.get("name") or deck_name(folder)
     rules, notes = rules_and_warnings(sheets, only, skip)
     layermap = {k: tuple(v) for k, v in (proc.get("layers") or {}).items()}
-    kl = get("klayout", layermap=layermap, standalone=True, title=name, optimise=optimise)
+    kl = runner(backend, layermap=layermap, standalone=True, title=name, optimise=optimise)
     deck = kl.compile_all(rules)
-    notes += kl.problems
-    if kl.graph:
-        st = kl.graph.stats
-        deck = deck.replace("\n", f"\n# {st['written']} layer operations as the rules are written, "
-                                  f"{st['after']} run: what several rules need is computed once"
-                                  + (f"; nets extracted {st['nets']} time(s) instead of {st['nets_written']}"
-                                     if st.get("nets_written", 0) > st.get("nets", 0) else "") + "\n", 1)
+    notes += getattr(kl, "problems", [])
+    about = []                                       # what this deck is, for its first lines
     if _patterns(only) or _patterns(skip):
         every = sum(len(rules_of(d)) for _, d in sheets)
         said = "; ".join(x for x in ("only " + ", ".join(_patterns(only)) if _patterns(only) else "",
                                      "without " + ", ".join(_patterns(skip)) if _patterns(skip) else "") if x)
-        deck = deck.replace("\n", f"\n# {len(rules)} of the deck's {every} rules: {said}\n", 1)
-    if kl.unmapped:
+        about.append(f"{len(rules)} of the deck's {every} rules: {said}")
+    deck = kl.headed(deck, about)
+    if getattr(kl, "unmapped", None):
         notes.append("no layer number for " + ", ".join(sorted(kl.unmapped))
                      + f" -- add to \"layers\" in {PROCESS_FILE}")
     text = f"# {name} — design rules\n\n" + get("docs").compile_all(rules)
-    # absolute: KLayout resolves a report path against the deck's folder, not the caller's
+    # absolute: a backend may resolve a path against the deck's folder, not the caller's
     out_dir = os.path.abspath(out_dir or build_dir(folder))
     os.makedirs(out_dir, exist_ok=True)
     stem = "".join(c if c.isalnum() or c in "-_" else "_" for c in name).lower() or "deck"
-    deck_path, text_path = os.path.join(out_dir, stem + ".drc"), os.path.join(out_dir, stem + ".md")
+    deck_path, text_path = os.path.join(out_dir, stem + kl.extension), os.path.join(out_dir, stem + ".md")
     with open(deck_path, "w") as f:
         f.write(deck)
     with open(text_path, "w") as f:
@@ -425,46 +424,44 @@ def build(folder, out_dir=None, extra=(), only=None, skip=None, optimise=True):
 def read_markers(path) -> dict:
     """``{rule: [(x0, y0, x1, y1), ...]}`` -- the bounding box (µm) of every marker in
     a KLayout report database."""
-    import re
-    out = {}
-    text = open(path, encoding="utf-8").read()
-    for cat, vals in re.findall(r"<item>.*?<category>'?([^<']*)'?</category>.*?<values>(.*?)</values>", text, re.S):
-        pts = [(float(a), float(b)) for a, b in re.findall(r"(-?[\d.]+(?:e-?\d+)?),(-?[\d.]+(?:e-?\d+)?)", vals)]
-        if pts:
-            xs, ys = [p[0] for p in pts], [p[1] for p in pts]
-            out.setdefault(cat, []).append((min(xs), min(ys), max(xs), max(ys)))
-    return out
+    from .backend import get
+    return {rule: [b for b in boxes if b] for rule, (_, boxes) in get("klayout").read(path).items()
+            if any(boxes)}
 
 
-def selftest(folder, out_dir=None, only=None, skip=None, optimise=True):
+def selftest(folder, out_dir=None, only=None, skip=None, optimise=True, backend="klayout"):
     """Do the rules behave as drawn?  Builds the deck, generates test cases from the
-    drawings (the ``cases`` backend), runs the deck on them in KLayout, and compares.
+    drawings (the ``cases`` backend), runs the deck on them with its backend, and compares.
 
     Returns ``{"rules": {rule: "ok" | "wrong" | "not generated"},
     "constraints": {(rule, constraint under test): "ok" | "wrong"}, "wrong": [text, ...],
     "not_generated": [(rule, why), ...], "notes": [...], "files": {...}}``."""
-    deck, _, n, notes = build(folder, out_dir, extra=("cases",), only=only, skip=skip, optimise=optimise)
-    return _run_selftest(deck, notes)
+    deck, _, n, notes = build(folder, out_dir, extra=("cases",), only=only, skip=skip, optimise=optimise,
+                              backend=backend)
+    return _run_selftest(deck, notes, backend)
 
 
-def selftest_rules(rules, layers, out_dir, name="rules"):
+def selftest_rules(rules, layers, out_dir, name="rules", backend="klayout"):
     """`selftest` for rules already at hand (the sheet open in the editor, with its
     process's legend / columns / connections merged in): same result."""
-    from .backend import get
+    from .backend import get, runner
     layermap = {k: tuple(v) for k, v in (layers or {}).items()}
     out_dir = os.path.abspath(out_dir)
     os.makedirs(out_dir, exist_ok=True)
-    deck = os.path.join(out_dir, name + ".drc")
+    eng = runner(backend, layermap=layermap, standalone=True, title=name)
+    deck = os.path.join(out_dir, name + eng.extension)
     with open(deck, "w") as f:
-        f.write(get("klayout", layermap=layermap, standalone=True, title=name).compile_all(rules))
+        f.write(eng.compile_all(rules))
     for fname, body in get("cases", layermap=layermap).files(rules, name).items():
         with open(os.path.join(out_dir, fname), "w") as f:
             f.write(body)
-    return _run_selftest(deck, [])
+    return _run_selftest(deck, [], backend)
 
 
-def _run_selftest(deck, notes):
+def _run_selftest(deck, notes, backend="klayout"):
     import subprocess
+
+    from .backend import RunError, runner
     out_dir = os.path.dirname(deck)
     stem = os.path.splitext(os.path.basename(deck))[0]
     script, expect_path = (os.path.join(out_dir, stem + ext) for ext in (".cases.rb", ".cases.json"))
@@ -479,21 +476,24 @@ def _run_selftest(deck, notes):
         result["rules"][rule] = "not generated"
     if not expect["cases"]:
         return result
+    eng = runner(backend)
+    if eng.ready():
+        raise RunError(eng.ready())
+    # the case layout is WRITTEN by a KLayout script (the `cases` backend), whichever backend reads it
     klayout = klayout_binary()
     if not klayout:
-        raise RuntimeError("KLayout not found -- put `klayout` on the PATH or set KLAYOUT_BIN")
+        raise RuntimeError("KLayout not found -- put `klayout` on the PATH or set KLAYOUT_BIN "
+                           "(it writes the test layout)")
     layout, report = os.path.join(out_dir, stem + ".cases.gds"), os.path.join(out_dir, stem + ".cases.lyrdb")
+    p = subprocess.run([klayout, "-b", "-r", script, "-rd", f"out={layout}"], capture_output=True, text=True)
+    if p.returncode != 0:
+        raise RuntimeError("KLayout failed:\n" + (p.stderr or p.stdout)[-2000:])
     cells = sorted({c.get("cell", "CASES") for c in expect["cases"]})       # most cases share one cell;
-    runs = [[klayout, "-b", "-r", script, "-rd", f"out={layout}"]]           # a density has its own
     reports = {cell: (report if cell == "CASES" else os.path.join(out_dir, f"{stem}.cases.{cell}.lyrdb"))
-               for cell in cells}
-    runs += [[klayout, "-b", "-r", deck, "-rd", f"input={layout}", "-rd", f"topcell={cell}",
-              "-rd", f"report={reports[cell]}"] for cell in cells]
-    for cmd in runs:
-        p = subprocess.run(cmd, capture_output=True, text=True)
-        if p.returncode != 0:
-            raise RuntimeError("KLayout failed:\n" + (p.stderr or p.stdout)[-2000:])
-    markers = {cell: read_markers(path) for cell, path in reports.items()}
+               for cell in cells}                                           # a density has its own
+    markers = {cell: {rule: [b for b in boxes if b] for rule, (_, boxes) in
+                      eng.run(deck, layout, top=cell, report=path)["rules"].items()}
+               for cell, path in reports.items()}
     result["files"].update(layout=layout, report=report)
     for c in expect["cases"]:
         x0, y0, x1, y1 = (v / 1000.0 for v in c["tile"])
@@ -537,18 +537,12 @@ def init(folder, name=None):
 
 def klayout_binary():
     """The KLayout executable: ``$KLAYOUT_BIN``, else ``klayout`` on the PATH, else None."""
-    import shutil
-    return os.environ.get("KLAYOUT_BIN") or shutil.which("klayout")
+    from .backend import get
+    return get("klayout").binary()
 
 
 def read_report(path) -> dict:
     """``{rule: (number of markers, description)}`` of a KLayout report database
     (.lyrdb), in the order the rules were declared; clean rules are included with 0."""
-    import re
-    text = open(path, encoding="utf-8").read()
-    head = text.split("<cells>")[0]
-    out = {n: [0, d] for n, d in re.findall(
-        r"<category>\s*<name>([^<]*)</name>\s*<description>([^<]*)</description>", head)}
-    for cat in re.findall(r"<item>.*?<category>'?([^<']*)'?</category>", text, re.S):
-        out.setdefault(cat, [0, ""])[0] += 1
-    return {k: tuple(v) for k, v in out.items()}
+    from .backend import get
+    return {rule: (len(boxes), desc) for rule, (desc, boxes) in get("klayout").read(path).items()}

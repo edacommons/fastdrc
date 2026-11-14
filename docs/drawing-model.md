@@ -892,6 +892,20 @@ never as passing.
 writes a backend's files beside the deck. Another package adds one with an entry point
 in the group `fastdrc.backends` naming a `fastdrc.backend.Backend` subclass.
 
+A backend may also **run** the deck it writes on a layout. `build`, `check` and
+`selftest` take `--backend NAME` (default `klayout`): the deck is compiled by that
+backend and run by it, and nothing else in the tool knows how. Such a backend sets
+`runs = True` and implements, besides `compile`:
+
+| | |
+|---|---|
+| `ready()` | `None`, or what is missing to run here, as a sentence |
+| `run(deck, layout, top=None, report=None)` | runs the file it compiled on a GDS / OASIS layout; returns `{"rules": {name: (description, [box, ...])}, "report": path or None}` — every rule of the deck, a box (µm) per violation |
+| `by_hand(deck, layout)` | optional: the command to run the deck oneself |
+
+The self-test's case layout is written by a KLayout script whichever backend reads it,
+and the graph of layer operations (`--no-optimise`, above) is the KLayout backend's own.
+
 Nothing in the compiler knows any process:
 layer names, values, columns and exemptions all come from the drawings. A rule that
 ends up checking nothing is reported as a warning rather than silently dropped.
