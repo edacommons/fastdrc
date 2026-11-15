@@ -1,0 +1,305 @@
+{
+ "name": "MDP.9c",
+ "desc": "MDP.9c : Min/Max POLY2 extension beyond COMP on the field towards LDPMOS drain (MVPSD AND COMP AND Pplus NOT POLY2) direction.",
+ "shapes": [
+  {
+   "name": "LD",
+   "edges": [
+    {
+     "id": "ld_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      45,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_1",
+     "start": [
+      45,
+      0
+     ],
+     "end": [
+      45,
+      42
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_2",
+     "start": [
+      45,
+      42
+     ],
+     "end": [
+      0,
+      42
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_3",
+     "start": [
+      0,
+      42
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DG",
+   "edges": [
+    {
+     "id": "dg_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      41,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_1",
+     "start": [
+      41,
+      4
+     ],
+     "end": [
+      41,
+      38
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_2",
+     "start": [
+      41,
+      38
+     ],
+     "end": [
+      4,
+      38
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_3",
+     "start": [
+      4,
+      38
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "IMP",
+   "edges": [
+    {
+     "id": "imp_0",
+     "start": [
+      10,
+      14
+     ],
+     "end": [
+      35,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_1",
+     "start": [
+      35,
+      14
+     ],
+     "end": [
+      35,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_2",
+     "start": [
+      35,
+      28
+     ],
+     "end": [
+      10,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_3",
+     "start": [
+      10,
+      28
+     ],
+     "end": [
+      10,
+      14
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "CS",
+   "edges": [
+    {
+     "id": "cs_0",
+     "start": [
+      14,
+      18
+     ],
+     "end": [
+      25,
+      18
+     ],
+     "edge": true
+    },
+    {
+     "id": "cs_1",
+     "start": [
+      25,
+      18
+     ],
+     "end": [
+      25,
+      24
+     ],
+     "edge": true
+    },
+    {
+     "id": "cs_2",
+     "start": [
+      25,
+      24
+     ],
+     "end": [
+      14,
+      24
+     ],
+     "edge": true
+    },
+    {
+     "id": "cs_3",
+     "start": [
+      14,
+      24
+     ],
+     "end": [
+      14,
+      18
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "G",
+   "edges": [
+    {
+     "id": "g_0",
+     "start": [
+      20,
+      10
+     ],
+     "end": [
+      29,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "g_1",
+     "start": [
+      29,
+      10
+     ],
+     "end": [
+      29,
+      32
+     ],
+     "edge": true
+    },
+    {
+     "id": "g_2",
+     "start": [
+      29,
+      32
+     ],
+     "end": [
+      20,
+      32
+     ],
+     "edge": true
+    },
+    {
+     "id": "g_3",
+     "start": [
+      20,
+      32
+     ],
+     "end": [
+      20,
+      10
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E",
+   "from": "cs_1",
+   "to": "g_1",
+   "at": 21.0
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "LD.layer == ldmos_xtor"
+  },
+  {
+   "kind": "match",
+   "expr": "DG.layer == dualgate"
+  },
+  {
+   "kind": "match",
+   "expr": "IMP.layer == pplus"
+  },
+  {
+   "kind": "match",
+   "expr": "CS.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "G.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "E >= 0.2"
+  }
+ ]
+}

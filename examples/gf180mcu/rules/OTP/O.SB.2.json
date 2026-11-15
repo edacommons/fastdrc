@@ -1,0 +1,190 @@
+{
+ "name": "O.SB.2",
+ "desc": "O.SB.2 : Min. salicide Block Space.",
+ "shapes": [
+  {
+   "name": "MKR",
+   "edges": [
+    {
+     "id": "mkr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      20,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_1",
+     "start": [
+      20,
+      0
+     ],
+     "end": [
+      20,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_2",
+     "start": [
+      20,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "SAB2",
+   "edges": [
+    {
+     "id": "sab20",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      8,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab21",
+     "start": [
+      8,
+      4
+     ],
+     "end": [
+      8,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab22",
+     "start": [
+      8,
+      10
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab23",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "SAB3",
+   "edges": [
+    {
+     "id": "sab30",
+     "start": [
+      12,
+      4
+     ],
+     "end": [
+      16,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab31",
+     "start": [
+      16,
+      4
+     ],
+     "end": [
+      16,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab32",
+     "start": [
+      16,
+      10
+     ],
+     "end": [
+      12,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab33",
+     "start": [
+      12,
+      10
+     ],
+     "end": [
+      12,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S2",
+   "from": "sab21",
+   "to": "sab33"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MKR.layer == otp_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "SAB2.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "SAB3.layer == sab"
+  },
+  {
+   "kind": "check",
+   "expr": "S2 >= 0.28"
+  }
+ ]
+}

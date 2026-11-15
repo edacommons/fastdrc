@@ -1,0 +1,134 @@
+{
+ "name": "MIM.7",
+ "desc": "MIM.7 : Min FuseTop enclosure by CAP_MK.",
+ "shapes": [
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      14,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      14,
+      0
+     ],
+     "end": [
+      14,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      14,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "FT",
+   "edges": [
+    {
+     "id": "ft_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "ft_1",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "ft_2",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "ft_3",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MK.layer == cap_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "FT.layer == fusetop"
+  },
+  {
+   "kind": "check",
+   "expr": "FT in MK"
+  }
+ ],
+ "when": {
+  "switch": "mim",
+  "cases": {
+   "A": true
+  },
+  "default": false
+ }
+}

@@ -1,0 +1,80 @@
+{
+ "name": "DF.1a",
+ "desc": "DF.1a : Min. COMP Width.",
+ "shapes": [
+  {
+   "name": "BAR",
+   "edges": [
+    {
+     "id": "bar_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      4,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "bar_1",
+     "start": [
+      4,
+      0
+     ],
+     "end": [
+      4,
+      6
+     ],
+     "edge": true
+    },
+    {
+     "id": "bar_2",
+     "start": [
+      4,
+      6
+     ],
+     "end": [
+      0,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "bar_3",
+     "start": [
+      0,
+      6
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "W1",
+   "from": "bar_3",
+   "to": "bar_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "BAR.layer == comp"
+  },
+  {
+   "kind": "check",
+   "expr": "W1 >= ?"
+  }
+ ],
+ "values": {
+  "3.3V": 0.22,
+  "5V": 0.3
+ }
+}

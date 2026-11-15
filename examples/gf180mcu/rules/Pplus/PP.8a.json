@@ -1,0 +1,71 @@
+{
+ "name": "PP.8a",
+ "desc": "PP.8a : Minimum Pplus area (um2). : 0.35\u00b5m\u00b2",
+ "shapes": [
+  {
+   "name": "TINY",
+   "edges": [
+    {
+     "id": "tiny_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      4,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "tiny_1",
+     "start": [
+      4,
+      0
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "tiny_2",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      0,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "tiny_3",
+     "start": [
+      0,
+      4
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ],
+   "crossed": true
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "TINY.layer == pplus"
+  },
+  {
+   "kind": "match",
+   "expr": "TINY.area < 0.35"
+  }
+ ]
+}

@@ -1,0 +1,190 @@
+{
+ "name": "S.M1.1_LV",
+ "desc": "S.M1.1_LV : min. metal1 width",
+ "shapes": [
+  {
+   "name": "MKR",
+   "edges": [
+    {
+     "id": "mkr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      13,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_1",
+     "start": [
+      13,
+      0
+     ],
+     "end": [
+      13,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_2",
+     "start": [
+      13,
+      20
+     ],
+     "end": [
+      0,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_3",
+     "start": [
+      0,
+      20
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      9,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      9,
+      4
+     ],
+     "end": [
+      9,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      9,
+      16
+     ],
+     "end": [
+      4,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      4,
+      16
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "DG",
+   "edges": [
+    {
+     "id": "dg_0",
+     "start": [
+      19,
+      4
+     ],
+     "end": [
+      25,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_1",
+     "start": [
+      25,
+      4
+     ],
+     "end": [
+      25,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_2",
+     "start": [
+      25,
+      10
+     ],
+     "end": [
+      19,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_3",
+     "start": [
+      19,
+      10
+     ],
+     "end": [
+      19,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "W",
+   "from": "a_3",
+   "to": "a_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MKR.layer == sramcore"
+  },
+  {
+   "kind": "match",
+   "expr": "A.layer == metal1"
+  },
+  {
+   "kind": "check",
+   "expr": "W >= 0.22"
+  },
+  {
+   "kind": "match",
+   "expr": "DG.layer == dualgate"
+  }
+ ]
+}

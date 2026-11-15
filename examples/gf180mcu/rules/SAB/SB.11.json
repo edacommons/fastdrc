@@ -1,0 +1,136 @@
+{
+ "name": "SB.11",
+ "desc": "SB.11 : Overlap with COMP.",
+ "shapes": [
+  {
+   "name": "SAB",
+   "edges": [
+    {
+     "id": "sab_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      10,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_1",
+     "start": [
+      10,
+      0
+     ],
+     "end": [
+      10,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab_2",
+     "start": [
+      10,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "CX",
+   "edges": [
+    {
+     "id": "cx_0",
+     "start": [
+      5,
+      4
+     ],
+     "end": [
+      16,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "cx_1",
+     "start": [
+      16,
+      4
+     ],
+     "end": [
+      16,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "cx_2",
+     "start": [
+      16,
+      8
+     ],
+     "end": [
+      5,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "cx_3",
+     "start": [
+      5,
+      8
+     ],
+     "end": [
+      5,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "O",
+   "from": "cx_3",
+   "to": "sab_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "SAB.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "CX.layer == comp"
+  },
+  {
+   "kind": "check",
+   "expr": "O >= 0.22"
+  }
+ ],
+ "except": [
+  "otp_mk"
+ ]
+}

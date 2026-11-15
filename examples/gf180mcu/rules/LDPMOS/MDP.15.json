@@ -1,0 +1,195 @@
+{
+ "name": "MDP.15",
+ "desc": "MDP.15 : Min DNWELL enclosing MVPSD to any DNWELL spacing.",
+ "shapes": [
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      12,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      12,
+      0
+     ],
+     "end": [
+      12,
+      14
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      12,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "MV",
+   "edges": [
+    {
+     "id": "mv_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      8,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_1",
+     "start": [
+      8,
+      4
+     ],
+     "end": [
+      8,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_2",
+     "start": [
+      8,
+      10
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_3",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      17,
+      0
+     ],
+     "end": [
+      23,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      23,
+      0
+     ],
+     "end": [
+      23,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_2",
+     "start": [
+      23,
+      14
+     ],
+     "end": [
+      17,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      17,
+      14
+     ],
+     "end": [
+      17,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "LA",
+   "from": "a_0",
+   "to": "mv_0"
+  },
+  {
+   "name": "S",
+   "from": "a_1",
+   "to": "b_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "A.layer == dnwell"
+  },
+  {
+   "kind": "match",
+   "expr": "MV.layer == mvpsd"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == dnwell"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 6"
+  }
+ ]
+}

@@ -1,0 +1,193 @@
+{
+ "name": "PP.3bi",
+ "desc": "PP.3bi : Space to NCOMP, inside DNWELL: (i) NCOMP space to LVPWELL >= 0.43um.",
+ "shapes": [
+  {
+   "name": "DN",
+   "edges": [
+    {
+     "id": "dn_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      29,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_1",
+     "start": [
+      29,
+      0
+     ],
+     "end": [
+      29,
+      25
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_2",
+     "start": [
+      29,
+      25
+     ],
+     "end": [
+      0,
+      25
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_3",
+     "start": [
+      0,
+      25
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "P1",
+   "edges": [
+    {
+     "id": "p1_0",
+     "start": [
+      6,
+      10
+     ],
+     "end": [
+      11,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "p1_1",
+     "start": [
+      11,
+      10
+     ],
+     "end": [
+      11,
+      15
+     ],
+     "edge": true
+    },
+    {
+     "id": "p1_2",
+     "start": [
+      11,
+      15
+     ],
+     "end": [
+      6,
+      15
+     ],
+     "edge": false
+    },
+    {
+     "id": "p1_3",
+     "start": [
+      6,
+      15
+     ],
+     "end": [
+      6,
+      10
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "N1",
+   "edges": [
+    {
+     "id": "n1_0",
+     "start": [
+      17,
+      6
+     ],
+     "end": [
+      23,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "n1_1",
+     "start": [
+      23,
+      6
+     ],
+     "end": [
+      23,
+      19
+     ],
+     "edge": false
+    },
+    {
+     "id": "n1_2",
+     "start": [
+      23,
+      19
+     ],
+     "end": [
+      17,
+      19
+     ],
+     "edge": false
+    },
+    {
+     "id": "n1_3",
+     "start": [
+      17,
+      19
+     ],
+     "end": [
+      17,
+      6
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "n1_3",
+   "to": "p1_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "DN.layer == dnwell"
+  },
+  {
+   "kind": "match",
+   "expr": "P1.layer == ncomp"
+  },
+  {
+   "kind": "match",
+   "expr": "N1.layer == pplus"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.08"
+  }
+ ],
+ "except": [
+  "near_lvpwell"
+ ]
+}

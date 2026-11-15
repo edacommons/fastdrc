@@ -1,0 +1,140 @@
+{
+ "name": "NW.1b",
+ "desc": "NW.1b : Min. Nwell Width as a resistor (Outside DNWELL only).",
+ "shapes": [
+  {
+   "name": "RES",
+   "edges": [
+    {
+     "id": "res_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      14,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "res_1",
+     "start": [
+      14,
+      0
+     ],
+     "end": [
+      14,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "res_2",
+     "start": [
+      14,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "res_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "NW",
+   "edges": [
+    {
+     "id": "nw_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "nw_1",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "nw_2",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "nw_3",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "W",
+   "from": "nw_3",
+   "to": "nw_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "RES.layer == res_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "NW.layer == nwell"
+  },
+  {
+   "kind": "check",
+   "expr": "W >= ?"
+  }
+ ],
+ "values": {
+  "3.3V": 2,
+  "5V": 2
+ },
+ "except": [
+  "dnwell"
+ ]
+}

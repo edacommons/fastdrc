@@ -1,0 +1,78 @@
+{
+ "name": "DF.9",
+ "desc": "DF.9 : Min. COMP area (um2).",
+ "shapes": [
+  {
+   "name": "DOT",
+   "edges": [
+    {
+     "id": "dot_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      4,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "dot_1",
+     "start": [
+      4,
+      0
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dot_2",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      0,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dot_3",
+     "start": [
+      0,
+      4
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ],
+   "crossed": true
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "DOT.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "DOT.area < ?"
+  }
+ ],
+ "values": {
+  "3.3V": 0.2025,
+  "5V": 0.2025
+ },
+ "except": [
+  "otp_mk"
+ ]
+}

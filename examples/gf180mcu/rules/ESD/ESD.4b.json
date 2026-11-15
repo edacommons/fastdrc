@@ -1,0 +1,133 @@
+{
+ "name": "ESD.4b",
+ "desc": "ESD.4b : Minimum overlap of an ESD implant edge to a COMP.",
+ "shapes": [
+  {
+   "name": "COMP",
+   "edges": [
+    {
+     "id": "comp_0",
+     "start": [
+      0,
+      4
+     ],
+     "end": [
+      12,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_1",
+     "start": [
+      12,
+      4
+     ],
+     "end": [
+      12,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "comp_2",
+     "start": [
+      12,
+      10
+     ],
+     "end": [
+      0,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_3",
+     "start": [
+      0,
+      10
+     ],
+     "end": [
+      0,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "ESD",
+   "edges": [
+    {
+     "id": "esd_0",
+     "start": [
+      6,
+      0
+     ],
+     "end": [
+      18,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "esd_1",
+     "start": [
+      18,
+      0
+     ],
+     "end": [
+      18,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "esd_2",
+     "start": [
+      18,
+      14
+     ],
+     "end": [
+      6,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "esd_3",
+     "start": [
+      6,
+      14
+     ],
+     "end": [
+      6,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "O",
+   "from": "esd_3",
+   "to": "comp_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "COMP.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "ESD.layer == esd"
+  },
+  {
+   "kind": "check",
+   "expr": "O >= 0.45"
+  }
+ ]
+}

@@ -1,0 +1,309 @@
+{
+ "name": "S.CO.4_MV",
+ "desc": "S.CO.4_MV : COMP overlap of contact.",
+ "shapes": [
+  {
+   "name": "V5",
+   "edges": [
+    {
+     "id": "v5_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      38,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "v5_1",
+     "start": [
+      38,
+      0
+     ],
+     "end": [
+      38,
+      39
+     ],
+     "edge": false
+    },
+    {
+     "id": "v5_2",
+     "start": [
+      38,
+      39
+     ],
+     "end": [
+      0,
+      39
+     ],
+     "edge": false
+    },
+    {
+     "id": "v5_3",
+     "start": [
+      0,
+      39
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DG",
+   "edges": [
+    {
+     "id": "dg_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      34,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_1",
+     "start": [
+      34,
+      4
+     ],
+     "end": [
+      34,
+      35
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_2",
+     "start": [
+      34,
+      35
+     ],
+     "end": [
+      4,
+      35
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_3",
+     "start": [
+      4,
+      35
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "MKR",
+   "edges": [
+    {
+     "id": "mkr_0",
+     "start": [
+      8,
+      8
+     ],
+     "end": [
+      30,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_1",
+     "start": [
+      30,
+      8
+     ],
+     "end": [
+      30,
+      31
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_2",
+     "start": [
+      30,
+      31
+     ],
+     "end": [
+      8,
+      31
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_3",
+     "start": [
+      8,
+      31
+     ],
+     "end": [
+      8,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "COMP",
+   "edges": [
+    {
+     "id": "comp_0",
+     "start": [
+      12,
+      12
+     ],
+     "end": [
+      26,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_1",
+     "start": [
+      26,
+      12
+     ],
+     "end": [
+      26,
+      27
+     ],
+     "edge": true
+    },
+    {
+     "id": "comp_2",
+     "start": [
+      26,
+      27
+     ],
+     "end": [
+      12,
+      27
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_3",
+     "start": [
+      12,
+      27
+     ],
+     "end": [
+      12,
+      12
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "KC",
+   "edges": [
+    {
+     "id": "kc_0",
+     "start": [
+      16,
+      17
+     ],
+     "end": [
+      20,
+      17
+     ],
+     "edge": true
+    },
+    {
+     "id": "kc_1",
+     "start": [
+      20,
+      17
+     ],
+     "end": [
+      20,
+      21
+     ],
+     "edge": true
+    },
+    {
+     "id": "kc_2",
+     "start": [
+      20,
+      21
+     ],
+     "end": [
+      16,
+      21
+     ],
+     "edge": true
+    },
+    {
+     "id": "kc_3",
+     "start": [
+      16,
+      21
+     ],
+     "end": [
+      16,
+      17
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E4",
+   "from": "comp_3",
+   "to": "kc_3",
+   "within": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "V5.layer == v5_xtor"
+  },
+  {
+   "kind": "match",
+   "expr": "DG.layer == dualgate"
+  },
+  {
+   "kind": "match",
+   "expr": "MKR.layer == sramcore"
+  },
+  {
+   "kind": "match",
+   "expr": "COMP.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "KC.layer == contact"
+  },
+  {
+   "kind": "check",
+   "expr": "E4 >= 0.04"
+  }
+ ],
+ "except": [
+  "mvsd",
+  "mvpsd"
+ ]
+}

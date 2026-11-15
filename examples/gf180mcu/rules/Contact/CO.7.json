@@ -1,0 +1,191 @@
+{
+ "name": "CO.7",
+ "desc": "CO.7 : Space from COMP contact to Poly2 on COMP. : 0.15\u00b5m",
+ "shapes": [
+  {
+   "name": "COMP",
+   "edges": [
+    {
+     "id": "comp_0",
+     "start": [
+      0,
+      4
+     ],
+     "end": [
+      22,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_1",
+     "start": [
+      22,
+      4
+     ],
+     "end": [
+      22,
+      19
+     ],
+     "edge": true
+    },
+    {
+     "id": "comp_2",
+     "start": [
+      22,
+      19
+     ],
+     "end": [
+      0,
+      19
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_3",
+     "start": [
+      0,
+      19
+     ],
+     "end": [
+      0,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "GATE",
+   "edges": [
+    {
+     "id": "gate_0",
+     "start": [
+      12,
+      0
+     ],
+     "end": [
+      16,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "gate_1",
+     "start": [
+      16,
+      0
+     ],
+     "end": [
+      16,
+      23
+     ],
+     "edge": false
+    },
+    {
+     "id": "gate_2",
+     "start": [
+      16,
+      23
+     ],
+     "end": [
+      12,
+      23
+     ],
+     "edge": false
+    },
+    {
+     "id": "gate_3",
+     "start": [
+      12,
+      23
+     ],
+     "end": [
+      12,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "KC",
+   "edges": [
+    {
+     "id": "kc_0",
+     "start": [
+      4,
+      9
+     ],
+     "end": [
+      8,
+      9
+     ],
+     "edge": true
+    },
+    {
+     "id": "kc_1",
+     "start": [
+      8,
+      9
+     ],
+     "end": [
+      8,
+      13
+     ],
+     "edge": true
+    },
+    {
+     "id": "kc_2",
+     "start": [
+      8,
+      13
+     ],
+     "end": [
+      4,
+      13
+     ],
+     "edge": true
+    },
+    {
+     "id": "kc_3",
+     "start": [
+      4,
+      13
+     ],
+     "end": [
+      4,
+      9
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S7",
+   "from": "kc_1",
+   "to": "gate_3",
+   "at": 11.0
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "COMP.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "GATE.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "KC.layer == contact"
+  },
+  {
+   "kind": "check",
+   "expr": "S7 >= 0.15"
+  }
+ ]
+}

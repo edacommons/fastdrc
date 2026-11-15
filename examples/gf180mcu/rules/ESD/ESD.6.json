@@ -1,0 +1,192 @@
+{
+ "name": "ESD.6",
+ "desc": "ESD.6 : Extension perpendicular to Poly2 gate.",
+ "shapes": [
+  {
+   "name": "ESD",
+   "edges": [
+    {
+     "id": "esd_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      22,
+      0
+     ],
+     "edge": true
+    },
+    {
+     "id": "esd_1",
+     "start": [
+      22,
+      0
+     ],
+     "end": [
+      22,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "esd_2",
+     "start": [
+      22,
+      20
+     ],
+     "end": [
+      0,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "esd_3",
+     "start": [
+      0,
+      20
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "COMP",
+   "edges": [
+    {
+     "id": "comp_0",
+     "start": [
+      8,
+      4
+     ],
+     "end": [
+      14,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_1",
+     "start": [
+      14,
+      4
+     ],
+     "end": [
+      14,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_2",
+     "start": [
+      14,
+      16
+     ],
+     "end": [
+      8,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_3",
+     "start": [
+      8,
+      16
+     ],
+     "end": [
+      8,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "G",
+   "edges": [
+    {
+     "id": "g_0",
+     "start": [
+      4,
+      8
+     ],
+     "end": [
+      18,
+      8
+     ],
+     "edge": true
+    },
+    {
+     "id": "g_1",
+     "start": [
+      18,
+      8
+     ],
+     "end": [
+      18,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_2",
+     "start": [
+      18,
+      12
+     ],
+     "end": [
+      4,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_3",
+     "start": [
+      4,
+      12
+     ],
+     "end": [
+      4,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E",
+   "from": "esd_0",
+   "to": "g_0",
+   "metric": "projection",
+   "at": 11.0
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "ESD.layer == esd"
+  },
+  {
+   "kind": "match",
+   "expr": "COMP.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "G.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "E >= 0.45"
+  }
+ ]
+}

@@ -1,0 +1,133 @@
+{
+ "name": "MDN.2a",
+ "desc": "MDN.2a : Min MVSD space [Same Potential].",
+ "shapes": [
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      6,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      6,
+      0
+     ],
+     "end": [
+      6,
+      6
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      6,
+      6
+     ],
+     "end": [
+      0,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      0,
+      6
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      11,
+      0
+     ],
+     "end": [
+      17,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      17,
+      0
+     ],
+     "end": [
+      17,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_2",
+     "start": [
+      17,
+      6
+     ],
+     "end": [
+      11,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      11,
+      6
+     ],
+     "end": [
+      11,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "a_1",
+   "to": "b_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "A.layer == mvsd"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == mvsd"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 1"
+  }
+ ]
+}

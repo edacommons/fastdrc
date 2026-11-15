@@ -1,0 +1,130 @@
+{
+ "name": "PP.3d",
+ "desc": "PP.3d : Min/max space to a butted NCOMP.",
+ "shapes": [
+  {
+   "name": "IMP",
+   "edges": [
+    {
+     "id": "imp_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      10,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_1",
+     "start": [
+      10,
+      0
+     ],
+     "end": [
+      10,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "imp_2",
+     "start": [
+      10,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "OC",
+   "edges": [
+    {
+     "id": "oc_0",
+     "start": [
+      6,
+      4
+     ],
+     "end": [
+      16,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "oc_1",
+     "start": [
+      16,
+      4
+     ],
+     "end": [
+      16,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "oc_2",
+     "start": [
+      16,
+      8
+     ],
+     "end": [
+      6,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "oc_3",
+     "start": [
+      6,
+      8
+     ],
+     "end": [
+      6,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "X",
+   "from": "imp_1",
+   "to": "oc_3",
+   "crossed": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "IMP.layer == pplus"
+  },
+  {
+   "kind": "match",
+   "expr": "OC.layer == ncomp"
+  }
+ ]
+}

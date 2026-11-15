@@ -1,0 +1,137 @@
+{
+ "name": "PP.3a",
+ "desc": "PP.3a : Space to NCOMP for NCOMP (1) inside LVPWELL (2) outside NWELL and DNWELL.",
+ "shapes": [
+  {
+   "name": "N1",
+   "edges": [
+    {
+     "id": "n1_0",
+     "start": [
+      0,
+      4
+     ],
+     "end": [
+      5,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "n1_1",
+     "start": [
+      5,
+      4
+     ],
+     "end": [
+      5,
+      9
+     ],
+     "edge": true
+    },
+    {
+     "id": "n1_2",
+     "start": [
+      5,
+      9
+     ],
+     "end": [
+      0,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "n1_3",
+     "start": [
+      0,
+      9
+     ],
+     "end": [
+      0,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "P1",
+   "edges": [
+    {
+     "id": "p1_0",
+     "start": [
+      10,
+      0
+     ],
+     "end": [
+      16,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "p1_1",
+     "start": [
+      16,
+      0
+     ],
+     "end": [
+      16,
+      13
+     ],
+     "edge": false
+    },
+    {
+     "id": "p1_2",
+     "start": [
+      16,
+      13
+     ],
+     "end": [
+      10,
+      13
+     ],
+     "edge": false
+    },
+    {
+     "id": "p1_3",
+     "start": [
+      10,
+      13
+     ],
+     "end": [
+      10,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "p1_3",
+   "to": "n1_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "N1.layer == ncomp"
+  },
+  {
+   "kind": "match",
+   "expr": "P1.layer == pplus"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.16"
+  }
+ ],
+ "except": [
+  "nwell",
+  "dnwell_only"
+ ]
+}

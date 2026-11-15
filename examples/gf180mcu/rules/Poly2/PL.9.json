@@ -1,0 +1,130 @@
+{
+ "name": "PL.9",
+ "desc": "PL.9 : Poly2 inter connect connecting 3.3V and 5V areas (area inside and outside Dualgate) are not allowed.",
+ "shapes": [
+  {
+   "name": "DG",
+   "edges": [
+    {
+     "id": "dg_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      10,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_1",
+     "start": [
+      10,
+      0
+     ],
+     "end": [
+      10,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "dg_2",
+     "start": [
+      10,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PX",
+   "edges": [
+    {
+     "id": "px_0",
+     "start": [
+      6,
+      4
+     ],
+     "end": [
+      16,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "px_1",
+     "start": [
+      16,
+      4
+     ],
+     "end": [
+      16,
+      8
+     ],
+     "edge": true
+    },
+    {
+     "id": "px_2",
+     "start": [
+      16,
+      8
+     ],
+     "end": [
+      6,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "px_3",
+     "start": [
+      6,
+      8
+     ],
+     "end": [
+      6,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "X",
+   "from": "px_1",
+   "to": "dg_1",
+   "crossed": "straddle"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "DG.layer == dualgate"
+  },
+  {
+   "kind": "match",
+   "expr": "PX.layer == poly2"
+  }
+ ]
+}

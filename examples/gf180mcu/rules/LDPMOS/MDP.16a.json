@@ -1,0 +1,304 @@
+{
+ "name": "MDP.16a",
+ "desc": "MDP.16a : Min LDPMOS drain COMP width.",
+ "shapes": [
+  {
+   "name": "LD",
+   "edges": [
+    {
+     "id": "ld_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      45,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_1",
+     "start": [
+      45,
+      0
+     ],
+     "end": [
+      45,
+      42
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_2",
+     "start": [
+      45,
+      42
+     ],
+     "end": [
+      0,
+      42
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_3",
+     "start": [
+      0,
+      42
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DG",
+   "edges": [
+    {
+     "id": "dg_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      41,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_1",
+     "start": [
+      41,
+      4
+     ],
+     "end": [
+      41,
+      38
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_2",
+     "start": [
+      41,
+      38
+     ],
+     "end": [
+      4,
+      38
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_3",
+     "start": [
+      4,
+      38
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "IMP",
+   "edges": [
+    {
+     "id": "imp_0",
+     "start": [
+      10,
+      14
+     ],
+     "end": [
+      32,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_1",
+     "start": [
+      32,
+      14
+     ],
+     "end": [
+      32,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_2",
+     "start": [
+      32,
+      28
+     ],
+     "end": [
+      10,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_3",
+     "start": [
+      10,
+      28
+     ],
+     "end": [
+      10,
+      14
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "MV",
+   "edges": [
+    {
+     "id": "mv_0",
+     "start": [
+      16,
+      10
+     ],
+     "end": [
+      36,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_1",
+     "start": [
+      36,
+      10
+     ],
+     "end": [
+      36,
+      32
+     ],
+     "edge": true
+    },
+    {
+     "id": "mv_2",
+     "start": [
+      36,
+      32
+     ],
+     "end": [
+      16,
+      32
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_3",
+     "start": [
+      16,
+      32
+     ],
+     "end": [
+      16,
+      10
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "CD",
+   "edges": [
+    {
+     "id": "cd_0",
+     "start": [
+      22,
+      18
+     ],
+     "end": [
+      28,
+      18
+     ],
+     "edge": true
+    },
+    {
+     "id": "cd_1",
+     "start": [
+      28,
+      18
+     ],
+     "end": [
+      28,
+      24
+     ],
+     "edge": true
+    },
+    {
+     "id": "cd_2",
+     "start": [
+      28,
+      24
+     ],
+     "end": [
+      22,
+      24
+     ],
+     "edge": true
+    },
+    {
+     "id": "cd_3",
+     "start": [
+      22,
+      24
+     ],
+     "end": [
+      22,
+      18
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "W",
+   "from": "cd_3",
+   "to": "cd_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "LD.layer == ldmos_xtor"
+  },
+  {
+   "kind": "match",
+   "expr": "DG.layer == dualgate"
+  },
+  {
+   "kind": "match",
+   "expr": "IMP.layer == pplus"
+  },
+  {
+   "kind": "match",
+   "expr": "MV.layer == mvpsd"
+  },
+  {
+   "kind": "match",
+   "expr": "CD.layer == comp"
+  },
+  {
+   "kind": "check",
+   "expr": "W >= 0.22"
+  }
+ ]
+}

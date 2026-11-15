@@ -1,0 +1,192 @@
+{
+ "name": "MDP.6a",
+ "desc": "MDP.6a : Minimum LDMOS_XTOR enclose Dualgate.",
+ "shapes": [
+  {
+   "name": "OUT",
+   "edges": [
+    {
+     "id": "out_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      18,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "out_1",
+     "start": [
+      18,
+      0
+     ],
+     "end": [
+      18,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "out_2",
+     "start": [
+      18,
+      22
+     ],
+     "end": [
+      0,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "out_3",
+     "start": [
+      0,
+      22
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "MV",
+   "edges": [
+    {
+     "id": "mv_0",
+     "start": [
+      8,
+      8
+     ],
+     "end": [
+      14,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_1",
+     "start": [
+      14,
+      8
+     ],
+     "end": [
+      14,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_2",
+     "start": [
+      14,
+      14
+     ],
+     "end": [
+      8,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_3",
+     "start": [
+      8,
+      14
+     ],
+     "end": [
+      8,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "IN",
+   "edges": [
+    {
+     "id": "in_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      24,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "in_1",
+     "start": [
+      24,
+      4
+     ],
+     "end": [
+      24,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "in_2",
+     "start": [
+      24,
+      18
+     ],
+     "end": [
+      4,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "in_3",
+     "start": [
+      4,
+      18
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "LM",
+   "from": "in_0",
+   "to": "mv_0"
+  },
+  {
+   "name": "X",
+   "from": "in_1",
+   "to": "out_1",
+   "crossed": "straddle"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "OUT.layer == ldmos_xtor"
+  },
+  {
+   "kind": "match",
+   "expr": "MV.layer == mvpsd"
+  },
+  {
+   "kind": "match",
+   "expr": "IN.layer == dualgate"
+  }
+ ]
+}

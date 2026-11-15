@@ -1,0 +1,247 @@
+{
+ "name": "MDP.9ei",
+ "desc": "MDP.9ei : Min LDMPOS gate Poly2 space to Nplus guardring (source and body tap non-butted).",
+ "shapes": [
+  {
+   "name": "LD",
+   "edges": [
+    {
+     "id": "ld_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      35,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_1",
+     "start": [
+      35,
+      0
+     ],
+     "end": [
+      35,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_2",
+     "start": [
+      35,
+      22
+     ],
+     "end": [
+      0,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_3",
+     "start": [
+      0,
+      22
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DG",
+   "edges": [
+    {
+     "id": "dg_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      31,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_1",
+     "start": [
+      31,
+      4
+     ],
+     "end": [
+      31,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_2",
+     "start": [
+      31,
+      18
+     ],
+     "end": [
+      4,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_3",
+     "start": [
+      4,
+      18
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      10,
+      8
+     ],
+     "end": [
+      16,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      16,
+      8
+     ],
+     "end": [
+      16,
+      14
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      16,
+      14
+     ],
+     "end": [
+      10,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      10,
+      14
+     ],
+     "end": [
+      10,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      21,
+      8
+     ],
+     "end": [
+      27,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      27,
+      8
+     ],
+     "end": [
+      27,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_2",
+     "start": [
+      27,
+      14
+     ],
+     "end": [
+      21,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      21,
+      14
+     ],
+     "end": [
+      21,
+      8
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "a_1",
+   "to": "b_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "LD.layer == ldmos_xtor"
+  },
+  {
+   "kind": "match",
+   "expr": "DG.layer == dualgate"
+  },
+  {
+   "kind": "match",
+   "expr": "A.layer == ncomp"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.4"
+  }
+ ]
+}

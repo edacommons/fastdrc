@@ -1,0 +1,181 @@
+{
+ "name": "CO.10",
+ "desc": "CO.10 : Contact on Poly2 gate over COMP is forbidden.",
+ "shapes": [
+  {
+   "name": "COMP",
+   "edges": [
+    {
+     "id": "comp_0",
+     "start": [
+      0,
+      4
+     ],
+     "end": [
+      24,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_1",
+     "start": [
+      24,
+      4
+     ],
+     "end": [
+      24,
+      19
+     ],
+     "edge": true
+    },
+    {
+     "id": "comp_2",
+     "start": [
+      24,
+      19
+     ],
+     "end": [
+      0,
+      19
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_3",
+     "start": [
+      0,
+      19
+     ],
+     "end": [
+      0,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "GATE",
+   "edges": [
+    {
+     "id": "gate_0",
+     "start": [
+      6,
+      0
+     ],
+     "end": [
+      18,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "gate_1",
+     "start": [
+      18,
+      0
+     ],
+     "end": [
+      18,
+      23
+     ],
+     "edge": false
+    },
+    {
+     "id": "gate_2",
+     "start": [
+      18,
+      23
+     ],
+     "end": [
+      6,
+      23
+     ],
+     "edge": false
+    },
+    {
+     "id": "gate_3",
+     "start": [
+      6,
+      23
+     ],
+     "end": [
+      6,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "KG",
+   "edges": [
+    {
+     "id": "kg_0",
+     "start": [
+      10,
+      9
+     ],
+     "end": [
+      14,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "kg_1",
+     "start": [
+      14,
+      9
+     ],
+     "end": [
+      14,
+      13
+     ],
+     "edge": false
+    },
+    {
+     "id": "kg_2",
+     "start": [
+      14,
+      13
+     ],
+     "end": [
+      10,
+      13
+     ],
+     "edge": false
+    },
+    {
+     "id": "kg_3",
+     "start": [
+      10,
+      13
+     ],
+     "end": [
+      10,
+      9
+     ],
+     "edge": false
+    }
+   ],
+   "crossed": true
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "COMP.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "GATE.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "KG.layer == contact"
+  }
+ ]
+}

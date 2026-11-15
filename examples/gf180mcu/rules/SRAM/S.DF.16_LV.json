@@ -1,0 +1,250 @@
+{
+ "name": "S.DF.16_LV",
+ "desc": "S.DF.16_LV : Min. space from (Nwell outside DNWELL) to (NCOMP outside Nwell and DNWELL).",
+ "shapes": [
+  {
+   "name": "MKR",
+   "edges": [
+    {
+     "id": "mkr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      25,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_1",
+     "start": [
+      25,
+      0
+     ],
+     "end": [
+      25,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_2",
+     "start": [
+      25,
+      20
+     ],
+     "end": [
+      0,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_3",
+     "start": [
+      0,
+      20
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      10,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      10,
+      16
+     ],
+     "end": [
+      4,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      4,
+      16
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      15,
+      4
+     ],
+     "end": [
+      21,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      21,
+      4
+     ],
+     "end": [
+      21,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_2",
+     "start": [
+      21,
+      16
+     ],
+     "end": [
+      15,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      15,
+      16
+     ],
+     "end": [
+      15,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "DG",
+   "edges": [
+    {
+     "id": "dg_0",
+     "start": [
+      31,
+      4
+     ],
+     "end": [
+      37,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_1",
+     "start": [
+      37,
+      4
+     ],
+     "end": [
+      37,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_2",
+     "start": [
+      37,
+      10
+     ],
+     "end": [
+      31,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_3",
+     "start": [
+      31,
+      10
+     ],
+     "end": [
+      31,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "a_1",
+   "to": "b_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MKR.layer == sramcore"
+  },
+  {
+   "kind": "match",
+   "expr": "A.layer == nwell"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == ncomp"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.4"
+  },
+  {
+   "kind": "match",
+   "expr": "DG.layer == dualgate"
+  }
+ ],
+ "except": [
+  "dnwell"
+ ]
+}

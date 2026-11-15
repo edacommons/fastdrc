@@ -1,0 +1,191 @@
+{
+ "name": "CO.8",
+ "desc": "CO.8 : Space from Poly2 contact to COMP. : 0.17\u00b5m",
+ "shapes": [
+  {
+   "name": "COMP",
+   "edges": [
+    {
+     "id": "comp_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      6,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_1",
+     "start": [
+      6,
+      0
+     ],
+     "end": [
+      6,
+      15
+     ],
+     "edge": true
+    },
+    {
+     "id": "comp_2",
+     "start": [
+      6,
+      15
+     ],
+     "end": [
+      0,
+      15
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_3",
+     "start": [
+      0,
+      15
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "LINE",
+   "edges": [
+    {
+     "id": "line_0",
+     "start": [
+      10,
+      0
+     ],
+     "end": [
+      22,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "line_1",
+     "start": [
+      22,
+      0
+     ],
+     "end": [
+      22,
+      15
+     ],
+     "edge": true
+    },
+    {
+     "id": "line_2",
+     "start": [
+      22,
+      15
+     ],
+     "end": [
+      10,
+      15
+     ],
+     "edge": false
+    },
+    {
+     "id": "line_3",
+     "start": [
+      10,
+      15
+     ],
+     "end": [
+      10,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "KP",
+   "edges": [
+    {
+     "id": "kp_0",
+     "start": [
+      14,
+      5
+     ],
+     "end": [
+      18,
+      5
+     ],
+     "edge": false
+    },
+    {
+     "id": "kp_1",
+     "start": [
+      18,
+      5
+     ],
+     "end": [
+      18,
+      9
+     ],
+     "edge": true
+    },
+    {
+     "id": "kp_2",
+     "start": [
+      18,
+      9
+     ],
+     "end": [
+      14,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "kp_3",
+     "start": [
+      14,
+      9
+     ],
+     "end": [
+      14,
+      5
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S8",
+   "from": "kp_3",
+   "to": "comp_1",
+   "at": 7.0
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "COMP.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "LINE.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "KP.layer == contact"
+  },
+  {
+   "kind": "check",
+   "expr": "S8 >= 0.17"
+  }
+ ]
+}

@@ -1,0 +1,127 @@
+{
+ "name": "ESD.9",
+ "desc": "ESD.9 : ESD implant layer must be overlapped by Dualgate layer (as ESD implant option is only for 5V/6V devices).",
+ "shapes": [
+  {
+   "name": "DG",
+   "edges": [
+    {
+     "id": "dg_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      14,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_1",
+     "start": [
+      14,
+      0
+     ],
+     "end": [
+      14,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_2",
+     "start": [
+      14,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "ESD",
+   "edges": [
+    {
+     "id": "esd_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "esd_1",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "esd_2",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "esd_3",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "DG.layer == dualgate"
+  },
+  {
+   "kind": "match",
+   "expr": "ESD.layer == esd"
+  },
+  {
+   "kind": "check",
+   "expr": "ESD in DG"
+  }
+ ]
+}

@@ -1,0 +1,76 @@
+{
+ "name": "NP.1",
+ "desc": "NP.1 : min. nplus width : 0.4\u00b5m",
+ "shapes": [
+  {
+   "name": "NA",
+   "edges": [
+    {
+     "id": "na_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      4,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "na_1",
+     "start": [
+      4,
+      0
+     ],
+     "end": [
+      4,
+      6
+     ],
+     "edge": true
+    },
+    {
+     "id": "na_2",
+     "start": [
+      4,
+      6
+     ],
+     "end": [
+      0,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "na_3",
+     "start": [
+      0,
+      6
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "W1",
+   "from": "na_3",
+   "to": "na_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "NA.layer == nplus"
+  },
+  {
+   "kind": "check",
+   "expr": "W1 >= 0.4"
+  }
+ ]
+}

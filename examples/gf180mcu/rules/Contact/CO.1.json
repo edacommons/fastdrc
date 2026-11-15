@@ -1,0 +1,71 @@
+{
+ "name": "CO.1",
+ "desc": "CO.1 : Min/max contact size. : 0.22\u00b5m",
+ "shapes": [
+  {
+   "name": "KC",
+   "edges": [
+    {
+     "id": "kc_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      4,
+      0
+     ],
+     "edge": true
+    },
+    {
+     "id": "kc_1",
+     "start": [
+      4,
+      0
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "kc_2",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      0,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "kc_3",
+     "start": [
+      0,
+      4
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "KC.layer == contact"
+  },
+  {
+   "kind": "check",
+   "expr": "kc_0.length == 0.22"
+  }
+ ],
+ "extended": true
+}

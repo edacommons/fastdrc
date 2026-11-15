@@ -1,0 +1,192 @@
+{
+ "name": "NAT.12",
+ "desc": "NAT.12 : Poly2 not intersecting with COMP is not allowed inside NAT (Poly2 resistor is not allowed inside NAT).",
+ "shapes": [
+  {
+   "name": "NAT",
+   "edges": [
+    {
+     "id": "nat_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      25,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "nat_1",
+     "start": [
+      25,
+      0
+     ],
+     "end": [
+      25,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "nat_2",
+     "start": [
+      25,
+      22
+     ],
+     "end": [
+      0,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "nat_3",
+     "start": [
+      0,
+      22
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "P",
+   "edges": [
+    {
+     "id": "p_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      8,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_1",
+     "start": [
+      8,
+      4
+     ],
+     "end": [
+      8,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_2",
+     "start": [
+      8,
+      18
+     ],
+     "end": [
+      4,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_3",
+     "start": [
+      4,
+      18
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "CX",
+   "edges": [
+    {
+     "id": "cx_0",
+     "start": [
+      14,
+      8
+     ],
+     "end": [
+      20,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "cx_1",
+     "start": [
+      20,
+      8
+     ],
+     "end": [
+      20,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "cx_2",
+     "start": [
+      20,
+      14
+     ],
+     "end": [
+      14,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "cx_3",
+     "start": [
+      14,
+      14
+     ],
+     "end": [
+      14,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "IN",
+   "from": "p_0",
+   "to": "nat_0"
+  },
+  {
+   "name": "X",
+   "from": "p_1",
+   "to": "cx_3",
+   "crossed": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "NAT.layer == nat"
+  },
+  {
+   "kind": "match",
+   "expr": "P.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "CX.layer == comp"
+  }
+ ]
+}

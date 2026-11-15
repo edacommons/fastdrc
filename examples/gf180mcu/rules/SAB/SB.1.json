@@ -1,0 +1,76 @@
+{
+ "name": "SB.1",
+ "desc": "SB.1 : min. sab width : 0.42\u00b5m",
+ "shapes": [
+  {
+   "name": "SAB2",
+   "edges": [
+    {
+     "id": "sab20",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      4,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab21",
+     "start": [
+      4,
+      0
+     ],
+     "end": [
+      4,
+      6
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab22",
+     "start": [
+      4,
+      6
+     ],
+     "end": [
+      0,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab23",
+     "start": [
+      0,
+      6
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "W1",
+   "from": "sab23",
+   "to": "sab21"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "SAB2.layer == sab"
+  },
+  {
+   "kind": "check",
+   "expr": "W1 >= 0.42"
+  }
+ ]
+}

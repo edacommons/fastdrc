@@ -1,0 +1,184 @@
+{
+ "name": "MDN.6",
+ "desc": "MDN.6 : ALL LDNMOS shall be covered by Dualgate layer.",
+ "shapes": [
+  {
+   "name": "LD",
+   "edges": [
+    {
+     "id": "ld_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      26,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_1",
+     "start": [
+      26,
+      0
+     ],
+     "end": [
+      26,
+      26
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_2",
+     "start": [
+      26,
+      26
+     ],
+     "end": [
+      0,
+      26
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_3",
+     "start": [
+      0,
+      26
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DG",
+   "edges": [
+    {
+     "id": "dg_0",
+     "start": [
+      6,
+      6
+     ],
+     "end": [
+      20,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_1",
+     "start": [
+      20,
+      6
+     ],
+     "end": [
+      20,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_2",
+     "start": [
+      20,
+      20
+     ],
+     "end": [
+      6,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_3",
+     "start": [
+      6,
+      20
+     ],
+     "end": [
+      6,
+      6
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "MV",
+   "edges": [
+    {
+     "id": "mv_0",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      16,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_1",
+     "start": [
+      16,
+      10
+     ],
+     "end": [
+      16,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_2",
+     "start": [
+      16,
+      16
+     ],
+     "end": [
+      10,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_3",
+     "start": [
+      10,
+      16
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "LD.layer == ldmos_xtor"
+  },
+  {
+   "kind": "match",
+   "expr": "DG.layer == dualgate"
+  },
+  {
+   "kind": "match",
+   "expr": "MV.layer == mvsd"
+  },
+  {
+   "kind": "check",
+   "expr": "MV in DG"
+  }
+ ]
+}

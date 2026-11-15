@@ -1,0 +1,304 @@
+{
+ "name": "MDP.3b",
+ "desc": "MDP.3b : Min NCOMP (Nplus AND COMP) space to PCOMP in DNWELL (Pplus AND COMP AND DNWELL). Use butted source and DNWELL contacts otherwise and that is best for Latch-up immunity as well.",
+ "shapes": [
+  {
+   "name": "LD",
+   "edges": [
+    {
+     "id": "ld_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      41,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_1",
+     "start": [
+      41,
+      0
+     ],
+     "end": [
+      41,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_2",
+     "start": [
+      41,
+      22
+     ],
+     "end": [
+      0,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_3",
+     "start": [
+      0,
+      22
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DG",
+   "edges": [
+    {
+     "id": "dg_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      37,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_1",
+     "start": [
+      37,
+      4
+     ],
+     "end": [
+      37,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_2",
+     "start": [
+      37,
+      18
+     ],
+     "end": [
+      4,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_3",
+     "start": [
+      4,
+      18
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DN",
+   "edges": [
+    {
+     "id": "dn_0",
+     "start": [
+      8,
+      4
+     ],
+     "end": [
+      33,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_1",
+     "start": [
+      33,
+      4
+     ],
+     "end": [
+      33,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_2",
+     "start": [
+      33,
+      18
+     ],
+     "end": [
+      8,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_3",
+     "start": [
+      8,
+      18
+     ],
+     "end": [
+      8,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      12,
+      8
+     ],
+     "end": [
+      18,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      18,
+      8
+     ],
+     "end": [
+      18,
+      14
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      18,
+      14
+     ],
+     "end": [
+      12,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      12,
+      14
+     ],
+     "end": [
+      12,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      23,
+      8
+     ],
+     "end": [
+      29,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      29,
+      8
+     ],
+     "end": [
+      29,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_2",
+     "start": [
+      29,
+      14
+     ],
+     "end": [
+      23,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      23,
+      14
+     ],
+     "end": [
+      23,
+      8
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "a_1",
+   "to": "b_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "LD.layer == ldmos_xtor"
+  },
+  {
+   "kind": "match",
+   "expr": "DG.layer == dualgate"
+  },
+  {
+   "kind": "match",
+   "expr": "DN.layer == dnwell"
+  },
+  {
+   "kind": "match",
+   "expr": "A.layer == ncomp"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == pcomp"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.4"
+  }
+ ]
+}

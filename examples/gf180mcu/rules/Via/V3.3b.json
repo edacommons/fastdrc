@@ -1,0 +1,137 @@
+{
+ "name": "V3.3b",
+ "desc": "V3.3b : metal3 overlap of via3",
+ "shapes": [
+  {
+   "name": "MM",
+   "edges": [
+    {
+     "id": "mm_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      14,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mm_1",
+     "start": [
+      14,
+      0
+     ],
+     "end": [
+      14,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mm_2",
+     "start": [
+      14,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mm_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "VA",
+   "edges": [
+    {
+     "id": "va_0",
+     "start": [
+      5,
+      5
+     ],
+     "end": [
+      9,
+      5
+     ],
+     "edge": false
+    },
+    {
+     "id": "va_1",
+     "start": [
+      9,
+      5
+     ],
+     "end": [
+      9,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "va_2",
+     "start": [
+      9,
+      9
+     ],
+     "end": [
+      5,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "va_3",
+     "start": [
+      5,
+      9
+     ],
+     "end": [
+      5,
+      5
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E",
+   "from": "mm_3",
+   "to": "va_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MM.layer == metal3"
+  },
+  {
+   "kind": "match",
+   "expr": "VA.layer == via3"
+  },
+  {
+   "kind": "check",
+   "expr": "E >= 0.01"
+  },
+  {
+   "kind": "check",
+   "expr": "VA in MM"
+  }
+ ]
+}

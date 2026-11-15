@@ -1,0 +1,363 @@
+{
+ "name": "MDN.13a",
+ "desc": "MDN.13a : Max single finger width.",
+ "shapes": [
+  {
+   "name": "LD",
+   "edges": [
+    {
+     "id": "ld_0",
+     "start": [
+      -12,
+      -10
+     ],
+     "end": [
+      42,
+      -10
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_1",
+     "start": [
+      42,
+      -10
+     ],
+     "end": [
+      42,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_2",
+     "start": [
+      42,
+      24
+     ],
+     "end": [
+      -12,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_3",
+     "start": [
+      -12,
+      24
+     ],
+     "end": [
+      -12,
+      -10
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DG",
+   "edges": [
+    {
+     "id": "dg_0",
+     "start": [
+      -9,
+      -7
+     ],
+     "end": [
+      39,
+      -7
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_1",
+     "start": [
+      39,
+      -7
+     ],
+     "end": [
+      39,
+      21
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_2",
+     "start": [
+      39,
+      21
+     ],
+     "end": [
+      -9,
+      21
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_3",
+     "start": [
+      -9,
+      21
+     ],
+     "end": [
+      -9,
+      -7
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "IMP",
+   "edges": [
+    {
+     "id": "imp_0",
+     "start": [
+      -1,
+      3
+     ],
+     "end": [
+      31,
+      3
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_1",
+     "start": [
+      31,
+      3
+     ],
+     "end": [
+      31,
+      11
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_2",
+     "start": [
+      31,
+      11
+     ],
+     "end": [
+      -1,
+      11
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_3",
+     "start": [
+      -1,
+      11
+     ],
+     "end": [
+      -1,
+      3
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "CS",
+   "edges": [
+    {
+     "id": "cs_0",
+     "start": [
+      0,
+      4
+     ],
+     "end": [
+      14,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "cs_1",
+     "start": [
+      14,
+      4
+     ],
+     "end": [
+      14,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "cs_2",
+     "start": [
+      14,
+      10
+     ],
+     "end": [
+      0,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "cs_3",
+     "start": [
+      0,
+      10
+     ],
+     "end": [
+      0,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "MV",
+   "edges": [
+    {
+     "id": "mv_0",
+     "start": [
+      12,
+      1
+     ],
+     "end": [
+      34,
+      1
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_1",
+     "start": [
+      34,
+      1
+     ],
+     "end": [
+      34,
+      13
+     ],
+     "edge": true
+    },
+    {
+     "id": "mv_2",
+     "start": [
+      34,
+      13
+     ],
+     "end": [
+      12,
+      13
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_3",
+     "start": [
+      12,
+      13
+     ],
+     "end": [
+      12,
+      1
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "G",
+   "edges": [
+    {
+     "id": "g_0",
+     "start": [
+      9,
+      0
+     ],
+     "end": [
+      16,
+      0
+     ],
+     "edge": true
+    },
+    {
+     "id": "g_1",
+     "start": [
+      16,
+      0
+     ],
+     "end": [
+      16,
+      14
+     ],
+     "edge": true
+    },
+    {
+     "id": "g_2",
+     "start": [
+      16,
+      14
+     ],
+     "end": [
+      9,
+      14
+     ],
+     "edge": true
+    },
+    {
+     "id": "g_3",
+     "start": [
+      9,
+      14
+     ],
+     "end": [
+      9,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "W",
+   "from": "cs_0",
+   "to": "cs_2",
+   "edges": true,
+   "at": 13.0
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "LD.layer == ldmos_xtor"
+  },
+  {
+   "kind": "match",
+   "expr": "DG.layer == dualgate"
+  },
+  {
+   "kind": "match",
+   "expr": "IMP.layer == nplus"
+  },
+  {
+   "kind": "match",
+   "expr": "CS.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "MV.layer == mvsd"
+  },
+  {
+   "kind": "match",
+   "expr": "G.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "W <= 50"
+  }
+ ]
+}

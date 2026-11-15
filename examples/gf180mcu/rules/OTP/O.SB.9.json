@@ -1,0 +1,190 @@
+{
+ "name": "O.SB.9",
+ "desc": "O.SB.9 : Min. salicide block extension beyond unsalicided Poly2.",
+ "shapes": [
+  {
+   "name": "MKR",
+   "edges": [
+    {
+     "id": "mkr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      24,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_1",
+     "start": [
+      24,
+      0
+     ],
+     "end": [
+      24,
+      23
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_2",
+     "start": [
+      24,
+      23
+     ],
+     "end": [
+      0,
+      23
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_3",
+     "start": [
+      0,
+      23
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "POLY",
+   "edges": [
+    {
+     "id": "poly_0",
+     "start": [
+      4,
+      9
+     ],
+     "end": [
+      20,
+      9
+     ],
+     "edge": true
+    },
+    {
+     "id": "poly_1",
+     "start": [
+      20,
+      9
+     ],
+     "end": [
+      20,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "poly_2",
+     "start": [
+      20,
+      14
+     ],
+     "end": [
+      4,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "poly_3",
+     "start": [
+      4,
+      14
+     ],
+     "end": [
+      4,
+      9
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "SAB",
+   "edges": [
+    {
+     "id": "sab_0",
+     "start": [
+      9,
+      4
+     ],
+     "end": [
+      15,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab_1",
+     "start": [
+      15,
+      4
+     ],
+     "end": [
+      15,
+      19
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_2",
+     "start": [
+      15,
+      19
+     ],
+     "end": [
+      9,
+      19
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_3",
+     "start": [
+      9,
+      19
+     ],
+     "end": [
+      9,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E",
+   "from": "poly_0",
+   "to": "sab_0"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MKR.layer == otp_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "POLY.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "SAB.layer == sab"
+  },
+  {
+   "kind": "check",
+   "expr": "E >= 0.1"
+  }
+ ]
+}

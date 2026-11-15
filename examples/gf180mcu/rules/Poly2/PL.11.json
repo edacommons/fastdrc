@@ -1,0 +1,127 @@
+{
+ "name": "PL.11",
+ "desc": "PL.11 : V5_Xtor must enclose 5V device.",
+ "shapes": [
+  {
+   "name": "V5",
+   "edges": [
+    {
+     "id": "v5_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      16,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "v5_1",
+     "start": [
+      16,
+      0
+     ],
+     "end": [
+      16,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "v5_2",
+     "start": [
+      16,
+      16
+     ],
+     "end": [
+      0,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "v5_3",
+     "start": [
+      0,
+      16
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DG",
+   "edges": [
+    {
+     "id": "dg_0",
+     "start": [
+      5,
+      5
+     ],
+     "end": [
+      11,
+      5
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_1",
+     "start": [
+      11,
+      5
+     ],
+     "end": [
+      11,
+      11
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_2",
+     "start": [
+      11,
+      11
+     ],
+     "end": [
+      5,
+      11
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_3",
+     "start": [
+      5,
+      11
+     ],
+     "end": [
+      5,
+      5
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "V5.layer == v5_xtor"
+  },
+  {
+   "kind": "match",
+   "expr": "DG.layer in {dualgate, otp_mk}"
+  },
+  {
+   "kind": "check",
+   "expr": "Count(DG) >= 1"
+  }
+ ]
+}

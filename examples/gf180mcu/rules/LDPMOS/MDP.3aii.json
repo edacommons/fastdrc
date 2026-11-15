@@ -1,0 +1,309 @@
+{
+ "name": "MDP.3aii",
+ "desc": "MDP.3aii : Min NCOMP (Nplus AND COMP) space to MVPSD (source and body tap butted). NCOMP (Nplus AND COMP) intercept with MVPSD is not allowed.",
+ "shapes": [
+  {
+   "name": "LD",
+   "edges": [
+    {
+     "id": "ld_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      38,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_1",
+     "start": [
+      38,
+      0
+     ],
+     "end": [
+      38,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_2",
+     "start": [
+      38,
+      22
+     ],
+     "end": [
+      0,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_3",
+     "start": [
+      0,
+      22
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DG",
+   "edges": [
+    {
+     "id": "dg_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      34,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_1",
+     "start": [
+      34,
+      4
+     ],
+     "end": [
+      34,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_2",
+     "start": [
+      34,
+      18
+     ],
+     "end": [
+      4,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_3",
+     "start": [
+      4,
+      18
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "SRC",
+   "edges": [
+    {
+     "id": "src_0",
+     "start": [
+      8,
+      8
+     ],
+     "end": [
+      13,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "src_1",
+     "start": [
+      13,
+      8
+     ],
+     "end": [
+      13,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "src_2",
+     "start": [
+      13,
+      14
+     ],
+     "end": [
+      8,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "src_3",
+     "start": [
+      8,
+      14
+     ],
+     "end": [
+      8,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      13,
+      8
+     ],
+     "end": [
+      19,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      19,
+      8
+     ],
+     "end": [
+      19,
+      14
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      19,
+      14
+     ],
+     "end": [
+      13,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      13,
+      14
+     ],
+     "end": [
+      13,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      24,
+      8
+     ],
+     "end": [
+      30,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      30,
+      8
+     ],
+     "end": [
+      30,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_2",
+     "start": [
+      30,
+      14
+     ],
+     "end": [
+      24,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      24,
+      14
+     ],
+     "end": [
+      24,
+      8
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "LB",
+   "from": "a_0",
+   "to": "src_0"
+  },
+  {
+   "name": "S",
+   "from": "a_1",
+   "to": "b_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "LD.layer == ldmos_xtor"
+  },
+  {
+   "kind": "match",
+   "expr": "DG.layer == dualgate"
+  },
+  {
+   "kind": "match",
+   "expr": "SRC.layer == pcomp"
+  },
+  {
+   "kind": "match",
+   "expr": "A.layer == ncomp"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == mvpsd"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.92"
+  }
+ ]
+}

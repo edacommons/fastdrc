@@ -1,0 +1,131 @@
+{
+ "name": "DF.12",
+ "desc": "DF.12 : COMP not covered by Nplus or Pplus is forbidden.",
+ "shapes": [
+  {
+   "name": "IMP",
+   "edges": [
+    {
+     "id": "imp_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      14,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_1",
+     "start": [
+      14,
+      0
+     ],
+     "end": [
+      14,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_2",
+     "start": [
+      14,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "CI",
+   "edges": [
+    {
+     "id": "ci_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "ci_1",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "ci_2",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "ci_3",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "IMP.layer in {nplus, pplus}"
+  },
+  {
+   "kind": "match",
+   "expr": "CI.layer == comp"
+  },
+  {
+   "kind": "check",
+   "expr": "CI in IMP"
+  }
+ ],
+ "columns": [
+  "3.3V",
+  "5V"
+ ]
+}

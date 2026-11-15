@@ -1,0 +1,192 @@
+{
+ "name": "NAT.11",
+ "desc": "NAT.11 : NCOMP not intersecting to Poly2, is not allowed inside NAT layer.",
+ "shapes": [
+  {
+   "name": "NAT",
+   "edges": [
+    {
+     "id": "nat_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      25,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "nat_1",
+     "start": [
+      25,
+      0
+     ],
+     "end": [
+      25,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "nat_2",
+     "start": [
+      25,
+      22
+     ],
+     "end": [
+      0,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "nat_3",
+     "start": [
+      0,
+      22
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "NC",
+   "edges": [
+    {
+     "id": "nc_0",
+     "start": [
+      4,
+      8
+     ],
+     "end": [
+      10,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "nc_1",
+     "start": [
+      10,
+      8
+     ],
+     "end": [
+      10,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "nc_2",
+     "start": [
+      10,
+      14
+     ],
+     "end": [
+      4,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "nc_3",
+     "start": [
+      4,
+      14
+     ],
+     "end": [
+      4,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "P",
+   "edges": [
+    {
+     "id": "p_0",
+     "start": [
+      15,
+      4
+     ],
+     "end": [
+      19,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_1",
+     "start": [
+      19,
+      4
+     ],
+     "end": [
+      19,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_2",
+     "start": [
+      19,
+      18
+     ],
+     "end": [
+      15,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_3",
+     "start": [
+      15,
+      18
+     ],
+     "end": [
+      15,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "IN",
+   "from": "nc_0",
+   "to": "nat_0"
+  },
+  {
+   "name": "X",
+   "from": "nc_1",
+   "to": "p_3",
+   "crossed": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "NAT.layer == nat"
+  },
+  {
+   "kind": "match",
+   "expr": "NC.layer == ncomp"
+  },
+  {
+   "kind": "match",
+   "expr": "P.layer == poly2"
+  }
+ ]
+}

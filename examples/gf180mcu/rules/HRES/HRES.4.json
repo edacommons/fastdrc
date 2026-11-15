@@ -1,0 +1,329 @@
+{
+ "name": "HRES.4",
+ "desc": "HRES.4 : Minimum RESISTOR overlap of Poly2 resistor.",
+ "shapes": [
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      9,
+      12
+     ],
+     "end": [
+      19,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      19,
+      12
+     ],
+     "end": [
+      19,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      19,
+      24
+     ],
+     "end": [
+      9,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      9,
+      24
+     ],
+     "end": [
+      9,
+      12
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "SAB",
+   "edges": [
+    {
+     "id": "sab_0",
+     "start": [
+      9,
+      4
+     ],
+     "end": [
+      19,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab_1",
+     "start": [
+      19,
+      4
+     ],
+     "end": [
+      19,
+      32
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_2",
+     "start": [
+      19,
+      32
+     ],
+     "end": [
+      9,
+      32
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_3",
+     "start": [
+      9,
+      32
+     ],
+     "end": [
+      9,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "HR",
+   "edges": [
+    {
+     "id": "hr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      32,
+      0
+     ],
+     "edge": true
+    },
+    {
+     "id": "hr_1",
+     "start": [
+      32,
+      0
+     ],
+     "end": [
+      32,
+      36
+     ],
+     "edge": true
+    },
+    {
+     "id": "hr_2",
+     "start": [
+      32,
+      36
+     ],
+     "end": [
+      0,
+      36
+     ],
+     "edge": false
+    },
+    {
+     "id": "hr_3",
+     "start": [
+      0,
+      36
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "R",
+   "edges": [
+    {
+     "id": "r_0",
+     "start": [
+      4,
+      16
+     ],
+     "end": [
+      24,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "r_1",
+     "start": [
+      24,
+      16
+     ],
+     "end": [
+      24,
+      20
+     ],
+     "edge": true
+    },
+    {
+     "id": "r_2",
+     "start": [
+      24,
+      20
+     ],
+     "end": [
+      4,
+      20
+     ],
+     "edge": true
+    },
+    {
+     "id": "r_3",
+     "start": [
+      4,
+      20
+     ],
+     "end": [
+      4,
+      16
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PE",
+   "edges": [
+    {
+     "id": "pe_0",
+     "start": [
+      15,
+      8
+     ],
+     "end": [
+      28,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "pe_1",
+     "start": [
+      28,
+      8
+     ],
+     "end": [
+      28,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "pe_2",
+     "start": [
+      28,
+      28
+     ],
+     "end": [
+      15,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "pe_3",
+     "start": [
+      15,
+      28
+     ],
+     "end": [
+      15,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "LRS",
+   "from": "r_3",
+   "to": "sab_3"
+  },
+  {
+   "name": "LRM",
+   "from": "r_3",
+   "to": "mk_3"
+  },
+  {
+   "name": "LRH",
+   "from": "r_3",
+   "to": "hr_3"
+  },
+  {
+   "name": "LRP",
+   "from": "r_3",
+   "to": "pe_3"
+  },
+  {
+   "name": "E",
+   "from": "hr_0",
+   "to": "r_0",
+   "at": 12.33
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MK.layer == res_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "SAB.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "HR.layer == resistor"
+  },
+  {
+   "kind": "match",
+   "expr": "R.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "PE.layer == pplus"
+  },
+  {
+   "kind": "check",
+   "expr": "E >= 0.4"
+  },
+  {
+   "kind": "check",
+   "expr": "R in HR"
+  }
+ ]
+}

@@ -1,0 +1,190 @@
+{
+ "name": "MDP.12",
+ "desc": "MDP.12 : Min DNWELL enclose Nplus guard ring (NCOMP).",
+ "shapes": [
+  {
+   "name": "LD",
+   "edges": [
+    {
+     "id": "ld_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      24,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_1",
+     "start": [
+      24,
+      0
+     ],
+     "end": [
+      24,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_2",
+     "start": [
+      24,
+      24
+     ],
+     "end": [
+      0,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_3",
+     "start": [
+      0,
+      24
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "OUT",
+   "edges": [
+    {
+     "id": "out_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      20,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "out_1",
+     "start": [
+      20,
+      4
+     ],
+     "end": [
+      20,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "out_2",
+     "start": [
+      20,
+      20
+     ],
+     "end": [
+      4,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "out_3",
+     "start": [
+      4,
+      20
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "IN",
+   "edges": [
+    {
+     "id": "in_0",
+     "start": [
+      9,
+      9
+     ],
+     "end": [
+      15,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "in_1",
+     "start": [
+      15,
+      9
+     ],
+     "end": [
+      15,
+      15
+     ],
+     "edge": false
+    },
+    {
+     "id": "in_2",
+     "start": [
+      15,
+      15
+     ],
+     "end": [
+      9,
+      15
+     ],
+     "edge": false
+    },
+    {
+     "id": "in_3",
+     "start": [
+      9,
+      15
+     ],
+     "end": [
+      9,
+      9
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E",
+   "from": "out_3",
+   "to": "in_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "LD.layer == ldmos_xtor"
+  },
+  {
+   "kind": "match",
+   "expr": "OUT.layer == dnwell"
+  },
+  {
+   "kind": "match",
+   "expr": "IN.layer == ncomp"
+  },
+  {
+   "kind": "check",
+   "expr": "E >= 0.66"
+  }
+ ]
+}

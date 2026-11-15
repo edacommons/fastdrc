@@ -1,0 +1,131 @@
+{
+ "name": "EF.06",
+ "desc": "EF.06 : Min./Max. Cathode Poly2 width.",
+ "shapes": [
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      16,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      16,
+      0
+     ],
+     "end": [
+      16,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      16,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "b_1",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "b_2",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MK.layer == efuse_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == cathode"
+  },
+  {
+   "kind": "match",
+   "expr": "b_1.length > b_0.length"
+  },
+  {
+   "kind": "check",
+   "expr": "b_1.length == 2.26"
+  }
+ ]
+}

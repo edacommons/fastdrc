@@ -1,0 +1,190 @@
+{
+ "name": "O.SB.11",
+ "desc": "O.SB.11 : Min. salicide block overlap with COMP.",
+ "shapes": [
+  {
+   "name": "MKR",
+   "edges": [
+    {
+     "id": "mkr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      24,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_1",
+     "start": [
+      24,
+      0
+     ],
+     "end": [
+      24,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_2",
+     "start": [
+      24,
+      20
+     ],
+     "end": [
+      0,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_3",
+     "start": [
+      0,
+      20
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "SAB",
+   "edges": [
+    {
+     "id": "sab_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      14,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_1",
+     "start": [
+      14,
+      4
+     ],
+     "end": [
+      14,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab_2",
+     "start": [
+      14,
+      16
+     ],
+     "end": [
+      4,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_3",
+     "start": [
+      4,
+      16
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "CX",
+   "edges": [
+    {
+     "id": "cx_0",
+     "start": [
+      9,
+      8
+     ],
+     "end": [
+      20,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "cx_1",
+     "start": [
+      20,
+      8
+     ],
+     "end": [
+      20,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "cx_2",
+     "start": [
+      20,
+      12
+     ],
+     "end": [
+      9,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "cx_3",
+     "start": [
+      9,
+      12
+     ],
+     "end": [
+      9,
+      8
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "O",
+   "from": "cx_3",
+   "to": "sab_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MKR.layer == otp_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "SAB.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "CX.layer == comp"
+  },
+  {
+   "kind": "check",
+   "expr": "O >= 0.04"
+  }
+ ]
+}

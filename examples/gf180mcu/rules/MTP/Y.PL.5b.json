@@ -1,0 +1,200 @@
+{
+ "name": "Y.PL.5b",
+ "desc": "Y.PL.5b : Space from field Poly2 to related COMP (inside YMTP_MK).",
+ "shapes": [
+  {
+   "name": "MKR",
+   "edges": [
+    {
+     "id": "mkr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      24,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_1",
+     "start": [
+      24,
+      0
+     ],
+     "end": [
+      24,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_2",
+     "start": [
+      24,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "COMP",
+   "edges": [
+    {
+     "id": "comp0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp1",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "comp2",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp3",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "LINE",
+   "edges": [
+    {
+     "id": "line0",
+     "start": [
+      16,
+      4
+     ],
+     "end": [
+      20,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "line1",
+     "start": [
+      20,
+      4
+     ],
+     "end": [
+      20,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "line2",
+     "start": [
+      20,
+      10
+     ],
+     "end": [
+      16,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "line3",
+     "start": [
+      16,
+      10
+     ],
+     "end": [
+      16,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S5",
+   "from": "line3",
+   "to": "comp1",
+   "at": 7.0
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MKR.layer == ymtp_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "COMP.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "LINE.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "S5 >= ?"
+  }
+ ],
+ "values": {
+  "3.3V": 0.04,
+  "5V": 0.2
+ },
+ "except": [
+  "otp_mk",
+  "mvsd",
+  "mvpsd"
+ ]
+}

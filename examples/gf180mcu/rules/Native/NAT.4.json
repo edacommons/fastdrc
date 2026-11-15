@@ -1,0 +1,306 @@
+{
+ "name": "NAT.4",
+ "desc": "NAT.4 : Minimum channel length for 3.3V Native Vt NMOS (For smaller L Ioff will be higher than Spec).",
+ "shapes": [
+  {
+   "name": "DG",
+   "edges": [
+    {
+     "id": "dg_0",
+     "start": [
+      36,
+      8
+     ],
+     "end": [
+      42,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_1",
+     "start": [
+      42,
+      8
+     ],
+     "end": [
+      42,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_2",
+     "start": [
+      42,
+      22
+     ],
+     "end": [
+      36,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_3",
+     "start": [
+      36,
+      22
+     ],
+     "end": [
+      36,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "NAT",
+   "edges": [
+    {
+     "id": "nat_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      30,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "nat_1",
+     "start": [
+      30,
+      0
+     ],
+     "end": [
+      30,
+      30
+     ],
+     "edge": false
+    },
+    {
+     "id": "nat_2",
+     "start": [
+      30,
+      30
+     ],
+     "end": [
+      0,
+      30
+     ],
+     "edge": false
+    },
+    {
+     "id": "nat_3",
+     "start": [
+      0,
+      30
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "NP",
+   "edges": [
+    {
+     "id": "np_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      26,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "np_1",
+     "start": [
+      26,
+      4
+     ],
+     "end": [
+      26,
+      26
+     ],
+     "edge": false
+    },
+    {
+     "id": "np_2",
+     "start": [
+      26,
+      26
+     ],
+     "end": [
+      4,
+      26
+     ],
+     "edge": false
+    },
+    {
+     "id": "np_3",
+     "start": [
+      4,
+      26
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "COMP",
+   "edges": [
+    {
+     "id": "comp_0",
+     "start": [
+      12,
+      8
+     ],
+     "end": [
+      18,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_1",
+     "start": [
+      18,
+      8
+     ],
+     "end": [
+      18,
+      22
+     ],
+     "edge": true
+    },
+    {
+     "id": "comp_2",
+     "start": [
+      18,
+      22
+     ],
+     "end": [
+      12,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_3",
+     "start": [
+      12,
+      22
+     ],
+     "end": [
+      12,
+      8
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "G1",
+   "edges": [
+    {
+     "id": "g1_0",
+     "start": [
+      8,
+      14
+     ],
+     "end": [
+      22,
+      14
+     ],
+     "edge": true
+    },
+    {
+     "id": "g1_1",
+     "start": [
+      22,
+      14
+     ],
+     "end": [
+      22,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "g1_2",
+     "start": [
+      22,
+      18
+     ],
+     "end": [
+      8,
+      18
+     ],
+     "edge": true
+    },
+    {
+     "id": "g1_3",
+     "start": [
+      8,
+      18
+     ],
+     "end": [
+      8,
+      14
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "L",
+   "from": "g1_0",
+   "to": "g1_2",
+   "edges": true,
+   "at": 15.0
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "DG.layer == dualgate"
+  },
+  {
+   "kind": "match",
+   "expr": "NAT.layer == nat"
+  },
+  {
+   "kind": "match",
+   "expr": "NP.layer == nplus"
+  },
+  {
+   "kind": "match",
+   "expr": "COMP.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "G1.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "L >= 1.8"
+  }
+ ]
+}

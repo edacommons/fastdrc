@@ -1,0 +1,131 @@
+{
+ "name": "EF.09",
+ "desc": "EF.09 : Min./Max. Anode Poly2 length.",
+ "shapes": [
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      16,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      16,
+      0
+     ],
+     "end": [
+      16,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      16,
+      16
+     ],
+     "end": [
+      0,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      0,
+      16
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      6,
+      5
+     ],
+     "end": [
+      12,
+      5
+     ],
+     "edge": true
+    },
+    {
+     "id": "b_1",
+     "start": [
+      12,
+      5
+     ],
+     "end": [
+      12,
+      11
+     ],
+     "edge": true
+    },
+    {
+     "id": "b_2",
+     "start": [
+      12,
+      11
+     ],
+     "end": [
+      6,
+      11
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      6,
+      11
+     ],
+     "end": [
+      6,
+      5
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MK.layer == efuse_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == anode"
+  },
+  {
+   "kind": "match",
+   "expr": "b_0.length > b_1.length"
+  },
+  {
+   "kind": "check",
+   "expr": "b_0.length == 2.43"
+  }
+ ]
+}

@@ -1,0 +1,138 @@
+{
+ "name": "DF.4b",
+ "desc": "DF.4b : Min. DNWELL overlap of NCOMP well tap.",
+ "shapes": [
+  {
+   "name": "DN",
+   "edges": [
+    {
+     "id": "dn_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      18,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_1",
+     "start": [
+      18,
+      0
+     ],
+     "end": [
+      18,
+      18
+     ],
+     "edge": true
+    },
+    {
+     "id": "dn_2",
+     "start": [
+      18,
+      18
+     ],
+     "end": [
+      0,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_3",
+     "start": [
+      0,
+      18
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "NT",
+   "edges": [
+    {
+     "id": "nt_0",
+     "start": [
+      6,
+      6
+     ],
+     "end": [
+      12,
+      6
+     ],
+     "edge": true
+    },
+    {
+     "id": "nt_1",
+     "start": [
+      12,
+      6
+     ],
+     "end": [
+      12,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "nt_2",
+     "start": [
+      12,
+      12
+     ],
+     "end": [
+      6,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "nt_3",
+     "start": [
+      6,
+      12
+     ],
+     "end": [
+      6,
+      6
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E4b",
+   "from": "nt_1",
+   "to": "dn_1",
+   "within": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "DN.layer == dnwell"
+  },
+  {
+   "kind": "match",
+   "expr": "NT.layer == ncomp"
+  },
+  {
+   "kind": "check",
+   "expr": "E4b >= ?"
+  }
+ ],
+ "values": {
+  "3.3V": 0.62,
+  "5V": 0.66
+ }
+}

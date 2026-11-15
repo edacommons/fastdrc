@@ -1,0 +1,141 @@
+{
+ "name": "PL.3a",
+ "desc": "PL.3a : Space on COMP/Field.",
+ "shapes": [
+  {
+   "name": "G1",
+   "edges": [
+    {
+     "id": "g10",
+     "start": [
+      0,
+      8
+     ],
+     "end": [
+      6,
+      8
+     ],
+     "edge": true
+    },
+    {
+     "id": "g11",
+     "start": [
+      6,
+      8
+     ],
+     "end": [
+      6,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "g12",
+     "start": [
+      6,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "g13",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      8
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "G2",
+   "edges": [
+    {
+     "id": "g20",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      6,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "g21",
+     "start": [
+      6,
+      0
+     ],
+     "end": [
+      6,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "g22",
+     "start": [
+      6,
+      4
+     ],
+     "end": [
+      0,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "g23",
+     "start": [
+      0,
+      4
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S3",
+   "from": "g22",
+   "to": "g10",
+   "at": 0.27
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "G1.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "G2.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "S3 >= ?"
+  }
+ ],
+ "values": {
+  "3.3V": 0.24,
+  "5V": 0.24
+ },
+ "except": [
+  "otp_mk"
+ ]
+}

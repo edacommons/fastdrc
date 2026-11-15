@@ -1,0 +1,137 @@
+{
+ "name": "PL.1a",
+ "desc": "PL.1a : Interconnect Width (inside PLFUSE).",
+ "shapes": [
+  {
+   "name": "FUSE",
+   "edges": [
+    {
+     "id": "fuse_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      14,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "fuse_1",
+     "start": [
+      14,
+      0
+     ],
+     "end": [
+      14,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "fuse_2",
+     "start": [
+      14,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "fuse_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "LINE",
+   "edges": [
+    {
+     "id": "line_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "line_1",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "line_2",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "line_3",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "W",
+   "from": "line_3",
+   "to": "line_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "FUSE.layer == plfuse"
+  },
+  {
+   "kind": "match",
+   "expr": "LINE.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "W >= ?"
+  }
+ ],
+ "values": {
+  "3.3V": 0.18,
+  "5V": 0.18
+ }
+}

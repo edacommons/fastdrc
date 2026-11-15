@@ -1,0 +1,190 @@
+{
+ "name": "SB.15a",
+ "desc": "SB.15a : Space from unsalicided Poly2 to unrelated Nplus/Pplus.",
+ "shapes": [
+  {
+   "name": "SAB",
+   "edges": [
+    {
+     "id": "sab_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      14,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_1",
+     "start": [
+      14,
+      0
+     ],
+     "end": [
+      14,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_2",
+     "start": [
+      14,
+      22
+     ],
+     "end": [
+      0,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_3",
+     "start": [
+      0,
+      22
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PX",
+   "edges": [
+    {
+     "id": "px_0",
+     "start": [
+      4,
+      8
+     ],
+     "end": [
+      10,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "px_1",
+     "start": [
+      10,
+      8
+     ],
+     "end": [
+      10,
+      14
+     ],
+     "edge": true
+    },
+    {
+     "id": "px_2",
+     "start": [
+      10,
+      14
+     ],
+     "end": [
+      4,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "px_3",
+     "start": [
+      4,
+      14
+     ],
+     "end": [
+      4,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "IMP",
+   "edges": [
+    {
+     "id": "imp_0",
+     "start": [
+      18,
+      4
+     ],
+     "end": [
+      24,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_1",
+     "start": [
+      24,
+      4
+     ],
+     "end": [
+      24,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_2",
+     "start": [
+      24,
+      18
+     ],
+     "end": [
+      18,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_3",
+     "start": [
+      18,
+      18
+     ],
+     "end": [
+      18,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "px_1",
+   "to": "imp_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "SAB.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "PX.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "IMP.layer in {nplus, pplus}"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.18"
+  }
+ ]
+}

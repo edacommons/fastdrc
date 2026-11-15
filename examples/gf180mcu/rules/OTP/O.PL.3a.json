@@ -1,0 +1,191 @@
+{
+ "name": "O.PL.3a",
+ "desc": "O.PL.3a : Min. poly2 Space on COMP.",
+ "shapes": [
+  {
+   "name": "MKR",
+   "edges": [
+    {
+     "id": "mkr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      14,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_1",
+     "start": [
+      14,
+      0
+     ],
+     "end": [
+      14,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_2",
+     "start": [
+      14,
+      20
+     ],
+     "end": [
+      0,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_3",
+     "start": [
+      0,
+      20
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "G1",
+   "edges": [
+    {
+     "id": "g10",
+     "start": [
+      4,
+      12
+     ],
+     "end": [
+      10,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "g11",
+     "start": [
+      10,
+      12
+     ],
+     "end": [
+      10,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "g12",
+     "start": [
+      10,
+      16
+     ],
+     "end": [
+      4,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "g13",
+     "start": [
+      4,
+      16
+     ],
+     "end": [
+      4,
+      12
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "G2",
+   "edges": [
+    {
+     "id": "g20",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "g21",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      10,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "g22",
+     "start": [
+      10,
+      8
+     ],
+     "end": [
+      4,
+      8
+     ],
+     "edge": true
+    },
+    {
+     "id": "g23",
+     "start": [
+      4,
+      8
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S3",
+   "from": "g22",
+   "to": "g10",
+   "at": 4.27
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MKR.layer == otp_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "G1.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "G2.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "S3 >= 0.18"
+  }
+ ]
+}

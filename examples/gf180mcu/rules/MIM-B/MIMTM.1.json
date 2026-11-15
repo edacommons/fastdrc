@@ -1,0 +1,202 @@
+{
+ "name": "MIMTM.1",
+ "desc": "MIMTM.1 : Minimum MiM bottom plate spacing to the bottom plate metal (whether adjacent MiM or routing metal).",
+ "shapes": [
+  {
+   "name": "PLATE",
+   "edges": [
+    {
+     "id": "plate_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      14,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "plate_1",
+     "start": [
+      14,
+      0
+     ],
+     "end": [
+      14,
+      14
+     ],
+     "edge": true
+    },
+    {
+     "id": "plate_2",
+     "start": [
+      14,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "plate_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "FT",
+   "edges": [
+    {
+     "id": "ft_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "ft_1",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "ft_2",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "ft_3",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      19,
+      0
+     ],
+     "end": [
+      25,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      25,
+      0
+     ],
+     "end": [
+      25,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_2",
+     "start": [
+      25,
+      14
+     ],
+     "end": [
+      19,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      19,
+      14
+     ],
+     "end": [
+      19,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "LP",
+   "from": "plate_0",
+   "to": "ft_0"
+  },
+  {
+   "name": "S",
+   "from": "plate_1",
+   "to": "b_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "PLATE.layer == under_top_metal"
+  },
+  {
+   "kind": "match",
+   "expr": "FT.layer == fusetop"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == under_top_metal"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 1.2"
+  }
+ ],
+ "when": {
+  "switch": "mim",
+  "cases": {
+   "B": true
+  },
+  "default": false
+ }
+}

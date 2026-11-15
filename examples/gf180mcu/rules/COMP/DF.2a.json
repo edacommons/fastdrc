@@ -1,0 +1,139 @@
+{
+ "name": "DF.2a",
+ "desc": "DF.2a : Min Channel Width.",
+ "shapes": [
+  {
+   "name": "COMP",
+   "edges": [
+    {
+     "id": "comp_0",
+     "start": [
+      4,
+      0
+     ],
+     "end": [
+      10,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_1",
+     "start": [
+      10,
+      0
+     ],
+     "end": [
+      10,
+      14
+     ],
+     "edge": true
+    },
+    {
+     "id": "comp_2",
+     "start": [
+      10,
+      14
+     ],
+     "end": [
+      4,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_3",
+     "start": [
+      4,
+      14
+     ],
+     "end": [
+      4,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "G1",
+   "edges": [
+    {
+     "id": "g1_0",
+     "start": [
+      0,
+      6
+     ],
+     "end": [
+      14,
+      6
+     ],
+     "edge": true
+    },
+    {
+     "id": "g1_1",
+     "start": [
+      14,
+      6
+     ],
+     "end": [
+      14,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "g1_2",
+     "start": [
+      14,
+      10
+     ],
+     "end": [
+      0,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "g1_3",
+     "start": [
+      0,
+      10
+     ],
+     "end": [
+      0,
+      6
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "W",
+   "from": "comp_3",
+   "to": "comp_1",
+   "edges": true,
+   "at": 8.0
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "COMP.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "G1.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "W >= ?"
+  }
+ ],
+ "values": {
+  "3.3V": 0.22,
+  "5V": 0.3
+ }
+}

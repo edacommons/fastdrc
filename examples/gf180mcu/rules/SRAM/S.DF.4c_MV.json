@@ -1,0 +1,307 @@
+{
+ "name": "S.DF.4c_MV",
+ "desc": "S.DF.4c_MV : Min. (Nwell overlap of PCOMP) outside DNWELL.",
+ "shapes": [
+  {
+   "name": "V5",
+   "edges": [
+    {
+     "id": "v5_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      40,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "v5_1",
+     "start": [
+      40,
+      0
+     ],
+     "end": [
+      40,
+      40
+     ],
+     "edge": false
+    },
+    {
+     "id": "v5_2",
+     "start": [
+      40,
+      40
+     ],
+     "end": [
+      0,
+      40
+     ],
+     "edge": false
+    },
+    {
+     "id": "v5_3",
+     "start": [
+      0,
+      40
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DG",
+   "edges": [
+    {
+     "id": "dg_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      36,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_1",
+     "start": [
+      36,
+      4
+     ],
+     "end": [
+      36,
+      36
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_2",
+     "start": [
+      36,
+      36
+     ],
+     "end": [
+      4,
+      36
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_3",
+     "start": [
+      4,
+      36
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "MKR",
+   "edges": [
+    {
+     "id": "mkr_0",
+     "start": [
+      8,
+      8
+     ],
+     "end": [
+      32,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_1",
+     "start": [
+      32,
+      8
+     ],
+     "end": [
+      32,
+      32
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_2",
+     "start": [
+      32,
+      32
+     ],
+     "end": [
+      8,
+      32
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_3",
+     "start": [
+      8,
+      32
+     ],
+     "end": [
+      8,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "OUT",
+   "edges": [
+    {
+     "id": "out_0",
+     "start": [
+      12,
+      12
+     ],
+     "end": [
+      28,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "out_1",
+     "start": [
+      28,
+      12
+     ],
+     "end": [
+      28,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "out_2",
+     "start": [
+      28,
+      28
+     ],
+     "end": [
+      12,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "out_3",
+     "start": [
+      12,
+      28
+     ],
+     "end": [
+      12,
+      12
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "IN",
+   "edges": [
+    {
+     "id": "in_0",
+     "start": [
+      17,
+      17
+     ],
+     "end": [
+      23,
+      17
+     ],
+     "edge": false
+    },
+    {
+     "id": "in_1",
+     "start": [
+      23,
+      17
+     ],
+     "end": [
+      23,
+      23
+     ],
+     "edge": false
+    },
+    {
+     "id": "in_2",
+     "start": [
+      23,
+      23
+     ],
+     "end": [
+      17,
+      23
+     ],
+     "edge": false
+    },
+    {
+     "id": "in_3",
+     "start": [
+      17,
+      23
+     ],
+     "end": [
+      17,
+      17
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E",
+   "from": "out_3",
+   "to": "in_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "V5.layer == v5_xtor"
+  },
+  {
+   "kind": "match",
+   "expr": "DG.layer == dualgate"
+  },
+  {
+   "kind": "match",
+   "expr": "MKR.layer == sramcore"
+  },
+  {
+   "kind": "match",
+   "expr": "OUT.layer == nwell"
+  },
+  {
+   "kind": "match",
+   "expr": "IN.layer == pcomp"
+  },
+  {
+   "kind": "check",
+   "expr": "E >= 0.45"
+  }
+ ],
+ "except": [
+  "dnwell"
+ ]
+}

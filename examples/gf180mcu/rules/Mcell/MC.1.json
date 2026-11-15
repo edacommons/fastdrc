@@ -1,0 +1,76 @@
+{
+ "name": "MC.1",
+ "desc": "MC.1 : min. mcell width",
+ "shapes": [
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      5,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      5,
+      0
+     ],
+     "end": [
+      5,
+      6
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      5,
+      6
+     ],
+     "end": [
+      0,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      0,
+      6
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "W",
+   "from": "a_3",
+   "to": "a_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "A.layer == mcell_feol_mk"
+  },
+  {
+   "kind": "check",
+   "expr": "W >= 0.4"
+  }
+ ]
+}

@@ -1,0 +1,195 @@
+{
+ "name": "DF.5",
+ "desc": "DF.5 : Min. (LVPWELL overlap of PCOMP well tap) inside DNWELL.",
+ "shapes": [
+  {
+   "name": "DN",
+   "edges": [
+    {
+     "id": "dn_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      30,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_1",
+     "start": [
+      30,
+      0
+     ],
+     "end": [
+      30,
+      30
+     ],
+     "edge": true
+    },
+    {
+     "id": "dn_2",
+     "start": [
+      30,
+      30
+     ],
+     "end": [
+      0,
+      30
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_3",
+     "start": [
+      0,
+      30
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "PW",
+   "edges": [
+    {
+     "id": "pw_0",
+     "start": [
+      6,
+      6
+     ],
+     "end": [
+      24,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "pw_1",
+     "start": [
+      24,
+      6
+     ],
+     "end": [
+      24,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "pw_2",
+     "start": [
+      24,
+      24
+     ],
+     "end": [
+      6,
+      24
+     ],
+     "edge": true
+    },
+    {
+     "id": "pw_3",
+     "start": [
+      6,
+      24
+     ],
+     "end": [
+      6,
+      6
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PT",
+   "edges": [
+    {
+     "id": "pt_0",
+     "start": [
+      12,
+      12
+     ],
+     "end": [
+      18,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "pt_1",
+     "start": [
+      18,
+      12
+     ],
+     "end": [
+      18,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "pt_2",
+     "start": [
+      18,
+      18
+     ],
+     "end": [
+      12,
+      18
+     ],
+     "edge": true
+    },
+    {
+     "id": "pt_3",
+     "start": [
+      12,
+      18
+     ],
+     "end": [
+      12,
+      12
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E5",
+   "from": "pt_2",
+   "to": "pw_2",
+   "within": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "DN.layer == dnwell"
+  },
+  {
+   "kind": "match",
+   "expr": "PW.layer == lvpwell"
+  },
+  {
+   "kind": "match",
+   "expr": "PT.layer == pcomp"
+  },
+  {
+   "kind": "check",
+   "expr": "E5 >= ?"
+  }
+ ],
+ "values": {
+  "3.3V": 0.12,
+  "5V": 0.16
+ }
+}

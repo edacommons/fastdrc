@@ -1,0 +1,131 @@
+{
+ "name": "EF.02",
+ "desc": "EF.02 : Min. Max. PLFUSE width.",
+ "shapes": [
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      18,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      18,
+      0
+     ],
+     "end": [
+      18,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      18,
+      16
+     ],
+     "end": [
+      0,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      0,
+      16
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "F",
+   "edges": [
+    {
+     "id": "f_0",
+     "start": [
+      6,
+      6
+     ],
+     "end": [
+      12,
+      6
+     ],
+     "edge": true
+    },
+    {
+     "id": "f_1",
+     "start": [
+      12,
+      6
+     ],
+     "end": [
+      12,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "f_2",
+     "start": [
+      12,
+      10
+     ],
+     "end": [
+      6,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "f_3",
+     "start": [
+      6,
+      10
+     ],
+     "end": [
+      6,
+      6
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MK.layer == efuse_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "F.layer == plfuse"
+  },
+  {
+   "kind": "match",
+   "expr": "f_0.length > f_1.length"
+  },
+  {
+   "kind": "check",
+   "expr": "f_1.length == 0.18"
+  }
+ ]
+}

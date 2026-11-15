@@ -1,0 +1,70 @@
+{
+ "name": "ESD.5a",
+ "desc": "ESD.5a : Minimum ESD area (um2).",
+ "shapes": [
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      6,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      6,
+      0
+     ],
+     "end": [
+      6,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_2",
+     "start": [
+      6,
+      6
+     ],
+     "end": [
+      0,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      0,
+      6
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "A.layer == esd"
+  },
+  {
+   "kind": "check",
+   "expr": "A.area >= 0.49"
+  }
+ ]
+}

@@ -1,0 +1,202 @@
+{
+ "name": "MIM.5",
+ "desc": "MIM.5 : Minimum spacing between top plate and the Via2 connecting to the bottom plate.",
+ "shapes": [
+  {
+   "name": "PLATE",
+   "edges": [
+    {
+     "id": "plate_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      23,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "plate_1",
+     "start": [
+      23,
+      0
+     ],
+     "end": [
+      23,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "plate_2",
+     "start": [
+      23,
+      20
+     ],
+     "end": [
+      0,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "plate_3",
+     "start": [
+      0,
+      20
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "FT",
+   "edges": [
+    {
+     "id": "ft_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "ft_1",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      10,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "ft_2",
+     "start": [
+      10,
+      16
+     ],
+     "end": [
+      4,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "ft_3",
+     "start": [
+      4,
+      16
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "V",
+   "edges": [
+    {
+     "id": "v_0",
+     "start": [
+      15,
+      8
+     ],
+     "end": [
+      19,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "v_1",
+     "start": [
+      19,
+      8
+     ],
+     "end": [
+      19,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "v_2",
+     "start": [
+      19,
+      12
+     ],
+     "end": [
+      15,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "v_3",
+     "start": [
+      15,
+      12
+     ],
+     "end": [
+      15,
+      8
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "LV",
+   "from": "v_0",
+   "to": "plate_0"
+  },
+  {
+   "name": "S",
+   "from": "ft_1",
+   "to": "v_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "PLATE.layer == metal2"
+  },
+  {
+   "kind": "match",
+   "expr": "FT.layer == fusetop"
+  },
+  {
+   "kind": "match",
+   "expr": "V.layer == via2"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.4"
+  }
+ ],
+ "when": {
+  "switch": "mim",
+  "cases": {
+   "A": true
+  },
+  "default": false
+ }
+}

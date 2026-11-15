@@ -1,0 +1,130 @@
+{
+ "name": "ESD.7",
+ "desc": "ESD.7 : No ESD implant inside PCOMP.",
+ "shapes": [
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      10,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      10,
+      0
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      0,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      0,
+      10
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      6,
+      4
+     ],
+     "end": [
+      16,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      16,
+      4
+     ],
+     "end": [
+      16,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_2",
+     "start": [
+      16,
+      14
+     ],
+     "end": [
+      6,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      6,
+      14
+     ],
+     "end": [
+      6,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "X",
+   "from": "a_1",
+   "to": "b_3",
+   "crossed": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "A.layer == esd"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == pcomp"
+  }
+ ]
+}

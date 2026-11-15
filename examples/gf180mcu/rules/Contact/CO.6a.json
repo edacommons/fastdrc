@@ -1,0 +1,142 @@
+{
+ "name": "CO.6a",
+ "desc": "CO.6a : (i) Metal1 (< 0.34um) end-of-line overlap.",
+ "shapes": [
+  {
+   "name": "LINE",
+   "edges": [
+    {
+     "id": "line_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      12,
+      0
+     ],
+     "edge": true
+    },
+    {
+     "id": "line_1",
+     "start": [
+      12,
+      0
+     ],
+     "end": [
+      12,
+      15
+     ],
+     "edge": true
+    },
+    {
+     "id": "line_2",
+     "start": [
+      12,
+      15
+     ],
+     "end": [
+      0,
+      15
+     ],
+     "edge": false
+    },
+    {
+     "id": "line_3",
+     "start": [
+      0,
+      15
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "KA",
+   "edges": [
+    {
+     "id": "ka_0",
+     "start": [
+      4,
+      5
+     ],
+     "end": [
+      8,
+      5
+     ],
+     "edge": true
+    },
+    {
+     "id": "ka_1",
+     "start": [
+      8,
+      5
+     ],
+     "end": [
+      8,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "ka_2",
+     "start": [
+      8,
+      9
+     ],
+     "end": [
+      4,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "ka_3",
+     "start": [
+      4,
+      9
+     ],
+     "end": [
+      4,
+      5
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "R",
+   "from": "line_0",
+   "to": "ka_0",
+   "metric": "projection"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "LINE.layer == metal1"
+  },
+  {
+   "kind": "match",
+   "expr": "KA.layer == contact"
+  },
+  {
+   "kind": "match",
+   "expr": "line_0.length <= 0.34"
+  },
+  {
+   "kind": "match",
+   "expr": "line_1.length >= 0.24"
+  },
+  {
+   "kind": "check",
+   "expr": "R >= 0.06"
+  }
+ ]
+}

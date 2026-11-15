@@ -1,0 +1,130 @@
+{
+ "name": "NAT.8",
+ "desc": "NAT.8 : Min. Dualgate overlap of NAT (for 5V/6V) native VT NMOS only.",
+ "shapes": [
+  {
+   "name": "OUT",
+   "edges": [
+    {
+     "id": "out_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      10,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "out_1",
+     "start": [
+      10,
+      0
+     ],
+     "end": [
+      10,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "out_2",
+     "start": [
+      10,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "out_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "IN",
+   "edges": [
+    {
+     "id": "in_0",
+     "start": [
+      6,
+      4
+     ],
+     "end": [
+      16,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "in_1",
+     "start": [
+      16,
+      4
+     ],
+     "end": [
+      16,
+      8
+     ],
+     "edge": true
+    },
+    {
+     "id": "in_2",
+     "start": [
+      16,
+      8
+     ],
+     "end": [
+      6,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "in_3",
+     "start": [
+      6,
+      8
+     ],
+     "end": [
+      6,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "X",
+   "from": "in_1",
+   "to": "out_1",
+   "crossed": "straddle"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "OUT.layer == dualgate"
+  },
+  {
+   "kind": "match",
+   "expr": "IN.layer == nat"
+  }
+ ]
+}

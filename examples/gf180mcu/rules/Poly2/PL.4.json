@@ -1,0 +1,141 @@
+{
+ "name": "PL.4",
+ "desc": "PL.4 : Extension beyond COMP to form Poly2 end cap.",
+ "shapes": [
+  {
+   "name": "COMP",
+   "edges": [
+    {
+     "id": "comp0",
+     "start": [
+      4,
+      0
+     ],
+     "end": [
+      10,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp1",
+     "start": [
+      10,
+      0
+     ],
+     "end": [
+      10,
+      14
+     ],
+     "edge": true
+    },
+    {
+     "id": "comp2",
+     "start": [
+      10,
+      14
+     ],
+     "end": [
+      4,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp3",
+     "start": [
+      4,
+      14
+     ],
+     "end": [
+      4,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "G1",
+   "edges": [
+    {
+     "id": "g10",
+     "start": [
+      0,
+      6
+     ],
+     "end": [
+      14,
+      6
+     ],
+     "edge": true
+    },
+    {
+     "id": "g11",
+     "start": [
+      14,
+      6
+     ],
+     "end": [
+      14,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "g12",
+     "start": [
+      14,
+      10
+     ],
+     "end": [
+      0,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "g13",
+     "start": [
+      0,
+      10
+     ],
+     "end": [
+      0,
+      6
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E4",
+   "from": "comp3",
+   "to": "g13"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "COMP.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "G1.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "E4 >= ?"
+  }
+ ],
+ "values": {
+  "3.3V": 0.22,
+  "5V": 0.22
+ },
+ "except": [
+  "otp_mk",
+  "ymtp_mk"
+ ]
+}

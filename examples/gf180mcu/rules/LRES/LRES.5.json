@@ -1,0 +1,261 @@
+{
+ "name": "LRES.5",
+ "desc": "LRES.5 : Minimum Nplus implant overlap of Poly2 resistor.",
+ "shapes": [
+  {
+   "name": "IMP",
+   "edges": [
+    {
+     "id": "imp_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      24,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_1",
+     "start": [
+      24,
+      0
+     ],
+     "end": [
+      24,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_2",
+     "start": [
+      24,
+      28
+     ],
+     "end": [
+      0,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_3",
+     "start": [
+      0,
+      28
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      9,
+      8
+     ],
+     "end": [
+      15,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      15,
+      8
+     ],
+     "end": [
+      15,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      15,
+      20
+     ],
+     "end": [
+      9,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      9,
+      20
+     ],
+     "end": [
+      9,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "SAB",
+   "edges": [
+    {
+     "id": "sab_0",
+     "start": [
+      9,
+      4
+     ],
+     "end": [
+      15,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_1",
+     "start": [
+      15,
+      4
+     ],
+     "end": [
+      15,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_2",
+     "start": [
+      15,
+      24
+     ],
+     "end": [
+      9,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_3",
+     "start": [
+      9,
+      24
+     ],
+     "end": [
+      9,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "R",
+   "edges": [
+    {
+     "id": "r_0",
+     "start": [
+      4,
+      12
+     ],
+     "end": [
+      20,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "r_1",
+     "start": [
+      20,
+      12
+     ],
+     "end": [
+      20,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "r_2",
+     "start": [
+      20,
+      16
+     ],
+     "end": [
+      4,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "r_3",
+     "start": [
+      4,
+      16
+     ],
+     "end": [
+      4,
+      12
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "LRS",
+   "from": "r_0",
+   "to": "sab_0"
+  },
+  {
+   "name": "LRM",
+   "from": "r_0",
+   "to": "mk_0"
+  },
+  {
+   "name": "E",
+   "from": "imp_3",
+   "to": "r_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "IMP.layer == nplus"
+  },
+  {
+   "kind": "match",
+   "expr": "MK.layer == res_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "SAB.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "R.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "E >= 0.3"
+  },
+  {
+   "kind": "check",
+   "expr": "R in IMP"
+  }
+ ]
+}

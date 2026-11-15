@@ -1,0 +1,262 @@
+{
+ "name": "LRES.7",
+ "desc": "LRES.7 : Space from salicide block to contact on Poly2 resistor.",
+ "shapes": [
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      5,
+      4
+     ],
+     "end": [
+      11,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      11,
+      4
+     ],
+     "end": [
+      11,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      11,
+      24
+     ],
+     "end": [
+      5,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      5,
+      24
+     ],
+     "end": [
+      5,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "SAB",
+   "edges": [
+    {
+     "id": "sab_0",
+     "start": [
+      5,
+      0
+     ],
+     "end": [
+      11,
+      0
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab_1",
+     "start": [
+      11,
+      0
+     ],
+     "end": [
+      11,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_2",
+     "start": [
+      11,
+      28
+     ],
+     "end": [
+      5,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_3",
+     "start": [
+      5,
+      28
+     ],
+     "end": [
+      5,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "R",
+   "edges": [
+    {
+     "id": "r_0",
+     "start": [
+      0,
+      8
+     ],
+     "end": [
+      23,
+      8
+     ],
+     "edge": true
+    },
+    {
+     "id": "r_1",
+     "start": [
+      23,
+      8
+     ],
+     "end": [
+      23,
+      20
+     ],
+     "edge": true
+    },
+    {
+     "id": "r_2",
+     "start": [
+      23,
+      20
+     ],
+     "end": [
+      0,
+      20
+     ],
+     "edge": true
+    },
+    {
+     "id": "r_3",
+     "start": [
+      0,
+      20
+     ],
+     "end": [
+      0,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "K",
+   "edges": [
+    {
+     "id": "k_0",
+     "start": [
+      15,
+      12
+     ],
+     "end": [
+      19,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "k_1",
+     "start": [
+      19,
+      12
+     ],
+     "end": [
+      19,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "k_2",
+     "start": [
+      19,
+      16
+     ],
+     "end": [
+      15,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "k_3",
+     "start": [
+      15,
+      16
+     ],
+     "end": [
+      15,
+      12
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "LRS",
+   "from": "r_3",
+   "to": "sab_3"
+  },
+  {
+   "name": "LRM",
+   "from": "r_3",
+   "to": "mk_3"
+  },
+  {
+   "name": "LK",
+   "from": "k_0",
+   "to": "r_1"
+  },
+  {
+   "name": "S",
+   "from": "sab_1",
+   "to": "k_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MK.layer == res_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "SAB.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "R.layer == npoly"
+  },
+  {
+   "kind": "match",
+   "expr": "K.layer == contact"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.22"
+  }
+ ]
+}

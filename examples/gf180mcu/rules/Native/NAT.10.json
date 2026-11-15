@@ -1,0 +1,130 @@
+{
+ "name": "NAT.10",
+ "desc": "NAT.10 : Nwell, inside NAT layer are not allowed.",
+ "shapes": [
+  {
+   "name": "NAT",
+   "edges": [
+    {
+     "id": "nat_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      14,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "nat_1",
+     "start": [
+      14,
+      0
+     ],
+     "end": [
+      14,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "nat_2",
+     "start": [
+      14,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "nat_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "NW",
+   "edges": [
+    {
+     "id": "nw_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "nw_1",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "nw_2",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "nw_3",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "X",
+   "from": "nw_3",
+   "to": "nat_3",
+   "crossed": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "NAT.layer == nat"
+  },
+  {
+   "kind": "match",
+   "expr": "NW.layer == nwell"
+  }
+ ]
+}

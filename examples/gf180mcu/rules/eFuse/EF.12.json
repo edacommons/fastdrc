@@ -1,0 +1,252 @@
+{
+ "name": "EF.12",
+ "desc": "EF.12 : Min. Space of Cathode Contact to PLFUSE end.",
+ "shapes": [
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      28,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      28,
+      0
+     ],
+     "end": [
+      28,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      28,
+      22
+     ],
+     "end": [
+      0,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      0,
+      22
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      16,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      16,
+      4
+     ],
+     "end": [
+      16,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_2",
+     "start": [
+      16,
+      18
+     ],
+     "end": [
+      4,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      4,
+      18
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "K",
+   "edges": [
+    {
+     "id": "k_0",
+     "start": [
+      8,
+      9
+     ],
+     "end": [
+      12,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "k_1",
+     "start": [
+      12,
+      9
+     ],
+     "end": [
+      12,
+      13
+     ],
+     "edge": true
+    },
+    {
+     "id": "k_2",
+     "start": [
+      12,
+      13
+     ],
+     "end": [
+      8,
+      13
+     ],
+     "edge": false
+    },
+    {
+     "id": "k_3",
+     "start": [
+      8,
+      13
+     ],
+     "end": [
+      8,
+      9
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "F",
+   "edges": [
+    {
+     "id": "f_0",
+     "start": [
+      16,
+      9
+     ],
+     "end": [
+      22,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "f_1",
+     "start": [
+      22,
+      9
+     ],
+     "end": [
+      22,
+      13
+     ],
+     "edge": false
+    },
+    {
+     "id": "f_2",
+     "start": [
+      22,
+      13
+     ],
+     "end": [
+      16,
+      13
+     ],
+     "edge": false
+    },
+    {
+     "id": "f_3",
+     "start": [
+      16,
+      13
+     ],
+     "end": [
+      16,
+      9
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "LK",
+   "from": "k_0",
+   "to": "b_0"
+  },
+  {
+   "name": "S",
+   "from": "k_1",
+   "to": "f_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MK.layer == efuse_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == cathode"
+  },
+  {
+   "kind": "match",
+   "expr": "K.layer == contact"
+  },
+  {
+   "kind": "match",
+   "expr": "F.layer == plfuse"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.155"
+  }
+ ]
+}

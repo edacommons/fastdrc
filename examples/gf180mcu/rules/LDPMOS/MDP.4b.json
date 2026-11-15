@@ -1,0 +1,252 @@
+{
+ "name": "MDP.4b",
+ "desc": "MDP.4b : Maximum distance of the nearest edge of the DNWELL from the PCOMP Guard ring outside DNWELL.",
+ "shapes": [
+  {
+   "name": "LD",
+   "edges": [
+    {
+     "id": "ld_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      22,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_1",
+     "start": [
+      22,
+      0
+     ],
+     "end": [
+      22,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_2",
+     "start": [
+      22,
+      20
+     ],
+     "end": [
+      0,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_3",
+     "start": [
+      0,
+      20
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "MV",
+   "edges": [
+    {
+     "id": "mv_0",
+     "start": [
+      8,
+      8
+     ],
+     "end": [
+      12,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_1",
+     "start": [
+      12,
+      8
+     ],
+     "end": [
+      12,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_2",
+     "start": [
+      12,
+      12
+     ],
+     "end": [
+      8,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_3",
+     "start": [
+      8,
+      12
+     ],
+     "end": [
+      8,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      16,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      16,
+      4
+     ],
+     "end": [
+      16,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      16,
+      16
+     ],
+     "end": [
+      4,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      4,
+      16
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      26,
+      4
+     ],
+     "end": [
+      32,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      32,
+      4
+     ],
+     "end": [
+      32,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_2",
+     "start": [
+      32,
+      16
+     ],
+     "end": [
+      26,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      26,
+      16
+     ],
+     "end": [
+      26,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "LA",
+   "from": "a_0",
+   "to": "mv_0"
+  },
+  {
+   "name": "S",
+   "from": "a_1",
+   "to": "b_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "LD.layer == ldmos_xtor"
+  },
+  {
+   "kind": "match",
+   "expr": "MV.layer == mvpsd"
+  },
+  {
+   "kind": "match",
+   "expr": "A.layer == dnwell"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == pcomp"
+  },
+  {
+   "kind": "check",
+   "expr": "S <= 15"
+  }
+ ]
+}

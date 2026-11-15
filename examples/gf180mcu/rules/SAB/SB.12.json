@@ -1,0 +1,137 @@
+{
+ "name": "SB.12",
+ "desc": "SB.12 : Overlap with Poly2 outside ESD_MK.",
+ "shapes": [
+  {
+   "name": "SAB",
+   "edges": [
+    {
+     "id": "sab_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      10,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_1",
+     "start": [
+      10,
+      0
+     ],
+     "end": [
+      10,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab_2",
+     "start": [
+      10,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PX",
+   "edges": [
+    {
+     "id": "px_0",
+     "start": [
+      5,
+      4
+     ],
+     "end": [
+      16,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "px_1",
+     "start": [
+      16,
+      4
+     ],
+     "end": [
+      16,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "px_2",
+     "start": [
+      16,
+      8
+     ],
+     "end": [
+      5,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "px_3",
+     "start": [
+      5,
+      8
+     ],
+     "end": [
+      5,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "O",
+   "from": "px_3",
+   "to": "sab_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "SAB.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "PX.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "O >= 0.22"
+  }
+ ],
+ "except": [
+  "otp_mk",
+  "esd_mk"
+ ]
+}

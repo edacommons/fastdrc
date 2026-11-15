@@ -1,0 +1,194 @@
+{
+ "name": "PP.3ci",
+ "desc": "PP.3ci : Space to NCOMP, outside DNWELL, inside Nwell: (i) NWELL overlap of NCOMP >= 0.43um.",
+ "shapes": [
+  {
+   "name": "ZONE",
+   "edges": [
+    {
+     "id": "zone_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      14,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_1",
+     "start": [
+      14,
+      0
+     ],
+     "end": [
+      14,
+      21
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_2",
+     "start": [
+      14,
+      21
+     ],
+     "end": [
+      0,
+      21
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_3",
+     "start": [
+      0,
+      21
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "P1",
+   "edges": [
+    {
+     "id": "p1_0",
+     "start": [
+      5,
+      8
+     ],
+     "end": [
+      10,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "p1_1",
+     "start": [
+      10,
+      8
+     ],
+     "end": [
+      10,
+      13
+     ],
+     "edge": true
+    },
+    {
+     "id": "p1_2",
+     "start": [
+      10,
+      13
+     ],
+     "end": [
+      5,
+      13
+     ],
+     "edge": false
+    },
+    {
+     "id": "p1_3",
+     "start": [
+      5,
+      13
+     ],
+     "end": [
+      5,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "N1",
+   "edges": [
+    {
+     "id": "n1_0",
+     "start": [
+      18,
+      4
+     ],
+     "end": [
+      24,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "n1_1",
+     "start": [
+      24,
+      4
+     ],
+     "end": [
+      24,
+      17
+     ],
+     "edge": false
+    },
+    {
+     "id": "n1_2",
+     "start": [
+      24,
+      17
+     ],
+     "end": [
+      18,
+      17
+     ],
+     "edge": false
+    },
+    {
+     "id": "n1_3",
+     "start": [
+      18,
+      17
+     ],
+     "end": [
+      18,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "n1_3",
+   "to": "p1_1",
+   "edges": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "ZONE.layer == nwell_core"
+  },
+  {
+   "kind": "match",
+   "expr": "P1.layer == ncomp"
+  },
+  {
+   "kind": "match",
+   "expr": "N1.layer == pplus"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.08"
+  }
+ ],
+ "except": [
+  "dnwell"
+ ]
+}

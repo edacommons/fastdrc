@@ -1,0 +1,248 @@
+{
+ "name": "O.CO.7",
+ "desc": "O.CO.7 : Min. space from COMP contact to Poly2 on COMP.",
+ "shapes": [
+  {
+   "name": "MKR",
+   "edges": [
+    {
+     "id": "mkr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      30,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_1",
+     "start": [
+      30,
+      0
+     ],
+     "end": [
+      30,
+      31
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_2",
+     "start": [
+      30,
+      31
+     ],
+     "end": [
+      0,
+      31
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_3",
+     "start": [
+      0,
+      31
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "COMP",
+   "edges": [
+    {
+     "id": "comp_0",
+     "start": [
+      4,
+      8
+     ],
+     "end": [
+      26,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_1",
+     "start": [
+      26,
+      8
+     ],
+     "end": [
+      26,
+      23
+     ],
+     "edge": true
+    },
+    {
+     "id": "comp_2",
+     "start": [
+      26,
+      23
+     ],
+     "end": [
+      4,
+      23
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_3",
+     "start": [
+      4,
+      23
+     ],
+     "end": [
+      4,
+      8
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "GATE",
+   "edges": [
+    {
+     "id": "gate_0",
+     "start": [
+      16,
+      4
+     ],
+     "end": [
+      20,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "gate_1",
+     "start": [
+      20,
+      4
+     ],
+     "end": [
+      20,
+      27
+     ],
+     "edge": false
+    },
+    {
+     "id": "gate_2",
+     "start": [
+      20,
+      27
+     ],
+     "end": [
+      16,
+      27
+     ],
+     "edge": false
+    },
+    {
+     "id": "gate_3",
+     "start": [
+      16,
+      27
+     ],
+     "end": [
+      16,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "KC",
+   "edges": [
+    {
+     "id": "kc_0",
+     "start": [
+      8,
+      13
+     ],
+     "end": [
+      12,
+      13
+     ],
+     "edge": true
+    },
+    {
+     "id": "kc_1",
+     "start": [
+      12,
+      13
+     ],
+     "end": [
+      12,
+      17
+     ],
+     "edge": true
+    },
+    {
+     "id": "kc_2",
+     "start": [
+      12,
+      17
+     ],
+     "end": [
+      8,
+      17
+     ],
+     "edge": true
+    },
+    {
+     "id": "kc_3",
+     "start": [
+      8,
+      17
+     ],
+     "end": [
+      8,
+      13
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S7",
+   "from": "kc_1",
+   "to": "gate_3",
+   "at": 15.0
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MKR.layer == otp_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "COMP.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "GATE.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "KC.layer == contact"
+  },
+  {
+   "kind": "check",
+   "expr": "S7 >= 0.13"
+  }
+ ]
+}

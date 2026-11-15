@@ -1,0 +1,130 @@
+{
+ "name": "PL.6",
+ "desc": "PL.6 : 90 degree bends on the COMP are not allowed.",
+ "shapes": [
+  {
+   "name": "COMP",
+   "edges": [
+    {
+     "id": "comp_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      16,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_1",
+     "start": [
+      16,
+      0
+     ],
+     "end": [
+      16,
+      15
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_2",
+     "start": [
+      16,
+      15
+     ],
+     "end": [
+      0,
+      15
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_3",
+     "start": [
+      0,
+      15
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "P",
+   "edges": [
+    {
+     "id": "p_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "p_1",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "p_2",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_3",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "COMP.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "P.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "p_1.corner != 90"
+  }
+ ],
+ "except": [
+  "ymtp_mk"
+ ]
+}

@@ -1,0 +1,304 @@
+{
+ "name": "S.DF.6_MV",
+ "desc": "S.DF.6_MV : Min. COMP extend beyond gate (it also means source/drain overhang).",
+ "shapes": [
+  {
+   "name": "V5",
+   "edges": [
+    {
+     "id": "v5_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      39,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "v5_1",
+     "start": [
+      39,
+      0
+     ],
+     "end": [
+      39,
+      38
+     ],
+     "edge": false
+    },
+    {
+     "id": "v5_2",
+     "start": [
+      39,
+      38
+     ],
+     "end": [
+      0,
+      38
+     ],
+     "edge": false
+    },
+    {
+     "id": "v5_3",
+     "start": [
+      0,
+      38
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DG",
+   "edges": [
+    {
+     "id": "dg_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      35,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_1",
+     "start": [
+      35,
+      4
+     ],
+     "end": [
+      35,
+      34
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_2",
+     "start": [
+      35,
+      34
+     ],
+     "end": [
+      4,
+      34
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_3",
+     "start": [
+      4,
+      34
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "MKR",
+   "edges": [
+    {
+     "id": "mkr_0",
+     "start": [
+      8,
+      8
+     ],
+     "end": [
+      31,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_1",
+     "start": [
+      31,
+      8
+     ],
+     "end": [
+      31,
+      30
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_2",
+     "start": [
+      31,
+      30
+     ],
+     "end": [
+      8,
+      30
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_3",
+     "start": [
+      8,
+      30
+     ],
+     "end": [
+      8,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "CB",
+   "edges": [
+    {
+     "id": "cb_0",
+     "start": [
+      12,
+      16
+     ],
+     "end": [
+      27,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "cb_1",
+     "start": [
+      27,
+      16
+     ],
+     "end": [
+      27,
+      22
+     ],
+     "edge": true
+    },
+    {
+     "id": "cb_2",
+     "start": [
+      27,
+      22
+     ],
+     "end": [
+      12,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "cb_3",
+     "start": [
+      12,
+      22
+     ],
+     "end": [
+      12,
+      16
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "G",
+   "edges": [
+    {
+     "id": "g_0",
+     "start": [
+      17,
+      12
+     ],
+     "end": [
+      21,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_1",
+     "start": [
+      21,
+      12
+     ],
+     "end": [
+      21,
+      26
+     ],
+     "edge": true
+    },
+    {
+     "id": "g_2",
+     "start": [
+      21,
+      26
+     ],
+     "end": [
+      17,
+      26
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_3",
+     "start": [
+      17,
+      26
+     ],
+     "end": [
+      17,
+      12
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E6",
+   "from": "g_1",
+   "to": "cb_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "V5.layer == v5_xtor"
+  },
+  {
+   "kind": "match",
+   "expr": "DG.layer == dualgate"
+  },
+  {
+   "kind": "match",
+   "expr": "MKR.layer == sramcore"
+  },
+  {
+   "kind": "match",
+   "expr": "CB.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "G.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "E6 >= 0.32"
+  }
+ ]
+}

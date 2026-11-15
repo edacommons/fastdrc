@@ -1,0 +1,144 @@
+{
+ "name": "PL.5b",
+ "desc": "PL.5b : Space from field Poly2 to related COMP.",
+ "shapes": [
+  {
+   "name": "COMP",
+   "edges": [
+    {
+     "id": "comp0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      6,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp1",
+     "start": [
+      6,
+      0
+     ],
+     "end": [
+      6,
+      6
+     ],
+     "edge": true
+    },
+    {
+     "id": "comp2",
+     "start": [
+      6,
+      6
+     ],
+     "end": [
+      0,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp3",
+     "start": [
+      0,
+      6
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "LINE",
+   "edges": [
+    {
+     "id": "line0",
+     "start": [
+      12,
+      0
+     ],
+     "end": [
+      16,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "line1",
+     "start": [
+      16,
+      0
+     ],
+     "end": [
+      16,
+      6
+     ],
+     "edge": true
+    },
+    {
+     "id": "line2",
+     "start": [
+      16,
+      6
+     ],
+     "end": [
+      12,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "line3",
+     "start": [
+      12,
+      6
+     ],
+     "end": [
+      12,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S5",
+   "from": "line3",
+   "to": "comp1",
+   "at": 3.0
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "COMP.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "LINE.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "S5 >= ?"
+  }
+ ],
+ "values": {
+  "3.3V": 0.1,
+  "5V": 0.3
+ },
+ "except": [
+  "otp_mk",
+  "ymtp_mk",
+  "mvsd",
+  "mvpsd"
+ ]
+}

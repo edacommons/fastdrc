@@ -1,0 +1,133 @@
+{
+ "name": "M2.2a",
+ "desc": "M2.2a : min. metal2 spacing",
+ "shapes": [
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      5,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      5,
+      0
+     ],
+     "end": [
+      5,
+      6
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      5,
+      6
+     ],
+     "end": [
+      0,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      0,
+      6
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      10,
+      0
+     ],
+     "end": [
+      15,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      15,
+      0
+     ],
+     "end": [
+      15,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_2",
+     "start": [
+      15,
+      6
+     ],
+     "end": [
+      10,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      10,
+      6
+     ],
+     "end": [
+      10,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "a_1",
+   "to": "b_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "A.layer == metal2"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == metal2"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.28"
+  }
+ ]
+}

@@ -1,0 +1,401 @@
+{
+ "name": "HRES.3",
+ "desc": "HRES.3 : Minimum space between Poly2 resistors.",
+ "shapes": [
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      9,
+      12
+     ],
+     "end": [
+      19,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      19,
+      12
+     ],
+     "end": [
+      19,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      19,
+      28
+     ],
+     "end": [
+      9,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      9,
+      28
+     ],
+     "end": [
+      9,
+      12
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "SAB",
+   "edges": [
+    {
+     "id": "sab_0",
+     "start": [
+      9,
+      4
+     ],
+     "end": [
+      19,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab_1",
+     "start": [
+      19,
+      4
+     ],
+     "end": [
+      19,
+      36
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_2",
+     "start": [
+      19,
+      36
+     ],
+     "end": [
+      9,
+      36
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_3",
+     "start": [
+      9,
+      36
+     ],
+     "end": [
+      9,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "HR",
+   "edges": [
+    {
+     "id": "hr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      32,
+      0
+     ],
+     "edge": true
+    },
+    {
+     "id": "hr_1",
+     "start": [
+      32,
+      0
+     ],
+     "end": [
+      32,
+      40
+     ],
+     "edge": true
+    },
+    {
+     "id": "hr_2",
+     "start": [
+      32,
+      40
+     ],
+     "end": [
+      0,
+      40
+     ],
+     "edge": false
+    },
+    {
+     "id": "hr_3",
+     "start": [
+      0,
+      40
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "R",
+   "edges": [
+    {
+     "id": "r_0",
+     "start": [
+      4,
+      16
+     ],
+     "end": [
+      24,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "r_1",
+     "start": [
+      24,
+      16
+     ],
+     "end": [
+      24,
+      20
+     ],
+     "edge": true
+    },
+    {
+     "id": "r_2",
+     "start": [
+      24,
+      20
+     ],
+     "end": [
+      4,
+      20
+     ],
+     "edge": true
+    },
+    {
+     "id": "r_3",
+     "start": [
+      4,
+      20
+     ],
+     "end": [
+      4,
+      16
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PE",
+   "edges": [
+    {
+     "id": "pe_0",
+     "start": [
+      15,
+      8
+     ],
+     "end": [
+      28,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "pe_1",
+     "start": [
+      28,
+      8
+     ],
+     "end": [
+      28,
+      32
+     ],
+     "edge": false
+    },
+    {
+     "id": "pe_2",
+     "start": [
+      28,
+      32
+     ],
+     "end": [
+      15,
+      32
+     ],
+     "edge": false
+    },
+    {
+     "id": "pe_3",
+     "start": [
+      15,
+      32
+     ],
+     "end": [
+      15,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "R2",
+   "edges": [
+    {
+     "id": "r2_0",
+     "start": [
+      4,
+      24
+     ],
+     "end": [
+      24,
+      24
+     ],
+     "edge": true
+    },
+    {
+     "id": "r2_1",
+     "start": [
+      24,
+      24
+     ],
+     "end": [
+      24,
+      32
+     ],
+     "edge": false
+    },
+    {
+     "id": "r2_2",
+     "start": [
+      24,
+      32
+     ],
+     "end": [
+      4,
+      32
+     ],
+     "edge": false
+    },
+    {
+     "id": "r2_3",
+     "start": [
+      4,
+      32
+     ],
+     "end": [
+      4,
+      24
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "LRS",
+   "from": "r_3",
+   "to": "sab_3"
+  },
+  {
+   "name": "LRM",
+   "from": "r_3",
+   "to": "mk_3"
+  },
+  {
+   "name": "LRH",
+   "from": "r_3",
+   "to": "hr_3"
+  },
+  {
+   "name": "LRP",
+   "from": "r_3",
+   "to": "pe_3"
+  },
+  {
+   "name": "LS2",
+   "from": "r2_3",
+   "to": "sab_3"
+  },
+  {
+   "name": "LM2",
+   "from": "r2_3",
+   "to": "mk_3"
+  },
+  {
+   "name": "LH2",
+   "from": "r2_3",
+   "to": "hr_3"
+  },
+  {
+   "name": "LP2",
+   "from": "r2_3",
+   "to": "pe_3"
+  },
+  {
+   "name": "S",
+   "from": "r_2",
+   "to": "r2_0"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MK.layer == res_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "SAB.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "HR.layer == resistor"
+  },
+  {
+   "kind": "match",
+   "expr": "R.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "PE.layer == pplus"
+  },
+  {
+   "kind": "match",
+   "expr": "R2.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.4"
+  }
+ ]
+}

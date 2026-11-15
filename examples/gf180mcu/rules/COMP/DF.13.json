@@ -1,0 +1,194 @@
+{
+ "name": "DF.13",
+ "desc": "DF.13 : Max distance of Nwell tap (NCOMP inside Nwell) from (PCOMP inside Nwell).",
+ "shapes": [
+  {
+   "name": "NW",
+   "edges": [
+    {
+     "id": "nw_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      28,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "nw_1",
+     "start": [
+      28,
+      0
+     ],
+     "end": [
+      28,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "nw_2",
+     "start": [
+      28,
+      16
+     ],
+     "end": [
+      0,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "nw_3",
+     "start": [
+      0,
+      16
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PD",
+   "edges": [
+    {
+     "id": "pd_0",
+     "start": [
+      4,
+      5
+     ],
+     "end": [
+      10,
+      5
+     ],
+     "edge": false
+    },
+    {
+     "id": "pd_1",
+     "start": [
+      10,
+      5
+     ],
+     "end": [
+      10,
+      11
+     ],
+     "edge": true
+    },
+    {
+     "id": "pd_2",
+     "start": [
+      10,
+      11
+     ],
+     "end": [
+      4,
+      11
+     ],
+     "edge": false
+    },
+    {
+     "id": "pd_3",
+     "start": [
+      4,
+      11
+     ],
+     "end": [
+      4,
+      5
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "NT",
+   "edges": [
+    {
+     "id": "nt_0",
+     "start": [
+      16,
+      5
+     ],
+     "end": [
+      22,
+      5
+     ],
+     "edge": false
+    },
+    {
+     "id": "nt_1",
+     "start": [
+      22,
+      5
+     ],
+     "end": [
+      22,
+      11
+     ],
+     "edge": false
+    },
+    {
+     "id": "nt_2",
+     "start": [
+      22,
+      11
+     ],
+     "end": [
+      16,
+      11
+     ],
+     "edge": false
+    },
+    {
+     "id": "nt_3",
+     "start": [
+      16,
+      11
+     ],
+     "end": [
+      16,
+      5
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "nt_3",
+   "to": "pd_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "NW.layer == nwell"
+  },
+  {
+   "kind": "match",
+   "expr": "PD.layer == pcomp"
+  },
+  {
+   "kind": "match",
+   "expr": "NT.layer == ncomp"
+  },
+  {
+   "kind": "check",
+   "expr": "S <= ?"
+  }
+ ],
+ "values": {
+  "3.3V": 20,
+  "5V": 15
+ }
+}

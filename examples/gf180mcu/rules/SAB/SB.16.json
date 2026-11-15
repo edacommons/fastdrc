@@ -1,0 +1,135 @@
+{
+ "name": "SB.16",
+ "desc": "SB.16 : SAB layer cannot exist on 3.3V and 5V/6V CMOS transistors' Poly and COMP area of the core circuit (Excluding the transistors used for ESD purpose). It can only exist on CMOS transistors marked by LVS_IO, OTP_MK, ESD_MK layers.",
+ "shapes": [
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      10,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      10,
+      0
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      0,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      0,
+      10
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      6,
+      4
+     ],
+     "end": [
+      16,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      16,
+      4
+     ],
+     "end": [
+      16,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_2",
+     "start": [
+      16,
+      14
+     ],
+     "end": [
+      6,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      6,
+      14
+     ],
+     "end": [
+      6,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "X",
+   "from": "a_1",
+   "to": "b_3",
+   "crossed": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "A.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == tgate"
+  }
+ ],
+ "except": [
+  "lvs_io",
+  "otp_mk",
+  "esd_mk"
+ ]
+}

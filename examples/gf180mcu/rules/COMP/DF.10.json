@@ -1,0 +1,126 @@
+{
+ "name": "DF.10",
+ "desc": "DF.10 : Min. field area (um2).",
+ "shapes": [
+  {
+   "name": "RING",
+   "edges": [
+    {
+     "id": "ring_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      6,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "ring_1",
+     "start": [
+      6,
+      0
+     ],
+     "end": [
+      6,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "ring_2",
+     "start": [
+      6,
+      6
+     ],
+     "end": [
+      0,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "ring_3",
+     "start": [
+      0,
+      6
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ],
+   "hole_loops": [
+    [
+     {
+      "id": "h_0",
+      "start": [
+       100,
+       4
+      ],
+      "end": [
+       106,
+       4
+      ],
+      "edge": false
+     },
+     {
+      "id": "h_1",
+      "start": [
+       106,
+       4
+      ],
+      "end": [
+       106,
+       10
+      ],
+      "edge": false
+     },
+     {
+      "id": "h_2",
+      "start": [
+       106,
+       10
+      ],
+      "end": [
+       100,
+       10
+      ],
+      "edge": false
+     },
+     {
+      "id": "h_3",
+      "start": [
+       100,
+       10
+      ],
+      "end": [
+       100,
+       4
+      ],
+      "edge": false
+     }
+    ]
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "RING.layer == comp"
+  },
+  {
+   "kind": "check",
+   "expr": "RING.holes.area >= ?"
+  }
+ ],
+ "values": {
+  "3.3V": 0.26,
+  "5V": 0.26
+ }
+}

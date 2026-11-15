@@ -1,0 +1,319 @@
+{
+ "name": "PRES.4",
+ "desc": "PRES.4 : Minimum space from Poly2 resistor to unrelated Poly2.",
+ "shapes": [
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      5,
+      8
+     ],
+     "end": [
+      11,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      11,
+      8
+     ],
+     "end": [
+      11,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      11,
+      28
+     ],
+     "end": [
+      5,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      5,
+      28
+     ],
+     "end": [
+      5,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "SAB",
+   "edges": [
+    {
+     "id": "sab_0",
+     "start": [
+      5,
+      4
+     ],
+     "end": [
+      11,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab_1",
+     "start": [
+      11,
+      4
+     ],
+     "end": [
+      11,
+      32
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_2",
+     "start": [
+      11,
+      32
+     ],
+     "end": [
+      5,
+      32
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_3",
+     "start": [
+      5,
+      32
+     ],
+     "end": [
+      5,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "HR",
+   "edges": [
+    {
+     "id": "hr_0",
+     "start": [
+      24,
+      0
+     ],
+     "end": [
+      28,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "hr_1",
+     "start": [
+      28,
+      0
+     ],
+     "end": [
+      28,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "hr_2",
+     "start": [
+      28,
+      8
+     ],
+     "end": [
+      24,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "hr_3",
+     "start": [
+      24,
+      8
+     ],
+     "end": [
+      24,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "R",
+   "edges": [
+    {
+     "id": "r_0",
+     "start": [
+      0,
+      16
+     ],
+     "end": [
+      16,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "r_1",
+     "start": [
+      16,
+      16
+     ],
+     "end": [
+      16,
+      20
+     ],
+     "edge": true
+    },
+    {
+     "id": "r_2",
+     "start": [
+      16,
+      20
+     ],
+     "end": [
+      0,
+      20
+     ],
+     "edge": true
+    },
+    {
+     "id": "r_3",
+     "start": [
+      0,
+      20
+     ],
+     "end": [
+      0,
+      16
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PX",
+   "edges": [
+    {
+     "id": "px_0",
+     "start": [
+      20,
+      12
+     ],
+     "end": [
+      28,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "px_1",
+     "start": [
+      28,
+      12
+     ],
+     "end": [
+      28,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "px_2",
+     "start": [
+      28,
+      24
+     ],
+     "end": [
+      20,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "px_3",
+     "start": [
+      20,
+      24
+     ],
+     "end": [
+      20,
+      12
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "LRS",
+   "from": "r_3",
+   "to": "sab_3"
+  },
+  {
+   "name": "LRM",
+   "from": "r_3",
+   "to": "mk_3"
+  },
+  {
+   "name": "S",
+   "from": "r_1",
+   "to": "px_3"
+  },
+  {
+   "name": "LX",
+   "from": "px_0",
+   "to": "sab_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MK.layer == res_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "SAB.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "HR.layer == resistor"
+  },
+  {
+   "kind": "match",
+   "expr": "R.layer == ppoly"
+  },
+  {
+   "kind": "match",
+   "expr": "PX.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.6"
+  }
+ ]
+}

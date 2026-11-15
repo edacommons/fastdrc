@@ -1,0 +1,194 @@
+{
+ "name": "NP.5di",
+ "desc": "NP.5di : Extension beyond COMP: For Outside DNWELL, inside Nwell: (i) For Nwell overlap of Nplus < 0.43um.",
+ "shapes": [
+  {
+   "name": "ZONE",
+   "edges": [
+    {
+     "id": "zone_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      26,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_1",
+     "start": [
+      26,
+      0
+     ],
+     "end": [
+      26,
+      26
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_2",
+     "start": [
+      26,
+      26
+     ],
+     "end": [
+      0,
+      26
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_3",
+     "start": [
+      0,
+      26
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "IMP",
+   "edges": [
+    {
+     "id": "imp_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      20,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_1",
+     "start": [
+      20,
+      4
+     ],
+     "end": [
+      20,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_2",
+     "start": [
+      20,
+      20
+     ],
+     "end": [
+      4,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_3",
+     "start": [
+      4,
+      20
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "CX",
+   "edges": [
+    {
+     "id": "cx_0",
+     "start": [
+      9,
+      9
+     ],
+     "end": [
+      15,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "cx_1",
+     "start": [
+      15,
+      9
+     ],
+     "end": [
+      15,
+      15
+     ],
+     "edge": false
+    },
+    {
+     "id": "cx_2",
+     "start": [
+      15,
+      15
+     ],
+     "end": [
+      9,
+      15
+     ],
+     "edge": false
+    },
+    {
+     "id": "cx_3",
+     "start": [
+      9,
+      15
+     ],
+     "end": [
+      9,
+      9
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E",
+   "from": "imp_3",
+   "to": "cx_3",
+   "edges": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "ZONE.layer == nwell_rim"
+  },
+  {
+   "kind": "match",
+   "expr": "IMP.layer == nplus"
+  },
+  {
+   "kind": "match",
+   "expr": "CX.layer == comp"
+  },
+  {
+   "kind": "check",
+   "expr": "E >= 0.16"
+  }
+ ],
+ "except": [
+  "dnwell"
+ ]
+}

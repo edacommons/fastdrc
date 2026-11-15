@@ -1,0 +1,136 @@
+{
+ "name": "SB.9",
+ "desc": "SB.9 : Salicide block extension beyond unsalicided Poly2.",
+ "shapes": [
+  {
+   "name": "POLY",
+   "edges": [
+    {
+     "id": "poly_0",
+     "start": [
+      0,
+      5
+     ],
+     "end": [
+      16,
+      5
+     ],
+     "edge": true
+    },
+    {
+     "id": "poly_1",
+     "start": [
+      16,
+      5
+     ],
+     "end": [
+      16,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "poly_2",
+     "start": [
+      16,
+      10
+     ],
+     "end": [
+      0,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "poly_3",
+     "start": [
+      0,
+      10
+     ],
+     "end": [
+      0,
+      5
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "SAB",
+   "edges": [
+    {
+     "id": "sab_0",
+     "start": [
+      5,
+      0
+     ],
+     "end": [
+      11,
+      0
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab_1",
+     "start": [
+      11,
+      0
+     ],
+     "end": [
+      11,
+      15
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_2",
+     "start": [
+      11,
+      15
+     ],
+     "end": [
+      5,
+      15
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_3",
+     "start": [
+      5,
+      15
+     ],
+     "end": [
+      5,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E",
+   "from": "poly_0",
+   "to": "sab_0"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "POLY.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "SAB.layer == sab"
+  },
+  {
+   "kind": "check",
+   "expr": "E >= 0.22"
+  }
+ ],
+ "except": [
+  "otp_mk"
+ ]
+}

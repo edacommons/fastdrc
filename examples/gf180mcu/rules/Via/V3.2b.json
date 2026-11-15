@@ -1,0 +1,141 @@
+{
+ "name": "V3.2b",
+ "desc": "V3.2b : via3 space in 4x4 or larger via3 array",
+ "shapes": [
+  {
+   "name": "VA",
+   "edges": [
+    {
+     "id": "va_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      4,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "va_1",
+     "start": [
+      4,
+      0
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "va_2",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      0,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "va_3",
+     "start": [
+      0,
+      4
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "VB",
+   "edges": [
+    {
+     "id": "vb_0",
+     "start": [
+      0,
+      9
+     ],
+     "end": [
+      4,
+      9
+     ],
+     "edge": true
+    },
+    {
+     "id": "vb_1",
+     "start": [
+      4,
+      9
+     ],
+     "end": [
+      4,
+      13
+     ],
+     "edge": false
+    },
+    {
+     "id": "vb_2",
+     "start": [
+      4,
+      13
+     ],
+     "end": [
+      0,
+      13
+     ],
+     "edge": false
+    },
+    {
+     "id": "vb_3",
+     "start": [
+      0,
+      13
+     ],
+     "end": [
+      0,
+      9
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "va_2",
+   "to": "vb_0"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "VA.layer == via3"
+  },
+  {
+   "kind": "match",
+   "expr": "VB.layer == via3"
+  },
+  {
+   "kind": "match",
+   "expr": "VA.rows >= 4 and VA.columns >= 4"
+  },
+  {
+   "kind": "match",
+   "expr": "VB.rows >= 4 and VB.columns >= 4"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.36"
+  }
+ ]
+}

@@ -1,0 +1,305 @@
+{
+ "name": "NP.3bi",
+ "desc": "NP.3bi : Space to PCOMP, inside DNWELL, inside LVPWELL: (i) PCOMP overlap by LVPWELL < 0.43um.",
+ "shapes": [
+  {
+   "name": "DN",
+   "edges": [
+    {
+     "id": "dn_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      40,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_1",
+     "start": [
+      40,
+      0
+     ],
+     "end": [
+      40,
+      37
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_2",
+     "start": [
+      40,
+      37
+     ],
+     "end": [
+      0,
+      37
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_3",
+     "start": [
+      0,
+      37
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PW",
+   "edges": [
+    {
+     "id": "pw_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      36,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "pw_1",
+     "start": [
+      36,
+      4
+     ],
+     "end": [
+      36,
+      33
+     ],
+     "edge": false
+    },
+    {
+     "id": "pw_2",
+     "start": [
+      36,
+      33
+     ],
+     "end": [
+      4,
+      33
+     ],
+     "edge": false
+    },
+    {
+     "id": "pw_3",
+     "start": [
+      4,
+      33
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "ZONE",
+   "edges": [
+    {
+     "id": "zone_0",
+     "start": [
+      8,
+      8
+     ],
+     "end": [
+      22,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_1",
+     "start": [
+      22,
+      8
+     ],
+     "end": [
+      22,
+      29
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_2",
+     "start": [
+      22,
+      29
+     ],
+     "end": [
+      8,
+      29
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_3",
+     "start": [
+      8,
+      29
+     ],
+     "end": [
+      8,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "P1",
+   "edges": [
+    {
+     "id": "p1_0",
+     "start": [
+      13,
+      16
+     ],
+     "end": [
+      18,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "p1_1",
+     "start": [
+      18,
+      16
+     ],
+     "end": [
+      18,
+      21
+     ],
+     "edge": true
+    },
+    {
+     "id": "p1_2",
+     "start": [
+      18,
+      21
+     ],
+     "end": [
+      13,
+      21
+     ],
+     "edge": false
+    },
+    {
+     "id": "p1_3",
+     "start": [
+      13,
+      21
+     ],
+     "end": [
+      13,
+      16
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "N1",
+   "edges": [
+    {
+     "id": "n1_0",
+     "start": [
+      26,
+      12
+     ],
+     "end": [
+      32,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "n1_1",
+     "start": [
+      32,
+      12
+     ],
+     "end": [
+      32,
+      25
+     ],
+     "edge": false
+    },
+    {
+     "id": "n1_2",
+     "start": [
+      32,
+      25
+     ],
+     "end": [
+      26,
+      25
+     ],
+     "edge": false
+    },
+    {
+     "id": "n1_3",
+     "start": [
+      26,
+      25
+     ],
+     "end": [
+      26,
+      12
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "n1_3",
+   "to": "p1_1",
+   "edges": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "DN.layer == dnwell"
+  },
+  {
+   "kind": "match",
+   "expr": "PW.layer == lvpwell"
+  },
+  {
+   "kind": "match",
+   "expr": "ZONE.layer == lvpwell_rim"
+  },
+  {
+   "kind": "match",
+   "expr": "P1.layer == pcomp"
+  },
+  {
+   "kind": "match",
+   "expr": "N1.layer == nplus"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.16"
+  }
+ ]
+}

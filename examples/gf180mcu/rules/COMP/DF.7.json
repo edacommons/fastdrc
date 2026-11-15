@@ -1,0 +1,252 @@
+{
+ "name": "DF.7",
+ "desc": "DF.7 : Min. (LVPWELL Spacer to PCOMP) inside DNWELL.",
+ "shapes": [
+  {
+   "name": "DN",
+   "edges": [
+    {
+     "id": "dn_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      30,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_1",
+     "start": [
+      30,
+      0
+     ],
+     "end": [
+      30,
+      38
+     ],
+     "edge": true
+    },
+    {
+     "id": "dn_2",
+     "start": [
+      30,
+      38
+     ],
+     "end": [
+      0,
+      38
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_3",
+     "start": [
+      0,
+      38
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "NW",
+   "edges": [
+    {
+     "id": "nw_0",
+     "start": [
+      6,
+      16
+     ],
+     "end": [
+      24,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "nw_1",
+     "start": [
+      24,
+      16
+     ],
+     "end": [
+      24,
+      32
+     ],
+     "edge": false
+    },
+    {
+     "id": "nw_2",
+     "start": [
+      24,
+      32
+     ],
+     "end": [
+      6,
+      32
+     ],
+     "edge": false
+    },
+    {
+     "id": "nw_3",
+     "start": [
+      6,
+      32
+     ],
+     "end": [
+      6,
+      16
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PW",
+   "edges": [
+    {
+     "id": "pw_0",
+     "start": [
+      6,
+      6
+     ],
+     "end": [
+      24,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "pw_1",
+     "start": [
+      24,
+      6
+     ],
+     "end": [
+      24,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "pw_2",
+     "start": [
+      24,
+      12
+     ],
+     "end": [
+      6,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "pw_3",
+     "start": [
+      6,
+      12
+     ],
+     "end": [
+      6,
+      6
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PC",
+   "edges": [
+    {
+     "id": "pc_0",
+     "start": [
+      12,
+      22
+     ],
+     "end": [
+      18,
+      22
+     ],
+     "edge": true
+    },
+    {
+     "id": "pc_1",
+     "start": [
+      18,
+      22
+     ],
+     "end": [
+      18,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "pc_2",
+     "start": [
+      18,
+      28
+     ],
+     "end": [
+      12,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "pc_3",
+     "start": [
+      12,
+      28
+     ],
+     "end": [
+      12,
+      22
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S7",
+   "from": "pc_0",
+   "to": "pw_2",
+   "at": 15.0
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "DN.layer == dnwell"
+  },
+  {
+   "kind": "match",
+   "expr": "NW.layer == nwell"
+  },
+  {
+   "kind": "match",
+   "expr": "PW.layer == lvpwell"
+  },
+  {
+   "kind": "match",
+   "expr": "PC.layer == pcomp"
+  },
+  {
+   "kind": "check",
+   "expr": "S7 >= ?"
+  }
+ ],
+ "values": {
+  "3.3V": 0.43,
+  "5V": 0.6
+ }
+}

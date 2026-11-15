@@ -1,0 +1,187 @@
+{
+ "name": "CO.9",
+ "desc": "CO.9 : Contact on NCOMP to PCOMP butting edge is forbidden (contact must not straddle butting edge).",
+ "shapes": [
+  {
+   "name": "NC",
+   "edges": [
+    {
+     "id": "nc_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      10,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "nc_1",
+     "start": [
+      10,
+      0
+     ],
+     "end": [
+      10,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "nc_2",
+     "start": [
+      10,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "nc_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PC",
+   "edges": [
+    {
+     "id": "pc_0",
+     "start": [
+      10,
+      0
+     ],
+     "end": [
+      20,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "pc_1",
+     "start": [
+      20,
+      0
+     ],
+     "end": [
+      20,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "pc_2",
+     "start": [
+      20,
+      12
+     ],
+     "end": [
+      10,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "pc_3",
+     "start": [
+      10,
+      12
+     ],
+     "end": [
+      10,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "K",
+   "edges": [
+    {
+     "id": "k_0",
+     "start": [
+      6,
+      4
+     ],
+     "end": [
+      14,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "k_1",
+     "start": [
+      14,
+      4
+     ],
+     "end": [
+      14,
+      8
+     ],
+     "edge": true
+    },
+    {
+     "id": "k_2",
+     "start": [
+      14,
+      8
+     ],
+     "end": [
+      6,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "k_3",
+     "start": [
+      6,
+      8
+     ],
+     "end": [
+      6,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "X",
+   "from": "k_1",
+   "to": "pc_3",
+   "crossed": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "NC.layer == ncomp"
+  },
+  {
+   "kind": "match",
+   "expr": "PC.layer == pcomp"
+  },
+  {
+   "kind": "match",
+   "expr": "K.layer == contact"
+  }
+ ]
+}

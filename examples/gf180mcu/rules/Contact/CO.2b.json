@@ -1,0 +1,141 @@
+{
+ "name": "CO.2b",
+ "desc": "CO.2b : Space in 4x4 or larger contact array.",
+ "shapes": [
+  {
+   "name": "KA",
+   "edges": [
+    {
+     "id": "ka_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      4,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "ka_1",
+     "start": [
+      4,
+      0
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "ka_2",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      0,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "ka_3",
+     "start": [
+      0,
+      4
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "KB",
+   "edges": [
+    {
+     "id": "kb_0",
+     "start": [
+      0,
+      9
+     ],
+     "end": [
+      4,
+      9
+     ],
+     "edge": true
+    },
+    {
+     "id": "kb_1",
+     "start": [
+      4,
+      9
+     ],
+     "end": [
+      4,
+      13
+     ],
+     "edge": false
+    },
+    {
+     "id": "kb_2",
+     "start": [
+      4,
+      13
+     ],
+     "end": [
+      0,
+      13
+     ],
+     "edge": false
+    },
+    {
+     "id": "kb_3",
+     "start": [
+      0,
+      13
+     ],
+     "end": [
+      0,
+      9
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "ka_2",
+   "to": "kb_0"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "KA.layer == contact"
+  },
+  {
+   "kind": "match",
+   "expr": "KB.layer == contact"
+  },
+  {
+   "kind": "match",
+   "expr": "KA.rows >= 4 and KA.columns >= 4"
+  },
+  {
+   "kind": "match",
+   "expr": "KB.rows >= 4 and KB.columns >= 4"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.28"
+  }
+ ]
+}

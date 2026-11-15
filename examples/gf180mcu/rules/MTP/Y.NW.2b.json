@@ -1,0 +1,198 @@
+{
+ "name": "Y.NW.2b",
+ "desc": "Y.NW.2b : Min. Nwell Space (Outside DNWELL, Inside YMTP_MK) [Different potential].",
+ "shapes": [
+  {
+   "name": "MKR",
+   "edges": [
+    {
+     "id": "mkr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      24,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_1",
+     "start": [
+      24,
+      0
+     ],
+     "end": [
+      24,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_2",
+     "start": [
+      24,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "NA",
+   "edges": [
+    {
+     "id": "na_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "na_1",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "na_2",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "na_3",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "NB",
+   "edges": [
+    {
+     "id": "nb_0",
+     "start": [
+      14,
+      4
+     ],
+     "end": [
+      20,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "nb_1",
+     "start": [
+      20,
+      4
+     ],
+     "end": [
+      20,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "nb_2",
+     "start": [
+      20,
+      10
+     ],
+     "end": [
+      14,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "nb_3",
+     "start": [
+      14,
+      10
+     ],
+     "end": [
+      14,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "Sn",
+   "from": "na_1",
+   "to": "nb_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MKR.layer == ymtp_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "NA.layer == nwell"
+  },
+  {
+   "kind": "match",
+   "expr": "NB.layer == nwell"
+  },
+  {
+   "kind": "match",
+   "expr": "NA.net != NB.net"
+  },
+  {
+   "kind": "check",
+   "expr": "Sn >= ?"
+  }
+ ],
+ "values": {
+  "3.3V": 1,
+  "5V": 1
+ }
+}

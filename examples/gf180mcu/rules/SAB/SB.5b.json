@@ -1,0 +1,193 @@
+{
+ "name": "SB.5b",
+ "desc": "SB.5b : Space from salicide block to unrelated Poly2 on COMP.",
+ "shapes": [
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      6,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      6,
+      0
+     ],
+     "end": [
+      6,
+      14
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      6,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "COMP",
+   "edges": [
+    {
+     "id": "comp_0",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      22,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_1",
+     "start": [
+      22,
+      4
+     ],
+     "end": [
+      22,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_2",
+     "start": [
+      22,
+      10
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_3",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      14,
+      0
+     ],
+     "end": [
+      18,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      18,
+      0
+     ],
+     "end": [
+      18,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_2",
+     "start": [
+      18,
+      14
+     ],
+     "end": [
+      14,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      14,
+      14
+     ],
+     "end": [
+      14,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "a_1",
+   "to": "b_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "A.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "COMP.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.28"
+  }
+ ],
+ "except": [
+  "otp_mk"
+ ]
+}

@@ -1,0 +1,133 @@
+{
+ "name": "SB.6",
+ "desc": "SB.6 : Salicide block extension beyond related COMP. : 0.22\u00b5m",
+ "shapes": [
+  {
+   "name": "COMP",
+   "edges": [
+    {
+     "id": "comp0",
+     "start": [
+      0,
+      4
+     ],
+     "end": [
+      16,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "comp1",
+     "start": [
+      16,
+      4
+     ],
+     "end": [
+      16,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "comp2",
+     "start": [
+      16,
+      10
+     ],
+     "end": [
+      0,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp3",
+     "start": [
+      0,
+      10
+     ],
+     "end": [
+      0,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "SAB",
+   "edges": [
+    {
+     "id": "sab0",
+     "start": [
+      5,
+      0
+     ],
+     "end": [
+      11,
+      0
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab1",
+     "start": [
+      11,
+      0
+     ],
+     "end": [
+      11,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab2",
+     "start": [
+      11,
+      16
+     ],
+     "end": [
+      5,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab3",
+     "start": [
+      5,
+      16
+     ],
+     "end": [
+      5,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E6",
+   "from": "comp0",
+   "to": "sab0"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "COMP.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "SAB.layer == sab"
+  },
+  {
+   "kind": "check",
+   "expr": "E6 >= 0.22"
+  }
+ ]
+}

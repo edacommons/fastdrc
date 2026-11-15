@@ -1,0 +1,122 @@
+{
+ "name": "PP.8b",
+ "desc": "PP.8b : Minimum area enclosed by Pplus (um2). : 0.35\u00b5m\u00b2",
+ "shapes": [
+  {
+   "name": "NR",
+   "edges": [
+    {
+     "id": "nr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      6,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "nr_1",
+     "start": [
+      6,
+      0
+     ],
+     "end": [
+      6,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "nr_2",
+     "start": [
+      6,
+      6
+     ],
+     "end": [
+      0,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "nr_3",
+     "start": [
+      0,
+      6
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ],
+   "hole_loops": [
+    [
+     {
+      "id": "h_0",
+      "start": [
+       94,
+       4
+      ],
+      "end": [
+       100,
+       4
+      ],
+      "edge": false
+     },
+     {
+      "id": "h_1",
+      "start": [
+       100,
+       4
+      ],
+      "end": [
+       100,
+       10
+      ],
+      "edge": false
+     },
+     {
+      "id": "h_2",
+      "start": [
+       100,
+       10
+      ],
+      "end": [
+       94,
+       10
+      ],
+      "edge": false
+     },
+     {
+      "id": "h_3",
+      "start": [
+       94,
+       10
+      ],
+      "end": [
+       94,
+       4
+      ],
+      "edge": false
+     }
+    ]
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "NR.layer == pplus"
+  },
+  {
+   "kind": "check",
+   "expr": "NR.holes.area >= 0.35"
+  }
+ ]
+}

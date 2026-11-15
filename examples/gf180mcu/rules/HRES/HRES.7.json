@@ -1,0 +1,381 @@
+{
+ "name": "HRES.7",
+ "desc": "HRES.7 : Minimum Pplus overlap of contact on Poly2 resistor.",
+ "shapes": [
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      9,
+      12
+     ],
+     "end": [
+      15,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      15,
+      12
+     ],
+     "end": [
+      15,
+      32
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      15,
+      32
+     ],
+     "end": [
+      9,
+      32
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      9,
+      32
+     ],
+     "end": [
+      9,
+      12
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "SAB",
+   "edges": [
+    {
+     "id": "sab_0",
+     "start": [
+      9,
+      4
+     ],
+     "end": [
+      15,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab_1",
+     "start": [
+      15,
+      4
+     ],
+     "end": [
+      15,
+      40
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_2",
+     "start": [
+      15,
+      40
+     ],
+     "end": [
+      9,
+      40
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_3",
+     "start": [
+      9,
+      40
+     ],
+     "end": [
+      9,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "HR",
+   "edges": [
+    {
+     "id": "hr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      35,
+      0
+     ],
+     "edge": true
+    },
+    {
+     "id": "hr_1",
+     "start": [
+      35,
+      0
+     ],
+     "end": [
+      35,
+      44
+     ],
+     "edge": true
+    },
+    {
+     "id": "hr_2",
+     "start": [
+      35,
+      44
+     ],
+     "end": [
+      0,
+      44
+     ],
+     "edge": false
+    },
+    {
+     "id": "hr_3",
+     "start": [
+      0,
+      44
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "R",
+   "edges": [
+    {
+     "id": "r_0",
+     "start": [
+      4,
+      16
+     ],
+     "end": [
+      27,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "r_1",
+     "start": [
+      27,
+      16
+     ],
+     "end": [
+      27,
+      28
+     ],
+     "edge": true
+    },
+    {
+     "id": "r_2",
+     "start": [
+      27,
+      28
+     ],
+     "end": [
+      4,
+      28
+     ],
+     "edge": true
+    },
+    {
+     "id": "r_3",
+     "start": [
+      4,
+      28
+     ],
+     "end": [
+      4,
+      16
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PP",
+   "edges": [
+    {
+     "id": "pp_0",
+     "start": [
+      15,
+      8
+     ],
+     "end": [
+      31,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "pp_1",
+     "start": [
+      31,
+      8
+     ],
+     "end": [
+      31,
+      36
+     ],
+     "edge": false
+    },
+    {
+     "id": "pp_2",
+     "start": [
+      31,
+      36
+     ],
+     "end": [
+      15,
+      36
+     ],
+     "edge": false
+    },
+    {
+     "id": "pp_3",
+     "start": [
+      15,
+      36
+     ],
+     "end": [
+      15,
+      8
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "K",
+   "edges": [
+    {
+     "id": "k_0",
+     "start": [
+      19,
+      20
+     ],
+     "end": [
+      23,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "k_1",
+     "start": [
+      23,
+      20
+     ],
+     "end": [
+      23,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "k_2",
+     "start": [
+      23,
+      24
+     ],
+     "end": [
+      19,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "k_3",
+     "start": [
+      19,
+      24
+     ],
+     "end": [
+      19,
+      20
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "LRS",
+   "from": "r_3",
+   "to": "sab_3"
+  },
+  {
+   "name": "LRM",
+   "from": "r_3",
+   "to": "mk_3"
+  },
+  {
+   "name": "LRH",
+   "from": "r_3",
+   "to": "hr_3"
+  },
+  {
+   "name": "LK",
+   "from": "k_0",
+   "to": "r_1"
+  },
+  {
+   "name": "E",
+   "from": "pp_3",
+   "to": "k_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MK.layer == res_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "SAB.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "HR.layer == resistor"
+  },
+  {
+   "kind": "match",
+   "expr": "R.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "PP.layer == pplus"
+  },
+  {
+   "kind": "match",
+   "expr": "K.layer == contact"
+  },
+  {
+   "kind": "check",
+   "expr": "E >= 0.2"
+  }
+ ]
+}

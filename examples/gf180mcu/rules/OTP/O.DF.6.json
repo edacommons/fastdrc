@@ -1,0 +1,190 @@
+{
+ "name": "O.DF.6",
+ "desc": "O.DF.6 : Min. COMP extend beyond poly2 (it also means source/drain overhang).",
+ "shapes": [
+  {
+   "name": "MKR",
+   "edges": [
+    {
+     "id": "mkr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      23,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_1",
+     "start": [
+      23,
+      0
+     ],
+     "end": [
+      23,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_2",
+     "start": [
+      23,
+      22
+     ],
+     "end": [
+      0,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_3",
+     "start": [
+      0,
+      22
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "CB",
+   "edges": [
+    {
+     "id": "cb_0",
+     "start": [
+      4,
+      8
+     ],
+     "end": [
+      19,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "cb_1",
+     "start": [
+      19,
+      8
+     ],
+     "end": [
+      19,
+      14
+     ],
+     "edge": true
+    },
+    {
+     "id": "cb_2",
+     "start": [
+      19,
+      14
+     ],
+     "end": [
+      4,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "cb_3",
+     "start": [
+      4,
+      14
+     ],
+     "end": [
+      4,
+      8
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "G",
+   "edges": [
+    {
+     "id": "g_0",
+     "start": [
+      9,
+      4
+     ],
+     "end": [
+      13,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_1",
+     "start": [
+      13,
+      4
+     ],
+     "end": [
+      13,
+      18
+     ],
+     "edge": true
+    },
+    {
+     "id": "g_2",
+     "start": [
+      13,
+      18
+     ],
+     "end": [
+      9,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_3",
+     "start": [
+      9,
+      18
+     ],
+     "end": [
+      9,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E6",
+   "from": "g_1",
+   "to": "cb_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MKR.layer == otp_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "CB.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "G.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "E6 >= 0.22"
+  }
+ ]
+}

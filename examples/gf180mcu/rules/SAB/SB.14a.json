@@ -1,0 +1,191 @@
+{
+ "name": "SB.14a",
+ "desc": "SB.14a : Space from unsalicided Nplus Poly2 to unsalicided Pplus Poly2. (Unsalicided Nplus Poly2 must not fall within a square of 0.56um x 0.56um at unsalicided Pplus Poly2 corners).",
+ "shapes": [
+  {
+   "name": "SAB",
+   "edges": [
+    {
+     "id": "sab_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      25,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_1",
+     "start": [
+      25,
+      0
+     ],
+     "end": [
+      25,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_2",
+     "start": [
+      25,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      15,
+      4
+     ],
+     "end": [
+      21,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      21,
+      4
+     ],
+     "end": [
+      21,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_2",
+     "start": [
+      21,
+      10
+     ],
+     "end": [
+      15,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      15,
+      10
+     ],
+     "end": [
+      15,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "a_1",
+   "to": "b_3",
+   "metric": "square"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "SAB.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "A.layer == npoly"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == ppoly"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.56"
+  }
+ ]
+}

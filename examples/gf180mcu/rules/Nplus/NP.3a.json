@@ -1,0 +1,190 @@
+{
+ "name": "NP.3a",
+ "desc": "NP.3a : Space to PCOMP for PCOMP: (1) Inside Nwell (2) Outside LVPWELL but inside DNWELL.",
+ "shapes": [
+  {
+   "name": "ZONE",
+   "edges": [
+    {
+     "id": "zone_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      14,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_1",
+     "start": [
+      14,
+      0
+     ],
+     "end": [
+      14,
+      21
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_2",
+     "start": [
+      14,
+      21
+     ],
+     "end": [
+      0,
+      21
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_3",
+     "start": [
+      0,
+      21
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "P1",
+   "edges": [
+    {
+     "id": "p1_0",
+     "start": [
+      5,
+      8
+     ],
+     "end": [
+      10,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "p1_1",
+     "start": [
+      10,
+      8
+     ],
+     "end": [
+      10,
+      13
+     ],
+     "edge": true
+    },
+    {
+     "id": "p1_2",
+     "start": [
+      10,
+      13
+     ],
+     "end": [
+      5,
+      13
+     ],
+     "edge": false
+    },
+    {
+     "id": "p1_3",
+     "start": [
+      5,
+      13
+     ],
+     "end": [
+      5,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "N1",
+   "edges": [
+    {
+     "id": "n1_0",
+     "start": [
+      18,
+      4
+     ],
+     "end": [
+      24,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "n1_1",
+     "start": [
+      24,
+      4
+     ],
+     "end": [
+      24,
+      17
+     ],
+     "edge": false
+    },
+    {
+     "id": "n1_2",
+     "start": [
+      24,
+      17
+     ],
+     "end": [
+      18,
+      17
+     ],
+     "edge": false
+    },
+    {
+     "id": "n1_3",
+     "start": [
+      18,
+      17
+     ],
+     "end": [
+      18,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "n1_3",
+   "to": "p1_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "ZONE.layer in {nwell, dnwell_only}"
+  },
+  {
+   "kind": "match",
+   "expr": "P1.layer == pcomp"
+  },
+  {
+   "kind": "match",
+   "expr": "N1.layer == nplus"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.16"
+  }
+ ]
+}

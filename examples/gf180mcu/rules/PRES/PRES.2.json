@@ -1,0 +1,438 @@
+{
+ "name": "PRES.2",
+ "desc": "PRES.2 : Minimum space between Poly2 resistors.",
+ "shapes": [
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      5,
+      8
+     ],
+     "end": [
+      11,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      11,
+      8
+     ],
+     "end": [
+      11,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      11,
+      20
+     ],
+     "end": [
+      5,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      5,
+      20
+     ],
+     "end": [
+      5,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "SAB",
+   "edges": [
+    {
+     "id": "sab_0",
+     "start": [
+      5,
+      4
+     ],
+     "end": [
+      11,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab_1",
+     "start": [
+      11,
+      4
+     ],
+     "end": [
+      11,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_2",
+     "start": [
+      11,
+      24
+     ],
+     "end": [
+      5,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_3",
+     "start": [
+      5,
+      24
+     ],
+     "end": [
+      5,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "HR",
+   "edges": [
+    {
+     "id": "hr_0",
+     "start": [
+      22,
+      0
+     ],
+     "end": [
+      26,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "hr_1",
+     "start": [
+      26,
+      0
+     ],
+     "end": [
+      26,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "hr_2",
+     "start": [
+      26,
+      8
+     ],
+     "end": [
+      22,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "hr_3",
+     "start": [
+      22,
+      8
+     ],
+     "end": [
+      22,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "R",
+   "edges": [
+    {
+     "id": "r_0",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      16,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "r_1",
+     "start": [
+      16,
+      12
+     ],
+     "end": [
+      16,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "r_2",
+     "start": [
+      16,
+      16
+     ],
+     "end": [
+      0,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "r_3",
+     "start": [
+      0,
+      16
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "R2",
+   "edges": [
+    {
+     "id": "r2_0",
+     "start": [
+      0,
+      36
+     ],
+     "end": [
+      16,
+      36
+     ],
+     "edge": true
+    },
+    {
+     "id": "r2_1",
+     "start": [
+      16,
+      36
+     ],
+     "end": [
+      16,
+      40
+     ],
+     "edge": false
+    },
+    {
+     "id": "r2_2",
+     "start": [
+      16,
+      40
+     ],
+     "end": [
+      0,
+      40
+     ],
+     "edge": false
+    },
+    {
+     "id": "r2_3",
+     "start": [
+      0,
+      40
+     ],
+     "end": [
+      0,
+      36
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "SAB2",
+   "edges": [
+    {
+     "id": "sab2_0",
+     "start": [
+      5,
+      28
+     ],
+     "end": [
+      11,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab2_1",
+     "start": [
+      11,
+      28
+     ],
+     "end": [
+      11,
+      48
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab2_2",
+     "start": [
+      11,
+      48
+     ],
+     "end": [
+      5,
+      48
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab2_3",
+     "start": [
+      5,
+      48
+     ],
+     "end": [
+      5,
+      28
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "MK2",
+   "edges": [
+    {
+     "id": "mk2_0",
+     "start": [
+      5,
+      32
+     ],
+     "end": [
+      11,
+      32
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk2_1",
+     "start": [
+      11,
+      32
+     ],
+     "end": [
+      11,
+      44
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk2_2",
+     "start": [
+      11,
+      44
+     ],
+     "end": [
+      5,
+      44
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk2_3",
+     "start": [
+      5,
+      44
+     ],
+     "end": [
+      5,
+      32
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "LRS",
+   "from": "r_3",
+   "to": "sab_3"
+  },
+  {
+   "name": "LRM",
+   "from": "r_3",
+   "to": "mk_3"
+  },
+  {
+   "name": "LS2",
+   "from": "r2_3",
+   "to": "sab2_3"
+  },
+  {
+   "name": "LM2",
+   "from": "r2_3",
+   "to": "mk2_3"
+  },
+  {
+   "name": "S",
+   "from": "r_2",
+   "to": "r2_0"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MK.layer == res_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "SAB.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "HR.layer == resistor"
+  },
+  {
+   "kind": "match",
+   "expr": "R.layer == ppoly"
+  },
+  {
+   "kind": "match",
+   "expr": "R2.layer == ppoly"
+  },
+  {
+   "kind": "match",
+   "expr": "SAB2.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "MK2.layer == res_mk"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.4"
+  }
+ ]
+}

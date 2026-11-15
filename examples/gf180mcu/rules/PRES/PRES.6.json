@@ -1,0 +1,258 @@
+{
+ "name": "PRES.6",
+ "desc": "PRES.6 : Minimum salicide block overlap of Poly2 resistor in width direction.",
+ "shapes": [
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      5,
+      8
+     ],
+     "end": [
+      11,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      11,
+      8
+     ],
+     "end": [
+      11,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      11,
+      20
+     ],
+     "end": [
+      5,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      5,
+      20
+     ],
+     "end": [
+      5,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "SAB",
+   "edges": [
+    {
+     "id": "sab_0",
+     "start": [
+      5,
+      4
+     ],
+     "end": [
+      11,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab_1",
+     "start": [
+      11,
+      4
+     ],
+     "end": [
+      11,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_2",
+     "start": [
+      11,
+      24
+     ],
+     "end": [
+      5,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_3",
+     "start": [
+      5,
+      24
+     ],
+     "end": [
+      5,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "HR",
+   "edges": [
+    {
+     "id": "hr_0",
+     "start": [
+      22,
+      0
+     ],
+     "end": [
+      26,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "hr_1",
+     "start": [
+      26,
+      0
+     ],
+     "end": [
+      26,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "hr_2",
+     "start": [
+      26,
+      8
+     ],
+     "end": [
+      22,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "hr_3",
+     "start": [
+      22,
+      8
+     ],
+     "end": [
+      22,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "R",
+   "edges": [
+    {
+     "id": "r_0",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      16,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "r_1",
+     "start": [
+      16,
+      12
+     ],
+     "end": [
+      16,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "r_2",
+     "start": [
+      16,
+      16
+     ],
+     "end": [
+      0,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "r_3",
+     "start": [
+      0,
+      16
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "LRS",
+   "from": "r_3",
+   "to": "sab_3"
+  },
+  {
+   "name": "LRM",
+   "from": "r_3",
+   "to": "mk_3"
+  },
+  {
+   "name": "E",
+   "from": "sab_0",
+   "to": "r_0",
+   "at": 8.0
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MK.layer == res_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "SAB.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "HR.layer == resistor"
+  },
+  {
+   "kind": "match",
+   "expr": "R.layer == ppoly"
+  },
+  {
+   "kind": "check",
+   "expr": "E >= 0.28"
+  }
+ ]
+}

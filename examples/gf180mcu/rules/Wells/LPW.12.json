@@ -1,0 +1,130 @@
+{
+ "name": "LPW.12",
+ "desc": "LPW.12 : LVPWELL cannot overlap with Nwell.",
+ "shapes": [
+  {
+   "name": "PW",
+   "edges": [
+    {
+     "id": "pw_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      10,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "pw_1",
+     "start": [
+      10,
+      0
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "pw_2",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      0,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "pw_3",
+     "start": [
+      0,
+      10
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "NW",
+   "edges": [
+    {
+     "id": "nw_0",
+     "start": [
+      6,
+      4
+     ],
+     "end": [
+      16,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "nw_1",
+     "start": [
+      16,
+      4
+     ],
+     "end": [
+      16,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "nw_2",
+     "start": [
+      16,
+      14
+     ],
+     "end": [
+      6,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "nw_3",
+     "start": [
+      6,
+      14
+     ],
+     "end": [
+      6,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "X",
+   "from": "pw_1",
+   "to": "nw_3",
+   "crossed": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "PW.layer == lvpwell"
+  },
+  {
+   "kind": "match",
+   "expr": "NW.layer == nwell"
+  }
+ ]
+}

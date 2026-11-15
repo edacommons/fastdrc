@@ -1,0 +1,252 @@
+{
+ "name": "S.CO.6_ii_LV",
+ "desc": "S.CO.6_ii_LV : (ii) If Metal1 overlaps contact by < 0.04um on one side, adjacent metal1 edges overlap",
+ "shapes": [
+  {
+   "name": "MKR",
+   "edges": [
+    {
+     "id": "mkr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      22,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_1",
+     "start": [
+      22,
+      0
+     ],
+     "end": [
+      22,
+      26
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_2",
+     "start": [
+      22,
+      26
+     ],
+     "end": [
+      0,
+      26
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_3",
+     "start": [
+      0,
+      26
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "MM",
+   "edges": [
+    {
+     "id": "mm_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      18,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "mm_1",
+     "start": [
+      18,
+      4
+     ],
+     "end": [
+      18,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "mm_2",
+     "start": [
+      18,
+      22
+     ],
+     "end": [
+      4,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "mm_3",
+     "start": [
+      4,
+      22
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "KA",
+   "edges": [
+    {
+     "id": "ka_0",
+     "start": [
+      9,
+      9
+     ],
+     "end": [
+      13,
+      9
+     ],
+     "edge": true
+    },
+    {
+     "id": "ka_1",
+     "start": [
+      13,
+      9
+     ],
+     "end": [
+      13,
+      17
+     ],
+     "edge": false
+    },
+    {
+     "id": "ka_2",
+     "start": [
+      13,
+      17
+     ],
+     "end": [
+      9,
+      17
+     ],
+     "edge": false
+    },
+    {
+     "id": "ka_3",
+     "start": [
+      9,
+      17
+     ],
+     "end": [
+      9,
+      9
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "DG",
+   "edges": [
+    {
+     "id": "dg_0",
+     "start": [
+      28,
+      4
+     ],
+     "end": [
+      34,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_1",
+     "start": [
+      34,
+      4
+     ],
+     "end": [
+      34,
+      13
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_2",
+     "start": [
+      34,
+      13
+     ],
+     "end": [
+      28,
+      13
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_3",
+     "start": [
+      28,
+      13
+     ],
+     "end": [
+      28,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "Ea",
+   "from": "mm_3",
+   "to": "ka_3"
+  },
+  {
+   "name": "Eb",
+   "from": "mm_0",
+   "to": "ka_0"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MKR.layer == sramcore"
+  },
+  {
+   "kind": "match",
+   "expr": "MM.layer == metal1"
+  },
+  {
+   "kind": "match",
+   "expr": "KA.layer == contact"
+  },
+  {
+   "kind": "check",
+   "expr": "Ea >= 0.04 or Eb >= 0.02"
+  },
+  {
+   "kind": "match",
+   "expr": "DG.layer == dualgate"
+  }
+ ]
+}

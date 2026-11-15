@@ -1,0 +1,184 @@
+{
+ "name": "EF.04a",
+ "desc": "EF.04a : Min. Max. PLFUSE overlap Poly2 (coinciding permitted) and touch cathode and anode.",
+ "shapes": [
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      26,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      26,
+      0
+     ],
+     "end": [
+      26,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      26,
+      22
+     ],
+     "end": [
+      0,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      0,
+      22
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "P",
+   "edges": [
+    {
+     "id": "p_0",
+     "start": [
+      4,
+      5
+     ],
+     "end": [
+      22,
+      5
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_1",
+     "start": [
+      22,
+      5
+     ],
+     "end": [
+      22,
+      17
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_2",
+     "start": [
+      22,
+      17
+     ],
+     "end": [
+      4,
+      17
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_3",
+     "start": [
+      4,
+      17
+     ],
+     "end": [
+      4,
+      5
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "F",
+   "edges": [
+    {
+     "id": "f_0",
+     "start": [
+      10,
+      9
+     ],
+     "end": [
+      16,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "f_1",
+     "start": [
+      16,
+      9
+     ],
+     "end": [
+      16,
+      13
+     ],
+     "edge": false
+    },
+    {
+     "id": "f_2",
+     "start": [
+      16,
+      13
+     ],
+     "end": [
+      10,
+      13
+     ],
+     "edge": false
+    },
+    {
+     "id": "f_3",
+     "start": [
+      10,
+      13
+     ],
+     "end": [
+      10,
+      9
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MK.layer == efuse_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "P.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "F.layer == plfuse"
+  },
+  {
+   "kind": "check",
+   "expr": "F in P"
+  }
+ ]
+}

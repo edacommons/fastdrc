@@ -1,0 +1,190 @@
+{
+ "name": "O.SB.4",
+ "desc": "O.SB.4 : Min. space from salicide block to contact.",
+ "shapes": [
+  {
+   "name": "MKR",
+   "edges": [
+    {
+     "id": "mkr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      23,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_1",
+     "start": [
+      23,
+      0
+     ],
+     "end": [
+      23,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_2",
+     "start": [
+      23,
+      20
+     ],
+     "end": [
+      0,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_3",
+     "start": [
+      0,
+      20
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "SAB",
+   "edges": [
+    {
+     "id": "sab_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_1",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      10,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab_2",
+     "start": [
+      10,
+      16
+     ],
+     "end": [
+      4,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_3",
+     "start": [
+      4,
+      16
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "K",
+   "edges": [
+    {
+     "id": "k_0",
+     "start": [
+      15,
+      8
+     ],
+     "end": [
+      19,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "k_1",
+     "start": [
+      19,
+      8
+     ],
+     "end": [
+      19,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "k_2",
+     "start": [
+      19,
+      12
+     ],
+     "end": [
+      15,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "k_3",
+     "start": [
+      15,
+      12
+     ],
+     "end": [
+      15,
+      8
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "sab_1",
+   "to": "k_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MKR.layer == otp_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "SAB.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "K.layer == contact"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.03"
+  }
+ ]
+}

@@ -1,0 +1,133 @@
+{
+ "name": "CO.2a",
+ "desc": "CO.2a : min. contact spacing : 0.25\u00b5m",
+ "shapes": [
+  {
+   "name": "KC",
+   "edges": [
+    {
+     "id": "kc_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      4,
+      0
+     ],
+     "edge": true
+    },
+    {
+     "id": "kc_1",
+     "start": [
+      4,
+      0
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "kc_2",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      0,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "kc_3",
+     "start": [
+      0,
+      4
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "KD",
+   "edges": [
+    {
+     "id": "kd_0",
+     "start": [
+      0,
+      8
+     ],
+     "end": [
+      4,
+      8
+     ],
+     "edge": true
+    },
+    {
+     "id": "kd_1",
+     "start": [
+      4,
+      8
+     ],
+     "end": [
+      4,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "kd_2",
+     "start": [
+      4,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "kd_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S2",
+   "from": "kc_2",
+   "to": "kd_0"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "KC.layer == contact"
+  },
+  {
+   "kind": "match",
+   "expr": "KD.layer == contact"
+  },
+  {
+   "kind": "check",
+   "expr": "S2 >= 0.25"
+  }
+ ]
+}

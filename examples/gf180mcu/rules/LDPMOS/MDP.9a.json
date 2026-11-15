@@ -1,0 +1,190 @@
+{
+ "name": "MDP.9a",
+ "desc": "MDP.9a : Min LDPMOS POLY2 width.",
+ "shapes": [
+  {
+   "name": "LD",
+   "edges": [
+    {
+     "id": "ld_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      21,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_1",
+     "start": [
+      21,
+      0
+     ],
+     "end": [
+      21,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_2",
+     "start": [
+      21,
+      22
+     ],
+     "end": [
+      0,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_3",
+     "start": [
+      0,
+      22
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DG",
+   "edges": [
+    {
+     "id": "dg_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      17,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_1",
+     "start": [
+      17,
+      4
+     ],
+     "end": [
+      17,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_2",
+     "start": [
+      17,
+      18
+     ],
+     "end": [
+      4,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_3",
+     "start": [
+      4,
+      18
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      8,
+      8
+     ],
+     "end": [
+      13,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      13,
+      8
+     ],
+     "end": [
+      13,
+      14
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      13,
+      14
+     ],
+     "end": [
+      8,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      8,
+      14
+     ],
+     "end": [
+      8,
+      8
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "W",
+   "from": "a_3",
+   "to": "a_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "LD.layer == ldmos_xtor"
+  },
+  {
+   "kind": "match",
+   "expr": "DG.layer == dualgate"
+  },
+  {
+   "kind": "match",
+   "expr": "A.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "W >= 1.2"
+  }
+ ]
+}

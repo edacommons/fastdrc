@@ -1,0 +1,187 @@
+{
+ "name": "NP.11",
+ "desc": "NP.11 : Butting Nplus and PCOMP is forbidden within 0.43um of Nwell edge (for outside DNWELL) and of LVPWELL edge (for inside DNWELL case).",
+ "shapes": [
+  {
+   "name": "ZONE",
+   "edges": [
+    {
+     "id": "zone_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      22,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_1",
+     "start": [
+      22,
+      0
+     ],
+     "end": [
+      22,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_2",
+     "start": [
+      22,
+      22
+     ],
+     "end": [
+      0,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_3",
+     "start": [
+      0,
+      22
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "IMP",
+   "edges": [
+    {
+     "id": "imp_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_1",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      10,
+      18
+     ],
+     "edge": true
+    },
+    {
+     "id": "imp_2",
+     "start": [
+      10,
+      18
+     ],
+     "end": [
+      4,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_3",
+     "start": [
+      4,
+      18
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "OC",
+   "edges": [
+    {
+     "id": "oc_0",
+     "start": [
+      10,
+      8
+     ],
+     "end": [
+      16,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "oc_1",
+     "start": [
+      16,
+      8
+     ],
+     "end": [
+      16,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "oc_2",
+     "start": [
+      16,
+      14
+     ],
+     "end": [
+      10,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "oc_3",
+     "start": [
+      10,
+      14
+     ],
+     "end": [
+      10,
+      8
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "X",
+   "from": "imp_1",
+   "to": "oc_3",
+   "crossed": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "ZONE.layer in {nwell_rim, nwell_halo, lvpwell_rim, lvpwell_halo}"
+  },
+  {
+   "kind": "match",
+   "expr": "IMP.layer == nplus"
+  },
+  {
+   "kind": "match",
+   "expr": "OC.layer == pcomp"
+  }
+ ]
+}

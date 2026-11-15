@@ -1,0 +1,250 @@
+{
+ "name": "O.SB.5b",
+ "desc": "O.SB.5b : Min. space from salicide block to unrelated Poly2 on COMP.",
+ "shapes": [
+  {
+   "name": "MKR",
+   "edges": [
+    {
+     "id": "mkr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      30,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_1",
+     "start": [
+      30,
+      0
+     ],
+     "end": [
+      30,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_2",
+     "start": [
+      30,
+      22
+     ],
+     "end": [
+      0,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_3",
+     "start": [
+      0,
+      22
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      10,
+      18
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      10,
+      18
+     ],
+     "end": [
+      4,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      4,
+      18
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "COMP",
+   "edges": [
+    {
+     "id": "comp_0",
+     "start": [
+      14,
+      8
+     ],
+     "end": [
+      26,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_1",
+     "start": [
+      26,
+      8
+     ],
+     "end": [
+      26,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_2",
+     "start": [
+      26,
+      14
+     ],
+     "end": [
+      14,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_3",
+     "start": [
+      14,
+      14
+     ],
+     "end": [
+      14,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      18,
+      4
+     ],
+     "end": [
+      22,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      22,
+      4
+     ],
+     "end": [
+      22,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_2",
+     "start": [
+      22,
+      18
+     ],
+     "end": [
+      18,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      18,
+      18
+     ],
+     "end": [
+      18,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "a_1",
+   "to": "b_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MKR.layer == otp_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "A.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "COMP.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= ?"
+  }
+ ],
+ "values": {
+  "3.3V": 0.1
+ }
+}

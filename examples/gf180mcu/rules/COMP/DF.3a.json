@@ -1,0 +1,140 @@
+{
+ "name": "DF.3a",
+ "desc": "DF.3a : Min. COMP Space.",
+ "shapes": [
+  {
+   "name": "CA",
+   "edges": [
+    {
+     "id": "ca_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      6,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "ca_1",
+     "start": [
+      6,
+      0
+     ],
+     "end": [
+      6,
+      6
+     ],
+     "edge": true
+    },
+    {
+     "id": "ca_2",
+     "start": [
+      6,
+      6
+     ],
+     "end": [
+      0,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "ca_3",
+     "start": [
+      0,
+      6
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "CB",
+   "edges": [
+    {
+     "id": "cb_0",
+     "start": [
+      12,
+      0
+     ],
+     "end": [
+      18,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "cb_1",
+     "start": [
+      18,
+      0
+     ],
+     "end": [
+      18,
+      6
+     ],
+     "edge": true
+    },
+    {
+     "id": "cb_2",
+     "start": [
+      18,
+      6
+     ],
+     "end": [
+      12,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "cb_3",
+     "start": [
+      12,
+      6
+     ],
+     "end": [
+      12,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S3",
+   "from": "ca_1",
+   "to": "cb_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "CA.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "CB.layer == comp"
+  },
+  {
+   "kind": "check",
+   "expr": "S3 >= ?"
+  }
+ ],
+ "values": {
+  "3.3V": 0.28,
+  "5V": 0.36
+ },
+ "except": [
+  "otp_mk"
+ ]
+}

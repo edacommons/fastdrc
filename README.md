@@ -86,6 +86,11 @@ fastdrc pack mydeck             # -> mydeck.zip: the same deck in one file; ever
 > taken from the manual's page to a deck that has been run, with every kind of rule
 > ([`examples/demo/`](examples/demo)): `fastdrc build examples/demo`.
 >
+> **A real process: [`examples/gf180mcu/`](examples/gf180mcu)** — the open GF180MCU
+> design rules drawn from the public manual, 420 rule files, with the metal stack, the
+> top metal and the MIM option as parameters; compared with the process's own KLayout
+> deck. Its README says what was checked and what is not drawn yet.
+>
 > **📐 [docs/drawing-model.md](docs/drawing-model.md)** is the reference: how each kind
 > of rule is drawn and what the compiler derives from it — widths, spacings,
 > enclosures and extensions; a value per table column; exact sizes, squares and bars;
@@ -136,6 +141,7 @@ drawn-rule corpus read from `docs/gf180mcu/`, which is not part of this reposito
 ```
 python/fastdrc/    the Python package: the rule compiler, its backends, the editor
 examples/demo/     a complete deck for an invented process, with every kind of rule
+examples/gf180mcu/ the design rules of the open GF180MCU process, drawn from its manual
 docs/              the tutorial (from-a-manual.md), the reference (drawing-model.md), what is new (own-and-known.md)
 docs/img/          the docs' figures, drawn from rule files by tools/doc_figures.py
 tools/             validation of the compiler against a reference deck

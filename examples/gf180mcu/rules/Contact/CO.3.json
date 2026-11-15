@@ -1,0 +1,196 @@
+{
+ "name": "CO.3",
+ "desc": "CO.3 : Poly2 overlap of contact. : 0.07\u00b5m",
+ "shapes": [
+  {
+   "name": "LINE",
+   "edges": [
+    {
+     "id": "line_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      12,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "line_1",
+     "start": [
+      12,
+      0
+     ],
+     "end": [
+      12,
+      15
+     ],
+     "edge": true
+    },
+    {
+     "id": "line_2",
+     "start": [
+      12,
+      15
+     ],
+     "end": [
+      0,
+      15
+     ],
+     "edge": false
+    },
+    {
+     "id": "line_3",
+     "start": [
+      0,
+      15
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "KP",
+   "edges": [
+    {
+     "id": "kp_0",
+     "start": [
+      4,
+      5
+     ],
+     "end": [
+      8,
+      5
+     ],
+     "edge": false
+    },
+    {
+     "id": "kp_1",
+     "start": [
+      8,
+      5
+     ],
+     "end": [
+      8,
+      9
+     ],
+     "edge": true
+    },
+    {
+     "id": "kp_2",
+     "start": [
+      8,
+      9
+     ],
+     "end": [
+      4,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "kp_3",
+     "start": [
+      4,
+      9
+     ],
+     "end": [
+      4,
+      5
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "SRAM",
+   "edges": [
+    {
+     "id": "sram_0",
+     "start": [
+      18,
+      0
+     ],
+     "end": [
+      24,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "sram_1",
+     "start": [
+      24,
+      0
+     ],
+     "end": [
+      24,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "sram_2",
+     "start": [
+      24,
+      9
+     ],
+     "end": [
+      18,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "sram_3",
+     "start": [
+      18,
+      9
+     ],
+     "end": [
+      18,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E3",
+   "from": "kp_1",
+   "to": "line_1",
+   "within": true
+  },
+  {
+   "name": "LSKP",
+   "from": "kp_2",
+   "to": "sram_2"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "LINE.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "KP.layer == contact"
+  },
+  {
+   "kind": "match",
+   "expr": "SRAM.layer == sramcore"
+  },
+  {
+   "kind": "check",
+   "expr": "E3 >= 0.07"
+  }
+ ]
+}

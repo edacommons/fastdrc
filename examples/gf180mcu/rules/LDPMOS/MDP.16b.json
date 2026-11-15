@@ -1,0 +1,355 @@
+{
+ "name": "MDP.16b",
+ "desc": "MDP.16b : Min LDPMOS drain COMP enclose contact.",
+ "shapes": [
+  {
+   "name": "LD",
+   "edges": [
+    {
+     "id": "ld_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      51,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_1",
+     "start": [
+      51,
+      0
+     ],
+     "end": [
+      51,
+      48
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_2",
+     "start": [
+      51,
+      48
+     ],
+     "end": [
+      0,
+      48
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_3",
+     "start": [
+      0,
+      48
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DG",
+   "edges": [
+    {
+     "id": "dg_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      47,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_1",
+     "start": [
+      47,
+      4
+     ],
+     "end": [
+      47,
+      44
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_2",
+     "start": [
+      47,
+      44
+     ],
+     "end": [
+      4,
+      44
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_3",
+     "start": [
+      4,
+      44
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "IMP",
+   "edges": [
+    {
+     "id": "imp_0",
+     "start": [
+      10,
+      14
+     ],
+     "end": [
+      38,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_1",
+     "start": [
+      38,
+      14
+     ],
+     "end": [
+      38,
+      34
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_2",
+     "start": [
+      38,
+      34
+     ],
+     "end": [
+      10,
+      34
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_3",
+     "start": [
+      10,
+      34
+     ],
+     "end": [
+      10,
+      14
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "MV",
+   "edges": [
+    {
+     "id": "mv_0",
+     "start": [
+      16,
+      10
+     ],
+     "end": [
+      42,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_1",
+     "start": [
+      42,
+      10
+     ],
+     "end": [
+      42,
+      38
+     ],
+     "edge": true
+    },
+    {
+     "id": "mv_2",
+     "start": [
+      42,
+      38
+     ],
+     "end": [
+      16,
+      38
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_3",
+     "start": [
+      16,
+      38
+     ],
+     "end": [
+      16,
+      10
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "CD",
+   "edges": [
+    {
+     "id": "cd_0",
+     "start": [
+      22,
+      18
+     ],
+     "end": [
+      34,
+      18
+     ],
+     "edge": true
+    },
+    {
+     "id": "cd_1",
+     "start": [
+      34,
+      18
+     ],
+     "end": [
+      34,
+      30
+     ],
+     "edge": true
+    },
+    {
+     "id": "cd_2",
+     "start": [
+      34,
+      30
+     ],
+     "end": [
+      22,
+      30
+     ],
+     "edge": true
+    },
+    {
+     "id": "cd_3",
+     "start": [
+      22,
+      30
+     ],
+     "end": [
+      22,
+      18
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "K",
+   "edges": [
+    {
+     "id": "k_0",
+     "start": [
+      26,
+      22
+     ],
+     "end": [
+      30,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "k_1",
+     "start": [
+      30,
+      22
+     ],
+     "end": [
+      30,
+      26
+     ],
+     "edge": false
+    },
+    {
+     "id": "k_2",
+     "start": [
+      30,
+      26
+     ],
+     "end": [
+      26,
+      26
+     ],
+     "edge": false
+    },
+    {
+     "id": "k_3",
+     "start": [
+      26,
+      26
+     ],
+     "end": [
+      26,
+      22
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "LD.layer == ldmos_xtor"
+  },
+  {
+   "kind": "match",
+   "expr": "DG.layer == dualgate"
+  },
+  {
+   "kind": "match",
+   "expr": "IMP.layer == pplus"
+  },
+  {
+   "kind": "match",
+   "expr": "MV.layer == mvpsd"
+  },
+  {
+   "kind": "match",
+   "expr": "CD.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "K.layer == contact"
+  },
+  {
+   "kind": "check",
+   "expr": "K in CD"
+  }
+ ]
+}

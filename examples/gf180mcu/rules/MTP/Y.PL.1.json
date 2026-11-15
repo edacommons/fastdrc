@@ -1,0 +1,198 @@
+{
+ "name": "Y.PL.1",
+ "desc": "Y.PL.1 : Interconnect Width (inside YMTP_MK).",
+ "shapes": [
+  {
+   "name": "MKR",
+   "edges": [
+    {
+     "id": "mkr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      22,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_1",
+     "start": [
+      22,
+      0
+     ],
+     "end": [
+      22,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_2",
+     "start": [
+      22,
+      18
+     ],
+     "end": [
+      0,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_3",
+     "start": [
+      0,
+      18
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "LINE",
+   "edges": [
+    {
+     "id": "line0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      8,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "line1",
+     "start": [
+      8,
+      4
+     ],
+     "end": [
+      8,
+      14
+     ],
+     "edge": true
+    },
+    {
+     "id": "line2",
+     "start": [
+      8,
+      14
+     ],
+     "end": [
+      4,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "line3",
+     "start": [
+      4,
+      14
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "FUSE",
+   "edges": [
+    {
+     "id": "fuse0",
+     "start": [
+      14,
+      4
+     ],
+     "end": [
+      18,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "fuse1",
+     "start": [
+      18,
+      4
+     ],
+     "end": [
+      18,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "fuse2",
+     "start": [
+      18,
+      8
+     ],
+     "end": [
+      14,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "fuse3",
+     "start": [
+      14,
+      8
+     ],
+     "end": [
+      14,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "W1",
+   "from": "line3",
+   "to": "line1"
+  },
+  {
+   "name": "LF",
+   "from": "line0",
+   "to": "fuse0"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MKR.layer == ymtp_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "LINE.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "FUSE.layer == plfuse"
+  },
+  {
+   "kind": "check",
+   "expr": "W1 >= ?"
+  }
+ ],
+ "values": {
+  "3.3V": 0.13
+ }
+}

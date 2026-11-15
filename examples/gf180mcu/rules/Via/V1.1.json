@@ -1,0 +1,71 @@
+{
+ "name": "V1.1",
+ "desc": "V1.1 : Min/max via1 size",
+ "shapes": [
+  {
+   "name": "VA",
+   "edges": [
+    {
+     "id": "va_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      4,
+      0
+     ],
+     "edge": true
+    },
+    {
+     "id": "va_1",
+     "start": [
+      4,
+      0
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "va_2",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      0,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "va_3",
+     "start": [
+      0,
+      4
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "VA.layer == via1"
+  },
+  {
+   "kind": "check",
+   "expr": "va_0.length == 0.26"
+  }
+ ],
+ "extended": true
+}

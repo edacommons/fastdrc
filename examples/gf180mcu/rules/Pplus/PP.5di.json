@@ -1,0 +1,138 @@
+{
+ "name": "PP.5di",
+ "desc": "PP.5di : Extension beyond COMP: For Outside DNWELL (i) For Pplus to NWELL space >= 0.43um for Pfield or LVPWELL tap.",
+ "shapes": [
+  {
+   "name": "IMP",
+   "edges": [
+    {
+     "id": "imp_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      16,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_1",
+     "start": [
+      16,
+      0
+     ],
+     "end": [
+      16,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_2",
+     "start": [
+      16,
+      16
+     ],
+     "end": [
+      0,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_3",
+     "start": [
+      0,
+      16
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "CX",
+   "edges": [
+    {
+     "id": "cx_0",
+     "start": [
+      5,
+      5
+     ],
+     "end": [
+      11,
+      5
+     ],
+     "edge": false
+    },
+    {
+     "id": "cx_1",
+     "start": [
+      11,
+      5
+     ],
+     "end": [
+      11,
+      11
+     ],
+     "edge": false
+    },
+    {
+     "id": "cx_2",
+     "start": [
+      11,
+      11
+     ],
+     "end": [
+      5,
+      11
+     ],
+     "edge": false
+    },
+    {
+     "id": "cx_3",
+     "start": [
+      5,
+      11
+     ],
+     "end": [
+      5,
+      5
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E",
+   "from": "imp_3",
+   "to": "cx_3",
+   "edges": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "IMP.layer == pplus"
+  },
+  {
+   "kind": "match",
+   "expr": "CX.layer == comp"
+  },
+  {
+   "kind": "check",
+   "expr": "E >= 0.02"
+  }
+ ],
+ "except": [
+  "near_nwell",
+  "dnwell"
+ ]
+}

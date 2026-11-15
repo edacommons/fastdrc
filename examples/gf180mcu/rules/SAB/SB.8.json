@@ -1,0 +1,130 @@
+{
+ "name": "SB.8",
+ "desc": "SB.8 : Non-salicided contacts are not allowed.",
+ "shapes": [
+  {
+   "name": "SAB",
+   "edges": [
+    {
+     "id": "sab0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      12,
+      0
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab1",
+     "start": [
+      12,
+      0
+     ],
+     "end": [
+      12,
+      14
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab2",
+     "start": [
+      12,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "K",
+   "edges": [
+    {
+     "id": "k0",
+     "start": [
+      4,
+      6
+     ],
+     "end": [
+      8,
+      6
+     ],
+     "edge": true
+    },
+    {
+     "id": "k1",
+     "start": [
+      8,
+      6
+     ],
+     "end": [
+      8,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "k2",
+     "start": [
+      8,
+      10
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "k3",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      4,
+      6
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "X8",
+   "from": "k0",
+   "to": "sab0",
+   "crossed": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "SAB.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "K.layer == contact"
+  }
+ ]
+}

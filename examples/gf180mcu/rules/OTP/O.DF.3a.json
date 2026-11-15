@@ -1,0 +1,190 @@
+{
+ "name": "O.DF.3a",
+ "desc": "O.DF.3a : Min. COMP Space. P-substrate tap (PCOMP outside NWELL) can be butted for different voltage devices as the potential is same.",
+ "shapes": [
+  {
+   "name": "MKR",
+   "edges": [
+    {
+     "id": "mkr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      26,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_1",
+     "start": [
+      26,
+      0
+     ],
+     "end": [
+      26,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_2",
+     "start": [
+      26,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "CA",
+   "edges": [
+    {
+     "id": "ca_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "ca_1",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "ca_2",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "ca_3",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "CB",
+   "edges": [
+    {
+     "id": "cb_0",
+     "start": [
+      16,
+      4
+     ],
+     "end": [
+      22,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "cb_1",
+     "start": [
+      22,
+      4
+     ],
+     "end": [
+      22,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "cb_2",
+     "start": [
+      22,
+      10
+     ],
+     "end": [
+      16,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "cb_3",
+     "start": [
+      16,
+      10
+     ],
+     "end": [
+      16,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S3",
+   "from": "ca_1",
+   "to": "cb_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MKR.layer == otp_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "CA.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "CB.layer == comp"
+  },
+  {
+   "kind": "check",
+   "expr": "S3 >= 0.24"
+  }
+ ]
+}

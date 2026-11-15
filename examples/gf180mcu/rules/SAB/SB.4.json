@@ -1,0 +1,136 @@
+{
+ "name": "SB.4",
+ "desc": "SB.4 : Space from salicide block to contact.",
+ "shapes": [
+  {
+   "name": "SAB",
+   "edges": [
+    {
+     "id": "sab_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      6,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_1",
+     "start": [
+      6,
+      0
+     ],
+     "end": [
+      6,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab_2",
+     "start": [
+      6,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "K",
+   "edges": [
+    {
+     "id": "k_0",
+     "start": [
+      11,
+      4
+     ],
+     "end": [
+      15,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "k_1",
+     "start": [
+      15,
+      4
+     ],
+     "end": [
+      15,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "k_2",
+     "start": [
+      15,
+      8
+     ],
+     "end": [
+      11,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "k_3",
+     "start": [
+      11,
+      8
+     ],
+     "end": [
+      11,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "sab_1",
+   "to": "k_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "SAB.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "K.layer == contact"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.15"
+  }
+ ],
+ "except": [
+  "otp_mk"
+ ]
+}

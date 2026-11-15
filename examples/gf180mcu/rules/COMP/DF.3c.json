@@ -1,0 +1,203 @@
+{
+ "name": "DF.3c",
+ "desc": "DF.3c : Min. COMP Space in BJT area.",
+ "shapes": [
+  {
+   "name": "BJT",
+   "edges": [
+    {
+     "id": "bjt_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      26,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "bjt_1",
+     "start": [
+      26,
+      0
+     ],
+     "end": [
+      26,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "bjt_2",
+     "start": [
+      26,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "bjt_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B1",
+   "edges": [
+    {
+     "id": "b1_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "b1_1",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "b1_2",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "b1_3",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B2",
+   "edges": [
+    {
+     "id": "b2_0",
+     "start": [
+      14,
+      4
+     ],
+     "end": [
+      20,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "b2_1",
+     "start": [
+      20,
+      4
+     ],
+     "end": [
+      20,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "b2_2",
+     "start": [
+      20,
+      10
+     ],
+     "end": [
+      14,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "b2_3",
+     "start": [
+      14,
+      10
+     ],
+     "end": [
+      14,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S3c",
+   "from": "b1_1",
+   "to": "b2_3"
+  },
+  {
+   "name": "L1",
+   "from": "b1_0",
+   "to": "bjt_0"
+  },
+  {
+   "name": "L2",
+   "from": "b2_0",
+   "to": "bjt_0"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "BJT.layer == drc_bjt"
+  },
+  {
+   "kind": "match",
+   "expr": "B1.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "B2.layer == comp"
+  },
+  {
+   "kind": "check",
+   "expr": "S3c >= ?"
+  }
+ ],
+ "values": {
+  "3.3V": 0.32
+ }
+}

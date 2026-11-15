@@ -1,0 +1,362 @@
+{
+ "name": "MDN.10d",
+ "desc": "MDN.10d : Min/Max POLY2 on field space to LDNMOS drain COMP.",
+ "shapes": [
+  {
+   "name": "LD",
+   "edges": [
+    {
+     "id": "ld_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      51,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_1",
+     "start": [
+      51,
+      0
+     ],
+     "end": [
+      51,
+      50
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_2",
+     "start": [
+      51,
+      50
+     ],
+     "end": [
+      0,
+      50
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_3",
+     "start": [
+      0,
+      50
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DG",
+   "edges": [
+    {
+     "id": "dg_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      47,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_1",
+     "start": [
+      47,
+      4
+     ],
+     "end": [
+      47,
+      46
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_2",
+     "start": [
+      47,
+      46
+     ],
+     "end": [
+      4,
+      46
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_3",
+     "start": [
+      4,
+      46
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "IMP",
+   "edges": [
+    {
+     "id": "imp_0",
+     "start": [
+      10,
+      18
+     ],
+     "end": [
+      38,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_1",
+     "start": [
+      38,
+      18
+     ],
+     "end": [
+      38,
+      32
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_2",
+     "start": [
+      38,
+      32
+     ],
+     "end": [
+      10,
+      32
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_3",
+     "start": [
+      10,
+      32
+     ],
+     "end": [
+      10,
+      18
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "MV",
+   "edges": [
+    {
+     "id": "mv_0",
+     "start": [
+      20,
+      14
+     ],
+     "end": [
+      42,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_1",
+     "start": [
+      42,
+      14
+     ],
+     "end": [
+      42,
+      36
+     ],
+     "edge": true
+    },
+    {
+     "id": "mv_2",
+     "start": [
+      42,
+      36
+     ],
+     "end": [
+      20,
+      36
+     ],
+     "edge": false
+    },
+    {
+     "id": "mv_3",
+     "start": [
+      20,
+      36
+     ],
+     "end": [
+      20,
+      14
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "CD",
+   "edges": [
+    {
+     "id": "cd_0",
+     "start": [
+      28,
+      22
+     ],
+     "end": [
+      34,
+      22
+     ],
+     "edge": true
+    },
+    {
+     "id": "cd_1",
+     "start": [
+      34,
+      22
+     ],
+     "end": [
+      34,
+      28
+     ],
+     "edge": true
+    },
+    {
+     "id": "cd_2",
+     "start": [
+      34,
+      28
+     ],
+     "end": [
+      28,
+      28
+     ],
+     "edge": true
+    },
+    {
+     "id": "cd_3",
+     "start": [
+      28,
+      28
+     ],
+     "end": [
+      28,
+      22
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "G",
+   "edges": [
+    {
+     "id": "g_0",
+     "start": [
+      16,
+      10
+     ],
+     "end": [
+      24,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "g_1",
+     "start": [
+      24,
+      10
+     ],
+     "end": [
+      24,
+      40
+     ],
+     "edge": true
+    },
+    {
+     "id": "g_2",
+     "start": [
+      24,
+      40
+     ],
+     "end": [
+      16,
+      40
+     ],
+     "edge": true
+    },
+    {
+     "id": "g_3",
+     "start": [
+      16,
+      40
+     ],
+     "end": [
+      16,
+      10
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "g_1",
+   "to": "cd_3",
+   "at": 25.0
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "LD.layer == ldmos_xtor"
+  },
+  {
+   "kind": "match",
+   "expr": "DG.layer == dualgate"
+  },
+  {
+   "kind": "match",
+   "expr": "IMP.layer == nplus"
+  },
+  {
+   "kind": "match",
+   "expr": "MV.layer == mvsd"
+  },
+  {
+   "kind": "match",
+   "expr": "CD.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "G.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.16"
+  }
+ ]
+}

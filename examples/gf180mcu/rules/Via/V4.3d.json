@@ -1,0 +1,138 @@
+{
+ "name": "V4.3d",
+ "desc": "V4.3d : If metal4 overlap via4 by < 0.04um on one side, adjacent metal4 edges overlap",
+ "shapes": [
+  {
+   "name": "MM",
+   "edges": [
+    {
+     "id": "mm_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      14,
+      0
+     ],
+     "edge": true
+    },
+    {
+     "id": "mm_1",
+     "start": [
+      14,
+      0
+     ],
+     "end": [
+      14,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mm_2",
+     "start": [
+      14,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mm_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "VA",
+   "edges": [
+    {
+     "id": "va_0",
+     "start": [
+      5,
+      5
+     ],
+     "end": [
+      9,
+      5
+     ],
+     "edge": true
+    },
+    {
+     "id": "va_1",
+     "start": [
+      9,
+      5
+     ],
+     "end": [
+      9,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "va_2",
+     "start": [
+      9,
+      9
+     ],
+     "end": [
+      5,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "va_3",
+     "start": [
+      5,
+      9
+     ],
+     "end": [
+      5,
+      5
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "Ea",
+   "from": "mm_3",
+   "to": "va_3"
+  },
+  {
+   "name": "Eb",
+   "from": "mm_0",
+   "to": "va_0"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MM.layer == metal4"
+  },
+  {
+   "kind": "match",
+   "expr": "VA.layer == via4"
+  },
+  {
+   "kind": "check",
+   "expr": "Ea >= 0.04 or Eb >= 0.06"
+  }
+ ]
+}

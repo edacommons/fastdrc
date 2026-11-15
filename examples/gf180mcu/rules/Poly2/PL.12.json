@@ -1,0 +1,130 @@
+{
+ "name": "PL.12",
+ "desc": "PL.12 : V5_Xtor enclose 5V Comp.",
+ "shapes": [
+  {
+   "name": "V5",
+   "edges": [
+    {
+     "id": "v5_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      10,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "v5_1",
+     "start": [
+      10,
+      0
+     ],
+     "end": [
+      10,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "v5_2",
+     "start": [
+      10,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "v5_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "CX",
+   "edges": [
+    {
+     "id": "cx_0",
+     "start": [
+      6,
+      4
+     ],
+     "end": [
+      16,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "cx_1",
+     "start": [
+      16,
+      4
+     ],
+     "end": [
+      16,
+      8
+     ],
+     "edge": true
+    },
+    {
+     "id": "cx_2",
+     "start": [
+      16,
+      8
+     ],
+     "end": [
+      6,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "cx_3",
+     "start": [
+      6,
+      8
+     ],
+     "end": [
+      6,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "X",
+   "from": "cx_1",
+   "to": "v5_1",
+   "crossed": "straddle"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "V5.layer == v5_xtor"
+  },
+  {
+   "kind": "match",
+   "expr": "CX.layer == comp"
+  }
+ ]
+}

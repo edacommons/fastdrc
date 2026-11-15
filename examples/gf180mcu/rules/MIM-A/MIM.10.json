@@ -1,0 +1,199 @@
+{
+ "name": "MIM.10",
+ "desc": "MIM.10 : (a) There cannot be any Via1 touching MIM bottom plate Metal2. (b) MIM bottom plate Metal2 can only be connected through the higher Via (Via2).",
+ "shapes": [
+  {
+   "name": "PLATE",
+   "edges": [
+    {
+     "id": "plate_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      22,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "plate_1",
+     "start": [
+      22,
+      0
+     ],
+     "end": [
+      22,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "plate_2",
+     "start": [
+      22,
+      20
+     ],
+     "end": [
+      0,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "plate_3",
+     "start": [
+      0,
+      20
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "FT",
+   "edges": [
+    {
+     "id": "ft_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "ft_1",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      10,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "ft_2",
+     "start": [
+      10,
+      16
+     ],
+     "end": [
+      4,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "ft_3",
+     "start": [
+      4,
+      16
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "V",
+   "edges": [
+    {
+     "id": "v_0",
+     "start": [
+      14,
+      8
+     ],
+     "end": [
+      18,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "v_1",
+     "start": [
+      18,
+      8
+     ],
+     "end": [
+      18,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "v_2",
+     "start": [
+      18,
+      12
+     ],
+     "end": [
+      14,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "v_3",
+     "start": [
+      14,
+      12
+     ],
+     "end": [
+      14,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "LP",
+   "from": "plate_0",
+   "to": "ft_0"
+  },
+  {
+   "name": "X",
+   "from": "plate_3",
+   "to": "v_3",
+   "crossed": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "PLATE.layer == metal2"
+  },
+  {
+   "kind": "match",
+   "expr": "FT.layer == fusetop"
+  },
+  {
+   "kind": "match",
+   "expr": "V.layer == via1"
+  }
+ ],
+ "when": {
+  "switch": "mim",
+  "cases": {
+   "A": true
+  },
+  "default": false
+ }
+}

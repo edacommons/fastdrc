@@ -1,0 +1,251 @@
+{
+ "name": "DF.4a",
+ "desc": "DF.4a : Min. (LVPWELL Space to NCOMP well tap) inside DNWELL.",
+ "shapes": [
+  {
+   "name": "DN",
+   "edges": [
+    {
+     "id": "dn_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      28,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_1",
+     "start": [
+      28,
+      0
+     ],
+     "end": [
+      28,
+      40
+     ],
+     "edge": true
+    },
+    {
+     "id": "dn_2",
+     "start": [
+      28,
+      40
+     ],
+     "end": [
+      0,
+      40
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_3",
+     "start": [
+      0,
+      40
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "NW",
+   "edges": [
+    {
+     "id": "nw_0",
+     "start": [
+      6,
+      16
+     ],
+     "end": [
+      22,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "nw_1",
+     "start": [
+      22,
+      16
+     ],
+     "end": [
+      22,
+      34
+     ],
+     "edge": false
+    },
+    {
+     "id": "nw_2",
+     "start": [
+      22,
+      34
+     ],
+     "end": [
+      6,
+      34
+     ],
+     "edge": false
+    },
+    {
+     "id": "nw_3",
+     "start": [
+      6,
+      34
+     ],
+     "end": [
+      6,
+      16
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PW",
+   "edges": [
+    {
+     "id": "pw_0",
+     "start": [
+      6,
+      6
+     ],
+     "end": [
+      22,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "pw_1",
+     "start": [
+      22,
+      6
+     ],
+     "end": [
+      22,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "pw_2",
+     "start": [
+      22,
+      12
+     ],
+     "end": [
+      6,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "pw_3",
+     "start": [
+      6,
+      12
+     ],
+     "end": [
+      6,
+      6
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "NT",
+   "edges": [
+    {
+     "id": "nt_0",
+     "start": [
+      12,
+      22
+     ],
+     "end": [
+      18,
+      22
+     ],
+     "edge": true
+    },
+    {
+     "id": "nt_1",
+     "start": [
+      18,
+      22
+     ],
+     "end": [
+      18,
+      28
+     ],
+     "edge": true
+    },
+    {
+     "id": "nt_2",
+     "start": [
+      18,
+      28
+     ],
+     "end": [
+      12,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "nt_3",
+     "start": [
+      12,
+      28
+     ],
+     "end": [
+      12,
+      22
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E4a",
+   "from": "nt_0",
+   "to": "pw_2"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "DN.layer == dnwell"
+  },
+  {
+   "kind": "match",
+   "expr": "NW.layer == nwell"
+  },
+  {
+   "kind": "match",
+   "expr": "PW.layer == lvpwell"
+  },
+  {
+   "kind": "match",
+   "expr": "NT.layer == ncomp"
+  },
+  {
+   "kind": "check",
+   "expr": "E4a >= ?"
+  }
+ ],
+ "values": {
+  "3.3V": 0.12,
+  "5V": 0.16
+ }
+}

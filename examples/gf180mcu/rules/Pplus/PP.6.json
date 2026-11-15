@@ -1,0 +1,191 @@
+{
+ "name": "PP.6",
+ "desc": "PP.6 : Overlap with PCOMP butted to NCOMP. : 0.22\u00b5m",
+ "shapes": [
+  {
+   "name": "C",
+   "edges": [
+    {
+     "id": "c0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      14,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "c1",
+     "start": [
+      14,
+      4
+     ],
+     "end": [
+      14,
+      8
+     ],
+     "edge": true
+    },
+    {
+     "id": "c2",
+     "start": [
+      14,
+      8
+     ],
+     "end": [
+      4,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "c3",
+     "start": [
+      4,
+      8
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "P",
+   "edges": [
+    {
+     "id": "p0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      8,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "p1",
+     "start": [
+      8,
+      0
+     ],
+     "end": [
+      8,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "p2",
+     "start": [
+      8,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "p3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "N",
+   "edges": [
+    {
+     "id": "n0",
+     "start": [
+      8,
+      0
+     ],
+     "end": [
+      18,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "n1",
+     "start": [
+      18,
+      0
+     ],
+     "end": [
+      18,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "n2",
+     "start": [
+      18,
+      12
+     ],
+     "end": [
+      8,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "n3",
+     "start": [
+      8,
+      12
+     ],
+     "end": [
+      8,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E",
+   "from": "p1",
+   "to": "c1",
+   "metric": "projection"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "C.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "P.layer == nplus"
+  },
+  {
+   "kind": "match",
+   "expr": "N.layer == pplus"
+  },
+  {
+   "kind": "check",
+   "expr": "E >= 0.22"
+  }
+ ]
+}

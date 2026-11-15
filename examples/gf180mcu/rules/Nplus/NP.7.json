@@ -1,0 +1,191 @@
+{
+ "name": "NP.7",
+ "desc": "NP.7 : Space to unsalicided P+ Poly2. : 0.18\u00b5m",
+ "shapes": [
+  {
+   "name": "RES",
+   "edges": [
+    {
+     "id": "res_0",
+     "start": [
+      0,
+      4
+     ],
+     "end": [
+      12,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "res_1",
+     "start": [
+      12,
+      4
+     ],
+     "end": [
+      12,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "res_2",
+     "start": [
+      12,
+      8
+     ],
+     "end": [
+      0,
+      8
+     ],
+     "edge": true
+    },
+    {
+     "id": "res_3",
+     "start": [
+      0,
+      8
+     ],
+     "end": [
+      0,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "SB",
+   "edges": [
+    {
+     "id": "sb_0",
+     "start": [
+      4,
+      0
+     ],
+     "end": [
+      8,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "sb_1",
+     "start": [
+      8,
+      0
+     ],
+     "end": [
+      8,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "sb_2",
+     "start": [
+      8,
+      12
+     ],
+     "end": [
+      4,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "sb_3",
+     "start": [
+      4,
+      12
+     ],
+     "end": [
+      4,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "NS",
+   "edges": [
+    {
+     "id": "ns_0",
+     "start": [
+      4,
+      16
+     ],
+     "end": [
+      8,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "ns_1",
+     "start": [
+      8,
+      16
+     ],
+     "end": [
+      8,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "ns_2",
+     "start": [
+      8,
+      20
+     ],
+     "end": [
+      4,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "ns_3",
+     "start": [
+      4,
+      20
+     ],
+     "end": [
+      4,
+      16
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S7",
+   "from": "ns_0",
+   "to": "res_2",
+   "at": 6.0
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "RES.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "SB.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "NS.layer == nplus"
+  },
+  {
+   "kind": "check",
+   "expr": "S7 >= 0.18"
+  }
+ ]
+}

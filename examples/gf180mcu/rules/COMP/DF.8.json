@@ -1,0 +1,195 @@
+{
+ "name": "DF.8",
+ "desc": "DF.8 : Min. (LVPWELL overlap of NCOMP) inside DNWELL.",
+ "shapes": [
+  {
+   "name": "DN",
+   "edges": [
+    {
+     "id": "dn_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      30,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_1",
+     "start": [
+      30,
+      0
+     ],
+     "end": [
+      30,
+      30
+     ],
+     "edge": true
+    },
+    {
+     "id": "dn_2",
+     "start": [
+      30,
+      30
+     ],
+     "end": [
+      0,
+      30
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_3",
+     "start": [
+      0,
+      30
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "PW",
+   "edges": [
+    {
+     "id": "pw_0",
+     "start": [
+      6,
+      6
+     ],
+     "end": [
+      24,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "pw_1",
+     "start": [
+      24,
+      6
+     ],
+     "end": [
+      24,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "pw_2",
+     "start": [
+      24,
+      24
+     ],
+     "end": [
+      6,
+      24
+     ],
+     "edge": true
+    },
+    {
+     "id": "pw_3",
+     "start": [
+      6,
+      24
+     ],
+     "end": [
+      6,
+      6
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "NC",
+   "edges": [
+    {
+     "id": "nc_0",
+     "start": [
+      12,
+      12
+     ],
+     "end": [
+      18,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "nc_1",
+     "start": [
+      18,
+      12
+     ],
+     "end": [
+      18,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "nc_2",
+     "start": [
+      18,
+      18
+     ],
+     "end": [
+      12,
+      18
+     ],
+     "edge": true
+    },
+    {
+     "id": "nc_3",
+     "start": [
+      12,
+      18
+     ],
+     "end": [
+      12,
+      12
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E8",
+   "from": "nc_2",
+   "to": "pw_2",
+   "within": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "DN.layer == dnwell"
+  },
+  {
+   "kind": "match",
+   "expr": "PW.layer == lvpwell"
+  },
+  {
+   "kind": "match",
+   "expr": "NC.layer == ncomp"
+  },
+  {
+   "kind": "check",
+   "expr": "E8 >= ?"
+  }
+ ],
+ "values": {
+  "3.3V": 0.43,
+  "5V": 0.6
+ }
+}

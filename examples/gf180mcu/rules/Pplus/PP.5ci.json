@@ -1,0 +1,248 @@
+{
+ "name": "PP.5ci",
+ "desc": "PP.5ci : Extension beyond COMP: For Inside DNWELL, inside LVPWELL: (i) For LVPWELL overlap of Pplus >= 0.43um for LVPWELL tap.",
+ "shapes": [
+  {
+   "name": "DN",
+   "edges": [
+    {
+     "id": "dn_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      34,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_1",
+     "start": [
+      34,
+      0
+     ],
+     "end": [
+      34,
+      34
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_2",
+     "start": [
+      34,
+      34
+     ],
+     "end": [
+      0,
+      34
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_3",
+     "start": [
+      0,
+      34
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "ZONE",
+   "edges": [
+    {
+     "id": "zone_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      30,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_1",
+     "start": [
+      30,
+      4
+     ],
+     "end": [
+      30,
+      30
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_2",
+     "start": [
+      30,
+      30
+     ],
+     "end": [
+      4,
+      30
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_3",
+     "start": [
+      4,
+      30
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "IMP",
+   "edges": [
+    {
+     "id": "imp_0",
+     "start": [
+      8,
+      8
+     ],
+     "end": [
+      24,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_1",
+     "start": [
+      24,
+      8
+     ],
+     "end": [
+      24,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_2",
+     "start": [
+      24,
+      24
+     ],
+     "end": [
+      8,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_3",
+     "start": [
+      8,
+      24
+     ],
+     "end": [
+      8,
+      8
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "CX",
+   "edges": [
+    {
+     "id": "cx_0",
+     "start": [
+      13,
+      13
+     ],
+     "end": [
+      19,
+      13
+     ],
+     "edge": false
+    },
+    {
+     "id": "cx_1",
+     "start": [
+      19,
+      13
+     ],
+     "end": [
+      19,
+      19
+     ],
+     "edge": false
+    },
+    {
+     "id": "cx_2",
+     "start": [
+      19,
+      19
+     ],
+     "end": [
+      13,
+      19
+     ],
+     "edge": false
+    },
+    {
+     "id": "cx_3",
+     "start": [
+      13,
+      19
+     ],
+     "end": [
+      13,
+      13
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E",
+   "from": "imp_3",
+   "to": "cx_3",
+   "edges": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "DN.layer == dnwell"
+  },
+  {
+   "kind": "match",
+   "expr": "ZONE.layer == lvpwell_core"
+  },
+  {
+   "kind": "match",
+   "expr": "IMP.layer == pplus"
+  },
+  {
+   "kind": "match",
+   "expr": "CX.layer == comp"
+  },
+  {
+   "kind": "check",
+   "expr": "E >= 0.02"
+  }
+ ]
+}

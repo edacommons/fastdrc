@@ -1,0 +1,190 @@
+{
+ "name": "NP.3ci",
+ "desc": "NP.3ci : Space to PCOMP, outside DNWELL: (i) PCOMP space to Nwell < 0.43um. : 0.16\u00b5m",
+ "shapes": [
+  {
+   "name": "ZONE",
+   "edges": [
+    {
+     "id": "zone_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      14,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_1",
+     "start": [
+      14,
+      0
+     ],
+     "end": [
+      14,
+      23
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_2",
+     "start": [
+      14,
+      23
+     ],
+     "end": [
+      0,
+      23
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_3",
+     "start": [
+      0,
+      23
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "P1",
+   "edges": [
+    {
+     "id": "p1_0",
+     "start": [
+      6,
+      9
+     ],
+     "end": [
+      10,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "p1_1",
+     "start": [
+      10,
+      9
+     ],
+     "end": [
+      10,
+      13
+     ],
+     "edge": true
+    },
+    {
+     "id": "p1_2",
+     "start": [
+      10,
+      13
+     ],
+     "end": [
+      6,
+      13
+     ],
+     "edge": false
+    },
+    {
+     "id": "p1_3",
+     "start": [
+      6,
+      13
+     ],
+     "end": [
+      6,
+      9
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "N1",
+   "edges": [
+    {
+     "id": "n1_0",
+     "start": [
+      18,
+      5
+     ],
+     "end": [
+      22,
+      5
+     ],
+     "edge": false
+    },
+    {
+     "id": "n1_1",
+     "start": [
+      22,
+      5
+     ],
+     "end": [
+      22,
+      17
+     ],
+     "edge": false
+    },
+    {
+     "id": "n1_2",
+     "start": [
+      22,
+      17
+     ],
+     "end": [
+      18,
+      17
+     ],
+     "edge": false
+    },
+    {
+     "id": "n1_3",
+     "start": [
+      18,
+      17
+     ],
+     "end": [
+      18,
+      5
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S3i",
+   "from": "n1_3",
+   "to": "p1_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "ZONE.layer == near_nwell"
+  },
+  {
+   "kind": "match",
+   "expr": "P1.layer == pcomp"
+  },
+  {
+   "kind": "match",
+   "expr": "N1.layer == nplus"
+  },
+  {
+   "kind": "check",
+   "expr": "S3i >= 0.16"
+  }
+ ]
+}

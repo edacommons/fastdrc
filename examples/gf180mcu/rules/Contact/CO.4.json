@@ -1,0 +1,200 @@
+{
+ "name": "CO.4",
+ "desc": "CO.4 : COMP overlap of contact. : 0.07\u00b5m",
+ "shapes": [
+  {
+   "name": "COMP",
+   "edges": [
+    {
+     "id": "comp_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      14,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_1",
+     "start": [
+      14,
+      0
+     ],
+     "end": [
+      14,
+      15
+     ],
+     "edge": true
+    },
+    {
+     "id": "comp_2",
+     "start": [
+      14,
+      15
+     ],
+     "end": [
+      0,
+      15
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_3",
+     "start": [
+      0,
+      15
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "KC",
+   "edges": [
+    {
+     "id": "kc_0",
+     "start": [
+      4,
+      5
+     ],
+     "end": [
+      8,
+      5
+     ],
+     "edge": true
+    },
+    {
+     "id": "kc_1",
+     "start": [
+      8,
+      5
+     ],
+     "end": [
+      8,
+      9
+     ],
+     "edge": true
+    },
+    {
+     "id": "kc_2",
+     "start": [
+      8,
+      9
+     ],
+     "end": [
+      4,
+      9
+     ],
+     "edge": true
+    },
+    {
+     "id": "kc_3",
+     "start": [
+      4,
+      9
+     ],
+     "end": [
+      4,
+      5
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "SRAM",
+   "edges": [
+    {
+     "id": "sram_0",
+     "start": [
+      20,
+      0
+     ],
+     "end": [
+      26,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "sram_1",
+     "start": [
+      26,
+      0
+     ],
+     "end": [
+      26,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "sram_2",
+     "start": [
+      26,
+      9
+     ],
+     "end": [
+      20,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "sram_3",
+     "start": [
+      20,
+      9
+     ],
+     "end": [
+      20,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E4",
+   "from": "comp_3",
+   "to": "kc_3",
+   "within": true
+  },
+  {
+   "name": "LSKC",
+   "from": "kc_2",
+   "to": "sram_2"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "COMP.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "KC.layer == contact"
+  },
+  {
+   "kind": "match",
+   "expr": "SRAM.layer == sramcore"
+  },
+  {
+   "kind": "check",
+   "expr": "E4 >= 0.07"
+  }
+ ],
+ "except": [
+  "mvsd",
+  "mvpsd"
+ ]
+}

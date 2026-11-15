@@ -1,0 +1,153 @@
+{
+ "name": "M4.2b",
+ "desc": "M4.2b : Space to wide metal4 (length & width > 10um)",
+ "shapes": [
+  {
+   "name": "WIDE",
+   "edges": [
+    {
+     "id": "wide_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      6,
+      0
+     ],
+     "edge": true
+    },
+    {
+     "id": "wide_1",
+     "start": [
+      6,
+      0
+     ],
+     "end": [
+      6,
+      6
+     ],
+     "edge": true
+    },
+    {
+     "id": "wide_2",
+     "start": [
+      6,
+      6
+     ],
+     "end": [
+      0,
+      6
+     ],
+     "edge": true
+    },
+    {
+     "id": "wide_3",
+     "start": [
+      0,
+      6
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "NEAR",
+   "edges": [
+    {
+     "id": "near_0",
+     "start": [
+      11,
+      0
+     ],
+     "end": [
+      16,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "near_1",
+     "start": [
+      16,
+      0
+     ],
+     "end": [
+      16,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "near_2",
+     "start": [
+      16,
+      6
+     ],
+     "end": [
+      11,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "near_3",
+     "start": [
+      11,
+      6
+     ],
+     "end": [
+      11,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "Ww",
+   "from": "wide_3",
+   "to": "wide_1"
+  },
+  {
+   "name": "Wl",
+   "from": "wide_0",
+   "to": "wide_2",
+   "at": 1.0
+  },
+  {
+   "name": "S",
+   "from": "wide_1",
+   "to": "near_3",
+   "at": 4.0
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "WIDE.layer == metal4"
+  },
+  {
+   "kind": "match",
+   "expr": "NEAR.layer == metal4"
+  },
+  {
+   "kind": "match",
+   "expr": "Ww > 10"
+  },
+  {
+   "kind": "match",
+   "expr": "Wl > 10"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.3"
+  }
+ ]
+}

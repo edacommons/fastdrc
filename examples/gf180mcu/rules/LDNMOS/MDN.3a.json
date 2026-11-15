@@ -1,0 +1,190 @@
+{
+ "name": "MDN.3a",
+ "desc": "MDN.3a : Min transistor channel length.",
+ "shapes": [
+  {
+   "name": "LD",
+   "edges": [
+    {
+     "id": "ld_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      23,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_1",
+     "start": [
+      23,
+      0
+     ],
+     "end": [
+      23,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_2",
+     "start": [
+      23,
+      24
+     ],
+     "end": [
+      0,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_3",
+     "start": [
+      0,
+      24
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DG",
+   "edges": [
+    {
+     "id": "dg_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      19,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_1",
+     "start": [
+      19,
+      4
+     ],
+     "end": [
+      19,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_2",
+     "start": [
+      19,
+      20
+     ],
+     "end": [
+      4,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_3",
+     "start": [
+      4,
+      20
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "CH",
+   "edges": [
+    {
+     "id": "ch_0",
+     "start": [
+      9,
+      9
+     ],
+     "end": [
+      14,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "ch_1",
+     "start": [
+      14,
+      9
+     ],
+     "end": [
+      14,
+      15
+     ],
+     "edge": true
+    },
+    {
+     "id": "ch_2",
+     "start": [
+      14,
+      15
+     ],
+     "end": [
+      9,
+      15
+     ],
+     "edge": false
+    },
+    {
+     "id": "ch_3",
+     "start": [
+      9,
+      15
+     ],
+     "end": [
+      9,
+      9
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "L",
+   "from": "ch_3",
+   "to": "ch_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "LD.layer == ldmos_xtor"
+  },
+  {
+   "kind": "match",
+   "expr": "DG.layer == dualgate"
+  },
+  {
+   "kind": "match",
+   "expr": "CH.layer == ldn_channel"
+  },
+  {
+   "kind": "check",
+   "expr": "L >= 0.6"
+  }
+ ]
+}

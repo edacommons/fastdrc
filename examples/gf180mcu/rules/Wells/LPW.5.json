@@ -1,0 +1,188 @@
+{
+ "name": "LPW.5",
+ "desc": "LPW.5 : LVPWELL resistors must be enclosed by DNWELL.",
+ "shapes": [
+  {
+   "name": "DN",
+   "edges": [
+    {
+     "id": "dn_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      22,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_1",
+     "start": [
+      22,
+      0
+     ],
+     "end": [
+      22,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_2",
+     "start": [
+      22,
+      22
+     ],
+     "end": [
+      0,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_3",
+     "start": [
+      0,
+      22
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "RES",
+   "edges": [
+    {
+     "id": "res_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      18,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "res_1",
+     "start": [
+      18,
+      4
+     ],
+     "end": [
+      18,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "res_2",
+     "start": [
+      18,
+      18
+     ],
+     "end": [
+      4,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "res_3",
+     "start": [
+      4,
+      18
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PW",
+   "edges": [
+    {
+     "id": "pw_0",
+     "start": [
+      8,
+      8
+     ],
+     "end": [
+      14,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "pw_1",
+     "start": [
+      14,
+      8
+     ],
+     "end": [
+      14,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "pw_2",
+     "start": [
+      14,
+      14
+     ],
+     "end": [
+      8,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "pw_3",
+     "start": [
+      8,
+      14
+     ],
+     "end": [
+      8,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "DN.layer == dnwell"
+  },
+  {
+   "kind": "match",
+   "expr": "RES.layer == res_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "PW.layer == lvpwell"
+  },
+  {
+   "kind": "check",
+   "expr": "PW in DN"
+  }
+ ],
+ "columns": [
+  "3.3V",
+  "5V"
+ ]
+}

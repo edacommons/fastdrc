@@ -1,0 +1,191 @@
+{
+ "name": "NP.6",
+ "desc": "NP.6 : Overlap with NCOMP butted to PCOMP. : 0.22\u00b5m",
+ "shapes": [
+  {
+   "name": "BC",
+   "edges": [
+    {
+     "id": "bc_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      14,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "bc_1",
+     "start": [
+      14,
+      4
+     ],
+     "end": [
+      14,
+      8
+     ],
+     "edge": true
+    },
+    {
+     "id": "bc_2",
+     "start": [
+      14,
+      8
+     ],
+     "end": [
+      4,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "bc_3",
+     "start": [
+      4,
+      8
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "BP",
+   "edges": [
+    {
+     "id": "bp_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      8,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "bp_1",
+     "start": [
+      8,
+      0
+     ],
+     "end": [
+      8,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "bp_2",
+     "start": [
+      8,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "bp_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "BN",
+   "edges": [
+    {
+     "id": "bn_0",
+     "start": [
+      8,
+      0
+     ],
+     "end": [
+      18,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "bn_1",
+     "start": [
+      18,
+      0
+     ],
+     "end": [
+      18,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "bn_2",
+     "start": [
+      18,
+      12
+     ],
+     "end": [
+      8,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "bn_3",
+     "start": [
+      8,
+      12
+     ],
+     "end": [
+      8,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E6",
+   "from": "bp_1",
+   "to": "bc_1",
+   "metric": "projection"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "BC.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "BP.layer == pplus"
+  },
+  {
+   "kind": "match",
+   "expr": "BN.layer == nplus"
+  },
+  {
+   "kind": "check",
+   "expr": "E6 >= 0.22"
+  }
+ ]
+}

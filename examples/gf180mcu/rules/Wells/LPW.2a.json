@@ -1,0 +1,141 @@
+{
+ "name": "LPW.2a",
+ "desc": "Min. LVPWELL space, different potential",
+ "shapes": [
+  {
+   "name": "PA",
+   "edges": [
+    {
+     "id": "pa_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      6,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "pa_1",
+     "start": [
+      6,
+      0
+     ],
+     "end": [
+      6,
+      6
+     ],
+     "edge": true
+    },
+    {
+     "id": "pa_2",
+     "start": [
+      6,
+      6
+     ],
+     "end": [
+      0,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "pa_3",
+     "start": [
+      0,
+      6
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PB",
+   "edges": [
+    {
+     "id": "pb_0",
+     "start": [
+      10,
+      0
+     ],
+     "end": [
+      16,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "pb_1",
+     "start": [
+      16,
+      0
+     ],
+     "end": [
+      16,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "pb_2",
+     "start": [
+      16,
+      6
+     ],
+     "end": [
+      10,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "pb_3",
+     "start": [
+      10,
+      6
+     ],
+     "end": [
+      10,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "Sp",
+   "from": "pa_1",
+   "to": "pb_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "PA.layer == lvpwell"
+  },
+  {
+   "kind": "match",
+   "expr": "PB.layer == lvpwell"
+  },
+  {
+   "kind": "match",
+   "expr": "PA.net != PB.net"
+  },
+  {
+   "kind": "check",
+   "expr": "Sp >= ?"
+  }
+ ],
+ "values": {
+  "3.3V": 1.4,
+  "5V": 1.7
+ }
+}

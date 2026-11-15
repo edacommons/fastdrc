@@ -1,0 +1,247 @@
+{
+ "name": "MDN.5c",
+ "desc": "MDN.5c : Maximum distance of the nearest edge of the substrate tab from NCOMP edge.",
+ "shapes": [
+  {
+   "name": "LD",
+   "edges": [
+    {
+     "id": "ld_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      38,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_1",
+     "start": [
+      38,
+      0
+     ],
+     "end": [
+      38,
+      26
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_2",
+     "start": [
+      38,
+      26
+     ],
+     "end": [
+      0,
+      26
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_3",
+     "start": [
+      0,
+      26
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DG",
+   "edges": [
+    {
+     "id": "dg_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      34,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_1",
+     "start": [
+      34,
+      4
+     ],
+     "end": [
+      34,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_2",
+     "start": [
+      34,
+      22
+     ],
+     "end": [
+      4,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_3",
+     "start": [
+      4,
+      22
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DV",
+   "edges": [
+    {
+     "id": "dv_0",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      16,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "dv_1",
+     "start": [
+      16,
+      10
+     ],
+     "end": [
+      16,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "dv_2",
+     "start": [
+      16,
+      16
+     ],
+     "end": [
+      10,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "dv_3",
+     "start": [
+      10,
+      16
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "TAP",
+   "edges": [
+    {
+     "id": "tap_0",
+     "start": [
+      22,
+      10
+     ],
+     "end": [
+      28,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "tap_1",
+     "start": [
+      28,
+      10
+     ],
+     "end": [
+      28,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "tap_2",
+     "start": [
+      28,
+      16
+     ],
+     "end": [
+      22,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "tap_3",
+     "start": [
+      22,
+      16
+     ],
+     "end": [
+      22,
+      10
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "dv_1",
+   "to": "tap_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "LD.layer == ldmos_xtor"
+  },
+  {
+   "kind": "match",
+   "expr": "DG.layer == dualgate"
+  },
+  {
+   "kind": "match",
+   "expr": "DV.layer == ncomp"
+  },
+  {
+   "kind": "match",
+   "expr": "TAP.layer == pcomp"
+  },
+  {
+   "kind": "check",
+   "expr": "S <= 15"
+  }
+ ]
+}

@@ -1,0 +1,190 @@
+{
+ "name": "HRES.10",
+ "desc": "HRES.10 : Minimum & maximum Pplus overlap of SAB.",
+ "shapes": [
+  {
+   "name": "HR",
+   "edges": [
+    {
+     "id": "hr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      24,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "hr_1",
+     "start": [
+      24,
+      0
+     ],
+     "end": [
+      24,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "hr_2",
+     "start": [
+      24,
+      22
+     ],
+     "end": [
+      0,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "hr_3",
+     "start": [
+      0,
+      22
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "SAB",
+   "edges": [
+    {
+     "id": "sab_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      14,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_1",
+     "start": [
+      14,
+      4
+     ],
+     "end": [
+      14,
+      18
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab_2",
+     "start": [
+      14,
+      18
+     ],
+     "end": [
+      4,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_3",
+     "start": [
+      4,
+      18
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PP",
+   "edges": [
+    {
+     "id": "pp_0",
+     "start": [
+      10,
+      8
+     ],
+     "end": [
+      20,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "pp_1",
+     "start": [
+      20,
+      8
+     ],
+     "end": [
+      20,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "pp_2",
+     "start": [
+      20,
+      14
+     ],
+     "end": [
+      10,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "pp_3",
+     "start": [
+      10,
+      14
+     ],
+     "end": [
+      10,
+      8
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "O",
+   "from": "pp_3",
+   "to": "sab_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "HR.layer == resistor"
+  },
+  {
+   "kind": "match",
+   "expr": "SAB.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "PP.layer == pplus"
+  },
+  {
+   "kind": "check",
+   "expr": "O >= 0.1"
+  }
+ ]
+}
