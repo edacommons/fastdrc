@@ -505,3 +505,25 @@ def test_the_drawing_as_a_picture_is_a_backend_others_can_use(tmp_path):
     assert len(figures) == n == 18 and "demo.NW.1.svg" in figures
     for f in figures:
         ET.parse(os.path.join(tmp_path, f))
+
+
+def test_deep_asks_the_deck_to_work_on_the_hierarchy(tmp_path):
+    flat = open(process.build(DEMO, str(tmp_path / "flat"))[0]).read()
+    deep = open(process.build(DEMO, str(tmp_path / "deep"), deep=True)[0]).read()
+    assert "\ndeep\n" not in flat and "\ndeep\n" in deep
+    assert deep.index("report(") < deep.index("\ndeep\n") < deep.index("polygons(")   # before any layer is read
+    assert "hierarchical (KLayout's deep mode)" in deep.split("\n\n")[0]              # said at the head
+    body = lambda text: text[text.index("polygons("):]                                # noqa: E731
+    assert body(flat) == body(deep)                                                   # the rules are the same
+
+
+def test_a_backend_that_knows_no_hierarchy_is_built_as_before(tmp_path):
+    # `deep` is offered to the backend; one that does not take it is not disturbed
+    assert get("docs", deep=True).compile_all([]) == get("docs").compile_all([])
+
+
+@pytest.mark.skipif(not process.klayout_binary(), reason="KLayout is not installed")
+def test_the_rules_behave_as_drawn_on_the_hierarchy_too(tmp_path):
+    res = process.selftest(DEMO, str(tmp_path), only=["NW.*,CO.*,AN.1,DN.*"], deep=True)
+    assert res["wrong"] == [] and res["stray"] == {}
+    assert sum(v == "ok" for v in res["rules"].values()) == 12

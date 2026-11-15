@@ -44,6 +44,9 @@ class KLayoutBackend(Backend):
 
     def headed(self, text, about):
         about = list(about)
+        if self.deep:
+            about.append("hierarchical (KLayout's deep mode): a cell is checked once however often it is "
+                         "placed, and a violation is reported once, in the cell it lies in")
         if self.graph:
             st = self.graph.stats
             about.append(f"{st['written']} layer operations as the rules are written, "
@@ -95,9 +98,12 @@ class KLayoutBackend(Backend):
         return out
 
     def __init__(self, layermap=None, metric="euclidian", regions=None, scope_all=None,
-                 standalone=False, title="FastDRC", optimise=False):
+                 standalone=False, title="FastDRC", optimise=False, deep=False):
         # optimise: the rules as one graph -- what several need is computed once (ir.py)
         self.optimise, self.shared, self.graph, self.problems = optimise, {}, None, []
+        # deep: KLayout's hierarchical mode -- a cell is checked once however often it is
+        #   placed, and a violation is reported once, in the cell it lies in
+        self.deep = deep
         self.layermap = dict(layermap or {})
         self.unmapped = []    # layers used by the rules that the layer map does not give
         self.metric = metric
@@ -234,7 +240,8 @@ class KLayoutBackend(Backend):
             out += ["# run:  klayout -b -r <this file> -rd input=<layout.gds> [-rd report=<out.lyrdb>]"
                     " [-rd topcell=<name>]",
                     "if $topcell", "  source($input, $topcell)", "else", "  source($input)", "end",
-                    f'report("{self._q(self.title)}", $report || "fastdrc_report.lyrdb")', ""]
+                    f'report("{self._q(self.title)}", $report || "fastdrc_report.lyrdb")']
+            out += ["deep", ""] if self.deep else [""]
         named = [f"{name} = {expr}" for expr, name in self._named.items()]
         top = self._decls + [f"{name} = {defn}" for name, defn in self.regions.items()] + named
         checks = self._checks

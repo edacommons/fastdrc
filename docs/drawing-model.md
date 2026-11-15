@@ -905,6 +905,12 @@ and `--skip`: rule names or sections, comma-separated, `*` and `?` as in file na
 deck holds those rules alone and reads only the layers they need; its first lines say
 which set it is.
 
+**On the layout's hierarchy.** The same three commands take `--deep`: the deck works
+cell by cell (KLayout's deep mode), so a cell placed many times is checked once. The
+same places are found. A violation is reported once, in the cell it lies in, so the
+counts are per cell and not per placement. A backend that knows no hierarchy ignores
+the option.
+
 The rules of the set are compiled as **one graph** (`python/fastdrc/ir.py`), the way a
 compiler treats a program: a node per layer operation, its inputs as edges, the rules'
 outputs and connections as the steps to perform. In a graph the same expression in two

@@ -63,7 +63,8 @@ def _set(args):
         runner(args.backend)
     except KeyError as ex:
         raise SystemExit(f"fastdrc: {ex.args[0]}")
-    return {"only": args.only, "skip": args.skip, "optimise": not args.no_optimise, "backend": args.backend}
+    return {"only": args.only, "skip": args.skip, "optimise": not args.no_optimise, "backend": args.backend,
+            "deep": args.deep}
 
 
 def _set_options(p):
@@ -73,6 +74,9 @@ def _set_options(p):
     p.add_argument("--skip", action="append", metavar="RULES", help="leave these rules out (same form)")
     p.add_argument("--no-optimise", action="store_true",
                    help="write every rule out in full instead of computing once what several rules need")
+    p.add_argument("--deep", action="store_true",
+                   help="work on the layout's hierarchy (KLayout's deep mode): a cell is checked once however "
+                        "often it is placed, and a violation is reported once, in the cell it lies in")
     p.add_argument("--backend", default="klayout", metavar="NAME",
                    help="the backend that compiles the deck and runs it (default: klayout; see `fastdrc backends`)")
 
@@ -137,6 +141,8 @@ def _check(args):
         print(f"  {r:{width}}  {len(boxes):5}  {desc}")
     print(f"{sum(len(b) for _, b in hit.values())} violation(s) of {len(hit)} rule(s); {len(res['rules']) - len(hit)} of "
           f"{len(res['rules'])} rules clean." + (f" Report: {res['report']}" if res.get("report") else ""))
+    if args.deep and hit:
+        print("(--deep: each violation is counted once, in the cell it lies in, however often that cell is placed)")
     return 1 if hit else 0
 
 

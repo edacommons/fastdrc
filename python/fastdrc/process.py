@@ -375,7 +375,8 @@ def rules_and_warnings(sheets, only=None, skip=None):
     return rules, notes
 
 
-def build(folder, out_dir=None, extra=(), only=None, skip=None, optimise=True, backend="klayout"):
+def build(folder, out_dir=None, extra=(), only=None, skip=None, optimise=True, backend="klayout",
+          deep=False):
     """Compile a process: ``(deck path, text path, number of rules, warnings)``. `extra`
     names further backends (plugins) whose files are written beside the deck.
 
@@ -385,13 +386,17 @@ def build(folder, out_dir=None, extra=(), only=None, skip=None, optimise=True, b
     fitted to the set.
 
     `backend` names the backend that compiles the deck and will run it (a plugin, see
-    `fastdrc.backend`); KLayout unless said otherwise."""
+    `fastdrc.backend`); KLayout unless said otherwise.
+
+    `deep`: the deck works on the layout's hierarchy where its backend can (KLayout's
+    deep mode): a cell is checked once however often it is placed, and a violation is
+    reported once, in the cell it lies in. The same places are found as without it."""
     from .backend import get, runner
     proc, sheets = load(folder)
     name = proc.get("name") or deck_name(folder)
     rules, notes = rules_and_warnings(sheets, only, skip)
     layermap = {k: tuple(v) for k, v in (proc.get("layers") or {}).items()}
-    kl = runner(backend, layermap=layermap, standalone=True, title=name, optimise=optimise)
+    kl = runner(backend, layermap=layermap, standalone=True, title=name, optimise=optimise, deep=deep)
     deck = kl.compile_all(rules)
     notes += getattr(kl, "problems", [])
     about = []                                       # what this deck is, for its first lines
@@ -429,7 +434,7 @@ def read_markers(path) -> dict:
             if any(boxes)}
 
 
-def selftest(folder, out_dir=None, only=None, skip=None, optimise=True, backend="klayout"):
+def selftest(folder, out_dir=None, only=None, skip=None, optimise=True, backend="klayout", deep=False):
     """Do the rules behave as drawn?  Builds the deck, generates test cases from the
     drawings (the ``cases`` backend), runs the deck on them with its backend, and compares.
 
@@ -438,7 +443,7 @@ def selftest(folder, out_dir=None, only=None, skip=None, optimise=True, backend=
     "not_generated": [(rule, why), ...], "stray": {rule: markers outside every test case},
     "notes": [...], "files": {...}}``."""
     deck, _, n, notes = build(folder, out_dir, extra=("cases",), only=only, skip=skip, optimise=optimise,
-                              backend=backend)
+                              backend=backend, deep=deep)
     return _run_selftest(deck, notes, backend)
 
 

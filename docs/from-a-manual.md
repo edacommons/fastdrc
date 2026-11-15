@@ -147,6 +147,13 @@ compiled as one graph of layer operations, so what several rules need —
 instead of once per rule. What can be shared depends on the set, so it is worked out at
 every build; `--no-optimise` writes each rule out in full.
 
+**On the layout's hierarchy.** `--deep` makes the deck work cell by cell (KLayout's
+deep mode): a cell placed many times is checked once, which on a layout built from
+repeated cells is several times faster. The same places are found; the numbers differ,
+because a violation is reported once, in the cell it lies in, not once per placement.
+
+    fastdrc check layout.gds examples/demo --deep
+
 `check` needs KLayout (`klayout` on the PATH, or `KLAYOUT_BIN`). Without it, run the
 deck yourself — it is plain KLayout DRC: the layers, the legend, and one statement per
 rule with its name and description.
