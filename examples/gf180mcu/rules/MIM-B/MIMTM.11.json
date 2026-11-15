@@ -1,0 +1,191 @@
+{
+ "name": "MIMTM.11",
+ "desc": "MIMTM.11 : Bottom plate of multiple MIM caps can be shared (for common nodes) as long as total MIM area with that single common plate does not exceed MIMTM.8b rule.",
+ "shapes": [
+  {
+   "name": "P",
+   "edges": [
+    {
+     "id": "p_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      26,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_1",
+     "start": [
+      26,
+      0
+     ],
+     "end": [
+      26,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_2",
+     "start": [
+      26,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "F",
+   "edges": [
+    {
+     "id": "f_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "f_1",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "f_2",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "f_3",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "F2",
+   "edges": [
+    {
+     "id": "f2_0",
+     "start": [
+      16,
+      4
+     ],
+     "end": [
+      22,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "f2_1",
+     "start": [
+      22,
+      4
+     ],
+     "end": [
+      22,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "f2_2",
+     "start": [
+      22,
+      10
+     ],
+     "end": [
+      16,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "f2_3",
+     "start": [
+      16,
+      10
+     ],
+     "end": [
+      16,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "P.layer == under_top_metal"
+  },
+  {
+   "kind": "match",
+   "expr": "F.layer == fusetop"
+  },
+  {
+   "kind": "match",
+   "expr": "F2.layer == fusetop"
+  },
+  {
+   "kind": "check",
+   "expr": "Area(F) <= 10000"
+  }
+ ],
+ "when": {
+  "switch": "mim",
+  "cases": {
+   "B": true
+  },
+  "default": false
+ }
+}

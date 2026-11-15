@@ -229,7 +229,8 @@
   {
    "name": "E",
    "from": "imp_3",
-   "to": "r_3"
+   "to": "r_3",
+   "within": true
   }
  ],
  "constraints": [
@@ -252,10 +253,9 @@
   {
    "kind": "check",
    "expr": "E >= 0.3"
-  },
-  {
-   "kind": "check",
-   "expr": "R in IMP"
   }
+ ],
+ "except": [
+  "resistor"
  ]
 }

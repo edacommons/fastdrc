@@ -1,0 +1,259 @@
+{
+ "name": "DV.9",
+ "desc": "DV.9 : 3.3V and 5V/6V PMOS cannot be sitting inside same NWELL.",
+ "shapes": [
+  {
+   "name": "N",
+   "edges": [
+    {
+     "id": "n_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      36,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "n_1",
+     "start": [
+      36,
+      0
+     ],
+     "end": [
+      36,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "n_2",
+     "start": [
+      36,
+      22
+     ],
+     "end": [
+      0,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "n_3",
+     "start": [
+      0,
+      22
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DG",
+   "edges": [
+    {
+     "id": "dg_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      18,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_1",
+     "start": [
+      18,
+      4
+     ],
+     "end": [
+      18,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_2",
+     "start": [
+      18,
+      18
+     ],
+     "end": [
+      4,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_3",
+     "start": [
+      4,
+      18
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      8,
+      8
+     ],
+     "end": [
+      14,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      14,
+      8
+     ],
+     "end": [
+      14,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_2",
+     "start": [
+      14,
+      14
+     ],
+     "end": [
+      8,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      8,
+      14
+     ],
+     "end": [
+      8,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      24,
+      8
+     ],
+     "end": [
+      30,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      30,
+      8
+     ],
+     "end": [
+      30,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_2",
+     "start": [
+      30,
+      14
+     ],
+     "end": [
+      24,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      24,
+      14
+     ],
+     "end": [
+      24,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "X",
+   "from": "n_1",
+   "to": "b_1",
+   "crossed": true
+  },
+  {
+   "name": "IA",
+   "from": "n_3",
+   "to": "a_3"
+  },
+  {
+   "name": "ID",
+   "from": "a_0",
+   "to": "dg_0"
+  },
+  {
+   "name": "OD",
+   "from": "b_3",
+   "to": "dg_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "N.layer == nwell"
+  },
+  {
+   "kind": "match",
+   "expr": "DG.layer == dualgate"
+  },
+  {
+   "kind": "match",
+   "expr": "A.layer == pgate"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == pgate"
+  }
+ ]
+}

@@ -1,0 +1,179 @@
+{
+ "name": "DN.3",
+ "desc": "DN.3 : Each DNWELL shall be directly surrounded by PCOMP guard ring tied to the P-substrate potential.",
+ "shapes": [
+  {
+   "name": "G",
+   "edges": [
+    {
+     "id": "g_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      30,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_1",
+     "start": [
+      30,
+      0
+     ],
+     "end": [
+      30,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_2",
+     "start": [
+      30,
+      24
+     ],
+     "end": [
+      0,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_3",
+     "start": [
+      0,
+      24
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ],
+   "hole_loops": [
+    [
+     {
+      "id": "hg_0",
+      "start": [
+       4,
+       4
+      ],
+      "end": [
+       26,
+       4
+      ],
+      "edge": false
+     },
+     {
+      "id": "hg_1",
+      "start": [
+       26,
+       4
+      ],
+      "end": [
+       26,
+       20
+      ],
+      "edge": false
+     },
+     {
+      "id": "hg_2",
+      "start": [
+       26,
+       20
+      ],
+      "end": [
+       4,
+       20
+      ],
+      "edge": false
+     },
+     {
+      "id": "hg_3",
+      "start": [
+       4,
+       20
+      ],
+      "end": [
+       4,
+       4
+      ],
+      "edge": false
+     }
+    ]
+   ]
+  },
+  {
+   "name": "D",
+   "edges": [
+    {
+     "id": "d_0",
+     "start": [
+      8,
+      7
+     ],
+     "end": [
+      22,
+      7
+     ],
+     "edge": false
+    },
+    {
+     "id": "d_1",
+     "start": [
+      22,
+      7
+     ],
+     "end": [
+      22,
+      17
+     ],
+     "edge": false
+    },
+    {
+     "id": "d_2",
+     "start": [
+      22,
+      17
+     ],
+     "end": [
+      8,
+      17
+     ],
+     "edge": false
+    },
+    {
+     "id": "d_3",
+     "start": [
+      8,
+      17
+     ],
+     "end": [
+      8,
+      7
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "G.layer == pcomp"
+  },
+  {
+   "kind": "match",
+   "expr": "D.layer == dnwell"
+  },
+  {
+   "kind": "check",
+   "expr": "D in G.holes"
+  }
+ ]
+}

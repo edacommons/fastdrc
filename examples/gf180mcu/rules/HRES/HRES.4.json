@@ -293,7 +293,8 @@
    "name": "E",
    "from": "hr_0",
    "to": "r_0",
-   "at": 12.33
+   "at": 12.33,
+   "within": true
   }
  ],
  "constraints": [
@@ -320,10 +321,6 @@
   {
    "kind": "check",
    "expr": "E >= 0.4"
-  },
-  {
-   "kind": "check",
-   "expr": "R in HR"
   }
  ]
 }

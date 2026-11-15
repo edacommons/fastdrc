@@ -135,6 +135,7 @@
   "5V": 0.22
  },
  "except": [
+  "ldmos_xtor",
   "otp_mk",
   "ymtp_mk"
  ]

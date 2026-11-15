@@ -1,0 +1,58 @@
+{
+ "name": "ANGLE",
+ "desc": "ANGLE : Shapes with an acute angle are not allowed.",
+ "shapes": [
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      16,
+      0
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_1",
+     "start": [
+      16,
+      0
+     ],
+     "end": [
+      16,
+      5
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      16,
+      5
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "A.layer == every_layer"
+  },
+  {
+   "kind": "check",
+   "expr": "a_0.corner >= 45"
+  }
+ ]
+}

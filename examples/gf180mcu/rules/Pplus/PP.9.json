@@ -188,5 +188,8 @@
    "kind": "check",
    "expr": "E9 >= 0.18"
   }
+ ],
+ "except": [
+  "resistor"
  ]
 }

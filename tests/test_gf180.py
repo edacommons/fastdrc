@@ -13,7 +13,8 @@ DECK = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
 def test_every_rule_compiles(tmp_path):
     deck, text, n, notes = process.build(DECK, str(tmp_path))
     files = glob.glob(os.path.join(DECK, "rules", "*", "*.json"))
-    assert len(files) == 420 and n == 449                 # the default: six metals, 9K top metal, MIM option B
+    grid = len(process.load(DECK)[0]["layers"])              # one grid check per layer
+    assert len(files) == 435 and n == 461 + 2 * grid == 671   # the default; the grid and the angle, per layer
     assert notes == []                                    # no rule that checks nothing, no layer without a number
     said = open(text, encoding="utf-8").read()
     assert "(no checkable assertion found)" not in said
@@ -47,4 +48,4 @@ def test_the_options_of_the_process_are_parameters(tmp_path):
 def test_part_of_it_behaves_as_drawn(tmp_path):
     res = process.selftest(DECK, str(tmp_path), only=["Dualgate,Mcell,BJT,SRAM"])
     assert res["wrong"] == [] and res["stray"] == {}
-    assert sum(v == "ok" for v in res["rules"].values()) == len(res["rules"]) == 29
+    assert sum(v == "ok" for v in res["rules"].values()) == len(res["rules"]) == 30

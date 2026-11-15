@@ -1,0 +1,78 @@
+{
+ "name": "DE.3",
+ "desc": "DE.3 : If size greater than 15000 um2 then two sides should not be greater than (um).",
+ "shapes": [
+  {
+   "name": "D",
+   "edges": [
+    {
+     "id": "d_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      6,
+      0
+     ],
+     "edge": true
+    },
+    {
+     "id": "d_1",
+     "start": [
+      6,
+      0
+     ],
+     "end": [
+      6,
+      6
+     ],
+     "edge": true
+    },
+    {
+     "id": "d_2",
+     "start": [
+      6,
+      6
+     ],
+     "end": [
+      0,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "d_3",
+     "start": [
+      0,
+      6
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "D.layer == ndmy"
+  },
+  {
+   "kind": "match",
+   "expr": "D.area > 15000"
+  },
+  {
+   "kind": "match",
+   "expr": "d_0.length >= d_1.length"
+  },
+  {
+   "kind": "check",
+   "expr": "d_1.length <= 80"
+  }
+ ]
+}

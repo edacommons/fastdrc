@@ -1,0 +1,236 @@
+{
+ "name": "MDN.17",
+ "desc": "MDN.17 : It is recommended to surround the LDNMOS transistor with non-broken Psub guard ring to improve the latch up immunity.",
+ "shapes": [
+  {
+   "name": "LD",
+   "edges": [
+    {
+     "id": "ld_0",
+     "start": [
+      -4,
+      -4
+     ],
+     "end": [
+      34,
+      -4
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_1",
+     "start": [
+      34,
+      -4
+     ],
+     "end": [
+      34,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_2",
+     "start": [
+      34,
+      28
+     ],
+     "end": [
+      -4,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_3",
+     "start": [
+      -4,
+      28
+     ],
+     "end": [
+      -4,
+      -4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "G",
+   "edges": [
+    {
+     "id": "g_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      30,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_1",
+     "start": [
+      30,
+      0
+     ],
+     "end": [
+      30,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_2",
+     "start": [
+      30,
+      24
+     ],
+     "end": [
+      0,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_3",
+     "start": [
+      0,
+      24
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ],
+   "hole_loops": [
+    [
+     {
+      "id": "hg_0",
+      "start": [
+       4,
+       4
+      ],
+      "end": [
+       26,
+       4
+      ],
+      "edge": false
+     },
+     {
+      "id": "hg_1",
+      "start": [
+       26,
+       4
+      ],
+      "end": [
+       26,
+       20
+      ],
+      "edge": false
+     },
+     {
+      "id": "hg_2",
+      "start": [
+       26,
+       20
+      ],
+      "end": [
+       4,
+       20
+      ],
+      "edge": false
+     },
+     {
+      "id": "hg_3",
+      "start": [
+       4,
+       20
+      ],
+      "end": [
+       4,
+       4
+      ],
+      "edge": false
+     }
+    ]
+   ]
+  },
+  {
+   "name": "D",
+   "edges": [
+    {
+     "id": "d_0",
+     "start": [
+      12,
+      8
+     ],
+     "end": [
+      18,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "d_1",
+     "start": [
+      18,
+      8
+     ],
+     "end": [
+      18,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "d_2",
+     "start": [
+      18,
+      16
+     ],
+     "end": [
+      12,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "d_3",
+     "start": [
+      12,
+      16
+     ],
+     "end": [
+      12,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "LD.layer == ldmos_xtor"
+  },
+  {
+   "kind": "match",
+   "expr": "G.layer == pcomp"
+  },
+  {
+   "kind": "match",
+   "expr": "D.layer == ldn_gate"
+  },
+  {
+   "kind": "check",
+   "expr": "D in G.holes"
+  }
+ ]
+}

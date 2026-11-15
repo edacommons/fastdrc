@@ -1,0 +1,184 @@
+{
+ "name": "O.PL.ORT",
+ "desc": "O.PL.ORT : Orientation-restricted gates must have the gate width aligned along the X-axis (poly line running horizontally) in reference to wafer notch down.",
+ "shapes": [
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      22,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      22,
+      0
+     ],
+     "end": [
+      22,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      22,
+      24
+     ],
+     "end": [
+      0,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      0,
+      24
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "CP",
+   "edges": [
+    {
+     "id": "cp_0",
+     "start": [
+      8,
+      4
+     ],
+     "end": [
+      14,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "cp_1",
+     "start": [
+      14,
+      4
+     ],
+     "end": [
+      14,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "cp_2",
+     "start": [
+      14,
+      20
+     ],
+     "end": [
+      8,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "cp_3",
+     "start": [
+      8,
+      20
+     ],
+     "end": [
+      8,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "G",
+   "edges": [
+    {
+     "id": "g_0",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      18,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "g_1",
+     "start": [
+      18,
+      10
+     ],
+     "end": [
+      18,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_2",
+     "start": [
+      18,
+      14
+     ],
+     "end": [
+      4,
+      14
+     ],
+     "edge": true
+    },
+    {
+     "id": "g_3",
+     "start": [
+      4,
+      14
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MK.layer == otp_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "CP.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "G.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "g_0.angle == 0"
+  }
+ ]
+}
