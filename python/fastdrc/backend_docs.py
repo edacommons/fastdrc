@@ -20,7 +20,7 @@ from .rule import Rule
 
 def _rel_to_sel(rel):                       # mirror of the KLayout backend's mapping
     return {"inside": "inside", "touch": "interacting",
-            "overlap": "overlapping"}.get(rel, "outside")
+            "overlap": "overlapping", "contains": "covering"}.get(rel, "outside")
 
 
 # a CROSS on a relation forbids it: how the REQUIREMENT reads, per the selection op
@@ -29,12 +29,13 @@ def _rel_to_sel(rel):                       # mirror of the KLayout backend's ma
 _CROSS = {"straddling": "must not straddle the edge of",
           "overlapping": "must not overlap", "inside": "must not lie inside",
           "interacting": "must not touch or overlap", "outside": "must overlap",
-          "not_interacting": "must touch or overlap", "not_inside": "must lie inside"}
+          "not_interacting": "must touch or overlap", "not_inside": "must lie inside",
+          "covering": "must not contain"}
 # how a SELECTION op reads as a restricting clause (singular, plural)
 _SEL = {"straddling": ("straddles the edge of", "straddle the edge of"),
         "inside": ("lies inside", "lie inside"), "outside": ("lies outside", "lie outside"),
         "interacting": ("touches or overlaps", "touch or overlap"),
-        "overlapping": ("overlaps", "overlap"),
+        "overlapping": ("overlaps", "overlap"), "covering": ("contains", "contain"),
         "not_interacting": ("is clear of", "are clear of"),
         "not_inside": ("does not lie inside", "do not lie inside")}
 
@@ -257,10 +258,13 @@ class DocsBackend(Backend):
         mt = m.get("metric") or "euclidian"
         if m.get("edges"):                  # gate-edge (directional) width -- the edge_dl form
             scope = self._scope(rule, sf, {sf} | set(rule.covering(sf)) | set(rule.removed(sf)))
-            v = _fmt(lo.value)
-            core = (f"{self._gate_en(rule, sf)} must be at least {v} µm wide (a directional "
+            v, most = _fmt((lo or hi).value), "at least" if lo else "at most"
+            core = (f"{self._gate_en(rule, sf)} must be {most} {v} µm wide (a directional "
                     f"edge-to-edge width, not the polygon width)" if sf == st
-                    else f"{self._gate_en(rule, sf)} must be at least {v} µm from "
+                    else f"{self._gate_en(rule, st if rule.relation(sf, st) == 'inside' else sf)} must enclose "
+                         f"{self._gate_en(rule, sf if rule.relation(sf, st) == 'inside' else st)} by {most} {v} µm"
+                    if rule.relation(sf, st) in ("inside", "contains")
+                    else f"{self._gate_en(rule, sf)} must be {most} {v} µm from "
                          f"{self._gate_en(rule, st)}")
             return self._with_scope(core + f" ({mt}).", scope)
         ds, dt, consumed = rule.measure_derivations(var)    # the shared analysis

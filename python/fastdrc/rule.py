@@ -38,10 +38,10 @@ def split_layers(layer):
 def rel_to_sel(rel):
     """Map a drawn relation to the whole-polygon SELECTION op. The drawn relation
     IS the signal: TOUCH (coinciding edges, gap 0) -> `interacting`; genuine area
-    OVERLAP -> `overlapping` (== `not_outside`); containment -> `inside`; else
-    (disjoint) -> `outside`."""
+    OVERLAP -> `overlapping` (== `not_outside`); containment -> `inside`; the other
+    shape drawn wholly within this one -> `covering`; else (disjoint) -> `outside`."""
     return ("inside" if rel == "inside" else "interacting" if rel == "touch"
-            else "overlapping" if rel == "overlap" else "outside")
+            else "overlapping" if rel == "overlap" else "covering" if rel == "contains" else "outside")
 
 
 # truth table: each selection op -> the relations it KEEPS. Every row is distinct,

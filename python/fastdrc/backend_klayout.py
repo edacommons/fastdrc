@@ -347,6 +347,9 @@ class KLayoutBackend(Backend):
                     core = f"{edge_dl(sf)}.width({v}.um, {mt})"
                 elif edge_dl(sf) == edge_dl(st):
                     core = f"{edge_dl(sf)}.space({v}.um, {mt})"
+                elif rule.relation(sf, st) in ("inside", "contains"):   # the outer one's edges around the inner one's
+                    o, i = (st, sf) if rule.relation(sf, st) == "inside" else (sf, st)
+                    core = f"{edge_dl(o)}.enclosing({edge_dl(i)}, {v}.um, {mt})"
                 else:
                     core = f"{edge_dl(sf)}.separation({edge_dl(st)}, {v}.um, {mt})"
             elif sf == st and "|" in (derivs[sf]["base"] or ""):
@@ -380,6 +383,16 @@ class KLayoutBackend(Backend):
                         # went unreported.)
                         core = f"{whole(sf)}.space({v}.um, {mt})"
                         touching = f".interacting({dl(wide_one)})"
+                    elif (derivs[sf]["base"] == derivs[st]["base"] and not wide_one
+                          and not any(derivs[x].get(k) for x in (sf, st) for k in ("ands", "nots", "halo"))
+                          and bool(derivs[sf].get("selections")) != bool(derivs[st].get("selections"))):
+                        # "space from a SELECTED shape of a layer to the layer": every
+                        # too-small space of the layer with a selected shape on one side.
+                        # (Measured against the whole layer, the selected shape's own edge
+                        # would stand in front of its neighbour and hide it.)
+                        picked, rest = (sf, st) if derivs[sf].get("selections") else (st, sf)
+                        core = f"{dl(rest)}.space({v}.um, {mt})"
+                        touching = f".interacting({dl(picked)})"
                     else:
                         if derivs[sf].get("wide") and not derivs[st].get("wide"):
                             a, b = b, a
@@ -563,9 +576,18 @@ class KLayoutBackend(Backend):
         consumed = measured | derived | sel_consumed
         v = self._fmt(value)
         selsuf = "".join(f".{so}({l})" for so, l in sorted(set(sels)))
-        args = f"nil, {v}.um" if op in (">", ">=") else f"{v}.um, nil"   # min vs max area
+        # KLayout's with_area(min, max) takes min <= area < max; an area exactly at a
+        # bound that includes it (`>=`, `<=`) is not a violation
         holes = ".holes" if on_holes else ""
-        core = f"{self._derived(rule, shape, measured | sel_consumed)}{holes}{selsuf}.with_area({args})"
+        subject = f"{self._derived(rule, shape, measured | sel_consumed)}{holes}{selsuf}"
+        if op == ">=":
+            core = f"{subject}.with_area(nil, {v}.um)"
+        elif op == ">":
+            core = f"{subject}.with_area(nil, {v}.um).or({subject}.with_area({v}.um))"
+        elif op == "<=":
+            core = f"{subject}.with_area({v}.um, nil).not_in({subject}.with_area({v}.um))"
+        else:
+            core = f"{subject}.with_area({v}.um, nil)"
         suffix = "".join(f".{op}({mk})" for op, mk in self._scope(rule, consumed, shape))
         if self.scope_all:
             sop, region = self.scope_all

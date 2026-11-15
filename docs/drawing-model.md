@@ -139,6 +139,11 @@ straight; a measure `S` across the gap.
 Same as space, but `B` is a **different** layer.
 → `metal1.separation(comp, 0.28)`
 
+When one of two shapes of the *same* layer is a selected one — "the plate that holds a
+top plate, to any other metal of its layer" (a link on that shape alone) — every
+too-small space of the layer with such a shape on one side is reported:
+→ `metal2.space(1.2).interacting(metal2.covering(fusetop))`
+
 ### Enclosure
 
 ![CO.4](img/demo/CO.4.svg)
@@ -196,6 +201,9 @@ A context **linked** to either shape still filters that shape
 One closed rect with **all edges wavy** — it stands for "any polygon"; only the
 total area is constrained, no edge is measured. `A.area >= 0.2025`.
 → `comp.with_area(nil, 0.2025)`
+
+A maximum is written the same way, `A.area <= 10000`; an area exactly at a bound that
+includes it (`>=`, `<=`) is not reported.
 
 ### Min void area (a hole / ring)
 Draw the shape as a **donut** — an outer outline with an inner **hole loop**
@@ -283,6 +291,7 @@ selection op:
 | **disjoint** (drawn apart; the gap may be zero) | `X.outside(Y)` |
 | **touching** (coinciding edges — one shape's edge *is* the other's) | `X.interacting(Y)` |
 | **overlapping** (interiors cross) | `X.overlapping(Y)` ≡ `X.not_outside(Y)` |
+| the context drawn **wholly within** the subject | `X.covering(Y)` — "the metal that holds a top plate" |
 
 The **exact relation you draw is the signal** — `touch` and `overlap` are different
 pictures with different meanings. A *touch* (coinciding edges) counts as
@@ -675,6 +684,13 @@ vs filter elsewhere:
 
 → `poly2.edges.and((poly2 & comp).edges).not(otp_mk).and(ymtp_mk).width(0.13)`
 
+An edge measure between **two** shapes reads the way they sit: apart, the edges of one
+to the edges of the other (`a.edges.separation(b.edges, v)`); one inside the other,
+the outer one's edges around the inner one's (`outer.edges.enclosing(inner.edges, v)`).
+Use it when a rule holds only in part of the plane — "N+ must reach 0.16 µm past COMP
+*within 0.43 µm of the well edge*": the zone covers the picture, and what is measured is
+the COMP's edge in that zone, not a polygon cut off at the zone's boundary.
+
 ### Maximum bounds and narrow-region selectors (`.drc`)
 A bound on a distance reads by its **kind**, like every constraint.
 
@@ -728,6 +744,7 @@ exactly like a selection (`rel_to_sel`); the shapes selected are the violation:
 | **touch** (edges coincide) | cross drawn **over the shared edge** (an X on it) | `A.interacting(B)` | A must **not touch or overlap** B |
 | **overlap** (interiors cross) | cross over the overlap | `A.overlapping(B)` | A must **not overlap** B (touching OK) |
 | **inside** | cross, A drawn inside B | `A.inside(B)` | A must **not be inside** B |
+| **contains** | cross, B drawn inside A | `A.covering(B)` | A must **not contain** B |
 
 Every *other* relation of the subject stays an ordinary filter (a plain link), so a
 rule reads straight off the picture: **NW.6** "an Nwell resistor must stay out of
