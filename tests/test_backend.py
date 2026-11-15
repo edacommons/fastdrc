@@ -168,3 +168,101 @@ def test_a_maximum_on_a_width_measured_on_gate_edges_is_said():
     r = _drawn([(_box("COMP", 4, 0, 10, 14, "lr"), "comp"), (_box("G", 0, 6, 14, 10, "tb"), "poly2")],
                [{"name": "W", "from": "comp_3", "to": "comp_1", "edges": True, "at": 8.0}], [{"kind": "check", "expr": "W <= 50"}])
     assert "at most 50 µm wide" in get("docs").compile(r)
+
+
+def test_an_exact_distance_is_a_minimum_and_a_maximum():
+    # `O == v` on the depth two layers overlap by: too shallow, and too deep
+    r = _drawn([(_box("PP", 0, 0, 10, 12, "r"), "pplus"), (_box("SAB", 7, -3, 20, 15, "l"), "sab")],
+               [{"name": "O", "from": "sab_3", "to": "pp_1"}], [{"kind": "check", "expr": "O == 0.1"}])
+    deck = get("klayout").compile(r)
+    assert "sab.overlap(pplus, 0.1.um" in deck and "sab.and(pplus).sized(-0.05.um).sized(0.05.um)" in deck
+    said = get("docs").compile(r)
+    assert "by exactly 0.1 µm" in said and said.count("•") == 1
+    # between two shapes apart: not nearer, and one within reach
+    r = _drawn([(_box("A", 0, 0, 6, 12, "r"), "poly2"), (_box("B", 11, 0, 17, 12, "l"), "comp")],
+               [{"name": "S", "from": "a_1", "to": "b_3"}], [{"kind": "check", "expr": "S == 0.16"}])
+    deck = get("klayout").compile(r)
+    assert "poly2.separation(comp, 0.16.um" in deck and "poly2.not_interacting(comp.not_interacting(poly2).sized(0.16.um))" in deck   # the one drawn apart
+    # exactly zero: they must abut
+    r = _drawn([(_box("A", 0, 0, 6, 12, "r"), "poly2"), (_box("B", 11, 0, 17, 12, "l"), "comp")],
+               [{"name": "S", "from": "a_1", "to": "b_3"}], [{"kind": "check", "expr": "S == 0"}])
+    assert "poly2.not_interacting(comp.sized(0.um))" in get("klayout").compile(r)
+    assert "every poly2 must abut comp" in get("docs").compile(r)
+
+
+def test_inside_the_hole_of_a_ring():
+    ring = _box("G", 0, 0, 20, 20)
+    ring["hole_loops"] = [_box("HG", 3, 3, 17, 17)["edges"]]
+    r = _drawn([(ring, "pcomp"), (_box("D", 6, 6, 14, 14), "dnwell")], [], [{"kind": "check", "expr": "D in G.holes"}])
+    assert "dnwell.not_inside(pcomp.holes)" in get("klayout").compile(r)
+    assert "every dnwell must be surrounded by an unbroken ring of pcomp" in get("docs").compile(r)
+    cases, why = get("cases").cases_of(r.data)
+    assert why is None and [c["expect"] for c in cases] == [False, True, True]   # as drawn; no ring; ring left open
+
+
+def test_four_corners_is_a_rectangle():
+    r = _drawn([(_box("F", 0, 0, 20, 6, "trbl"), "plfuse")], [], [{"kind": "check", "expr": "F.corners == 4"}])
+    assert "plfuse.non_rectangles" in get("klayout").compile(r)
+    assert "every plfuse shape must be a rectangle" in get("docs").compile(r)
+    r = _drawn([(_box("F", 0, 0, 20, 6, "trbl"), "plfuse")], [],
+               [{"kind": "match", "expr": "F.corners == 4"}, {"kind": "check", "expr": "F.area >= 2"}])
+    assert "plfuse.rectangles.with_area(nil, 2.um)" in get("klayout").compile(r)
+
+
+def test_the_area_a_shape_holds_in_all():
+    r = _drawn([(_box("P", 0, 0, 30, 20), "metal2"), (_box("F", 5, 5, 12, 12), "fusetop")], [],
+               [{"kind": "check", "expr": "Area(F) <= 10000"}])
+    deck = get("klayout").compile(r)
+    assert "put('r', (area(a)))" in deck and "value('r') > 10000" in deck
+    assert "every metal2 must hold at most 10000 µm² of fusetop in all" in get("docs").compile(r)
+
+
+def test_the_grid_of_a_process_is_a_check_per_layer(tmp_path):
+    from fastdrc import process
+    os.makedirs(tmp_path / "rules")
+    with open(tmp_path / "process.json", "w") as f:
+        json.dump({"name": "g", "layers": {"met1": [1, 0], "via1": [2, 0]}, "grid": 0.005}, f)
+    deck, text, n, notes = process.build(str(tmp_path), str(tmp_path / "build"))
+    script = open(deck).read()
+    assert n == 2 and "met1.ongrid(0.005)" in script and '.output("GRID.via1"' in script
+    assert "every vertex of met1 must be on the 0.005 µm grid" in open(text, encoding="utf-8").read()
+    assert process.load(str(tmp_path), absent=True)[1] == []      # the editor shows drawings only
+
+
+def test_an_area_filter_beside_a_check_narrows_the_shape():
+    # "if larger than 15000 µm², its shorter side at most 80": the area is which ones, not a check
+    r = _drawn([(_box("D", 0, 0, 20, 12, "tr"), "ndmy")], [],
+               [{"kind": "match", "expr": "D.area > 15000"}, {"kind": "match", "expr": "d_0.length >= d_1.length"},
+                {"kind": "check", "expr": "d_1.length <= 80"}])
+    deck = get("klayout").compile(r)
+    assert "ndmy.with_area(15000.000001.um, nil).with_bbox_min(80.um, nil)" in deck and deck.count(".output(") == 1
+    assert "non_squares" not in deck                      # `>=` orders the sides; a square is not left out
+    assert "of more than 15000 µm²" in get("docs").compile(r)
+
+
+def test_a_count_of_shapes_that_form_an_array():
+    r = _drawn([(_box("MT", 0, 0, 20, 12), "metal5"), (_box("V", 4, 4, 8, 8, "r"), "via5"), (_box("V2", 11, 4, 15, 8, "l"), "via5")],
+               [{"name": "S", "from": "v_1", "to": "v2_3"}],
+               [{"kind": "match", "expr": "V.rows >= 2 and V.columns >= 2"},
+                {"kind": "match", "expr": "V2.rows >= 2 and V2.columns >= 2"},
+                {"kind": "match", "expr": "S < 0.36"}, {"kind": "check", "expr": "Count(V) >= 1"}])
+    deck = get("klayout").compile(r)
+    line = next(l for l in deck.splitlines() if ".not_interacting(" in l)
+    assert "metal5.not_interacting(" in line and "via5, 1)" not in line and ".overlapping(" not in line
+    assert "in an array of at least 2 rows and 2 columns" in get("docs").compile(r)
+
+
+def test_an_edge_that_must_run_along_x():
+    r = _drawn([(_box("MK", -4, -6, 18, 18), "otp_mk"), (_box("CP", 4, -3, 10, 15), "comp"), (_box("G", 0, 4, 14, 8, "tb"), "poly2")],
+               [], [{"kind": "check", "expr": "g_0.angle == 0"}])
+    assert "poly2.edges.and(poly2.and(comp).edges).and(otp_mk).without_angle(0)" in get("klayout").compile(r)
+    assert "must run along x" in get("docs").compile(r)
+
+
+def test_an_acute_corner_rule_gets_its_test_cases():
+    pts = [(0, 0), (16, 0), (16, 5)]
+    tri = {"name": "A", "edges": [{"id": f"a_{i}", "start": list(pts[i]), "end": list(pts[(i + 1) % 3]), "edge": True}
+                                  for i in range(3)]}
+    r = _drawn([(tri, "comp")], [], [{"kind": "check", "expr": "a_0.corner >= 45"}])
+    cases, why = get("cases").cases_of(r.data)
+    assert why is None and [c["expect"] for c in cases] == [True, False]

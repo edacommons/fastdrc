@@ -50,8 +50,8 @@ def from_py(node):
         return {"op": _CMP[type(node.ops[0])],
                 "args": [from_py(node.left), from_py(node.comparators[0])]}
     if isinstance(node, ast.Call):                        # the one function: Count(shape)
-        assert isinstance(node.func, ast.Name) and node.func.id.lower() == "count"
-        return {"op": "count", "args": [from_py(a) for a in node.args]}
+        assert isinstance(node.func, ast.Name) and node.func.id.lower() in ("count", "area")
+        return {"op": node.func.id.lower(), "args": [from_py(a) for a in node.args]}
     if isinstance(node, ast.Set):
         return {"set": [from_py(e) for e in node.elts]}
     if isinstance(node, (ast.Name, ast.Attribute)):
@@ -65,6 +65,7 @@ FORMULAS = [
     "A.layer == metal5",
     "A.net != B.net",
     "Count(K) == 4",
+    "Area(F) <= 10000",
     "count(V) >= 2 and X >= 1.4",
     "e2.angle - e3.angle == 45",
     "X >= 1.4",
@@ -105,10 +106,12 @@ def test_expected_trees():
         {"op": "!=", "args": [{"ref": "B.y"}, {"num": 0}]}]}
 
 
-def test_count_is_the_one_function():
+def test_count_and_area_are_the_functions():
     assert parse("Count(K) == 4") == {"op": "==", "args": [
         {"op": "count", "args": [{"ref": "K"}]}, {"num": 4}]}
     assert parse("count(K) >= 2") == parse("Count(K) >= 2")
+    assert parse("Area(F) <= 10000") == {"op": "<=", "args": [
+        {"op": "area", "args": [{"ref": "F"}]}, {"num": 10000}]}
 
 
 def test_outside_the_subset_is_rejected():
@@ -144,8 +147,8 @@ def test_uniform_shape():
             return
         assert set(n) == {"op", "args"}, n
         assert isinstance(n["args"], list) and n["args"], n
-        if n["op"] in ("not", "count"):
-            assert len(n["args"]) == 1, n          # unary / the one function
+        if n["op"] in ("not", "count", "area"):
+            assert len(n["args"]) == 1, n          # unary / a function
         elif n["op"] in ("and", "or"):
             assert len(n["args"]) >= 2, n          # flat n-ary
         else:

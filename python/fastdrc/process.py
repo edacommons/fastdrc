@@ -19,6 +19,7 @@ hand.
      "columns": {"thin": [["not_interacting", "thick"]], ...},  the table columns (domains)
      "each":    {"metalint": ["metal2", "metal3"]},             families a rule is repeated for
      "touching": "allowed",                                     abutting shapes never violate a minimum distance
+     "grid": 0.005,                                             every vertex of every layer on this grid (µm)
      "parameters": {"top_metal": {"choices": ["9K", "30K"]}},   what is chosen once for a chip (see `params`)
      "profiles": {"thick": {"top_metal": "30K"}},               named sets of choices
      "connect": [["nwell", "ndiff"], ...]}                      optional; or draw the stack
@@ -290,7 +291,25 @@ def load(folder, profile=None, params=None, absent=False):
         if joined:
             d["connect"] = [list(x) for x in joined]
         merged.append((p, d))
+    if proc.get("grid") and not absent:          # "grid": every vertex of every layer on it
+        merged += grid_rules(folder, proc)
     return proc, merged
+
+
+def grid_rules(folder, proc) -> list:
+    """``[(path, rule)]``: one check per layer of the process -- every vertex on the
+    process's ``"grid"`` (µm). They are the section ``Grid``, named ``GRID.<layer>``."""
+    v = proc["grid"]
+    box = [[0, 0], [8, 0], [8, 6], [0, 6]]
+    out = []
+    for layer in proc.get("layers") or {}:
+        name = f"GRID.{layer}"
+        out.append((os.path.join(folder, "rules", "Grid", name + ".json"), {
+            "name": name, "desc": f"{name} : every vertex of {layer} must be on the {v:g} µm grid.", "grid": v,
+            "shapes": [{"name": "A", "edges": [{"id": f"a_{i}", "start": box[i], "end": box[(i + 1) % 4], "edge": False}
+                                               for i in range(4)]}],
+            "measures": [], "constraints": [{"kind": "match", "expr": f"A.layer == {layer}"}]}))
+    return out
 
 
 def split(folder) -> int:

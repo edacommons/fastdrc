@@ -310,7 +310,7 @@ class CasesBackend(Backend):
         from .backend import get
         r = Rule(rule_dict)
         try:
-            for special in (self._presence_cases, self._corner_cases, self._hole_cases, self._array_cases, self._share_cases,
+            for special in (self._grid_cases, self._acute_cases, self._total_cases, self._form_cases, self._presence_cases, self._corner_cases, self._hole_cases, self._array_cases, self._share_cases,
                             self._density_cases, self._antenna_cases):
                 made = special(r, rule_dict)
                 if made is not None:
@@ -663,15 +663,31 @@ class CasesBackend(Backend):
                 sides = len(refs) == 2 and all(x.endswith(".length") for x in refs)   # "a square": as drawn
                 if leaf.get("op") != "in" and not sides and not any(x.endswith((".layer", ".net")) for x in refs):
                     raise _CannotBuild("a cross together with further conditions is not built yet")
+        rings = {outer for inner, outer in inside if r.in_holes(inner, outer)}
         for name, s in r.shapes.items():
-            if s.get("hole_loops") or s.get("halo"):
+            if (s.get("hole_loops") and name not in rings) or s.get("halo"):
                 raise _CannotBuild(f"shape {name} carries a mark this generator does not build yet")
         pic = _Picture(r, rule_dict, 1000)
-        outlines = pic.outlines()
+        outlines, bars = [], {}
+        for n, pts in pic.outlines():
+            if n not in rings:
+                outlines.append((n, pts))
+                continue
+            # a ring: four bars around the drawn void (the last one closes it)
+            hole = [p for e in r.shapes[n]["hole_loops"][0] for p in (e["start"],)]
+            x0, x1, y0, y1 = (min(p[0] for p in pts), max(p[0] for p in pts),
+                              min(p[1] for p in pts), max(p[1] for p in pts))
+            a0, a1, b0, b1 = (round(min(p[0] for p in hole) * 1000), round(max(p[0] for p in hole) * 1000),
+                              round(min(p[1] for p in hole) * 1000), round(max(p[1] for p in hole) * 1000))
+            box = lambda u0, v0, u1, v1: [(u0, v0), (u1, v0), (u1, v1), (u0, v1)]   # noqa: E731
+            bars[n] = [box(x0, y0, x1, b0), box(x0, b1, x1, y1), box(x0, b0, a0, b1), box(a1, b0, x1, b1)]
+        ring_open = [(n, b) for n, bs in bars.items() for b in bs[:-1]]
+        ring_closed = [(n, b) for n, bs in bars.items() for b in bs]
+        outlines += ring_closed
         markers = [lay for op, lay in (rule_dict.get("scope") or []) if op in _INSIDE_OPS]
 
-        def case(what, expect, without=()):
-            layers = self._real_layers(r, [(n, p) for n, p in outlines if n not in without])
+        def case(what, expect, without=(), shapes=None):
+            layers = self._real_layers(r, [(n, p) for n, p in (shapes or outlines) if n not in without])
             if layers is None:
                 raise _CannotBuild("a layer of the picture is defined in a way that cannot be drawn directly")
             return {"rule": r.name, "testing": "the cross: this must not exist", "case": what,
@@ -685,6 +701,11 @@ class CasesBackend(Backend):
                 d = case(f"the same without {outer}", True, without=[outer])
                 d["testing"] = tag
                 out += [c, d]
+                if outer in rings:
+                    e = case("the ring left open on one side", True,
+                             shapes=[x for x in outlines if x[0] not in rings] + ring_open)
+                    e["testing"] = tag
+                    out.append(e)
             return out
         allowed = [n for n, s in r.shapes.items() if s.get("flagged") is False]
         out = [case("the picture as drawn", True, without=allowed)]
@@ -727,8 +748,8 @@ class CasesBackend(Backend):
         check = next(c["expr"] for c in rule_dict["constraints"] if ".corner" in c["expr"])
         around = [n for n in r.shapes if n != shape and r.relation(shape, n) in ("inside", "overlap")]
 
-        def case(what, expect, without=()):
-            layers = self._real_layers(r, [(n, p) for n, p in outlines if n not in without])
+        def case(what, expect, without=(), shapes=None):
+            layers = self._real_layers(r, [(n, p) for n, p in (shapes or outlines) if n not in without])
             if layers is None:
                 raise _CannotBuild("a layer of the picture is defined in a way that cannot be drawn directly")
             return {"rule": r.name, "testing": f"check {check}", "case": what, "expect": expect, "shapes": layers,
@@ -737,6 +758,58 @@ class CasesBackend(Backend):
         if around:
             out.append(case(f"the same without {', '.join(around)}", False, without=around))
         return out
+
+    def _acute_cases(self, r, rule_dict):
+        """"No corner sharper than so many degrees": the shape as drawn, with its sharp
+        corner (reported), and the box around it (quiet)."""
+        ranges = r.corner_ranges()
+        if not ranges or r.corner_bounds():
+            return None
+        if len(ranges) != 1 or len(r.shapes) != 1 or len(rule_dict.get("constraints", [])) != 2:
+            raise _CannotBuild("an angle rule with further conditions is not built yet")
+        edge, lo, hi = ranges[0]
+        drawn = abs(r.corner_angle(edge) or 0)
+        if not (lo < drawn < hi or lo < 180 - drawn < hi):   # read as the angle between the edges, or the turn
+            raise _CannotBuild("the corner drawn is not one the rule forbids")
+        shape = r.shape_of_edge(edge)
+        pts = _Picture(r, rule_dict, 1000).outlines()[0][1]
+        xs, ys = [q[0] for q in pts], [q[1] for q in pts]
+        tag = "check " + next(c["expr"] for c in rule_dict["constraints"] if ".corner" in c["expr"])
+
+        def case(what, expect, outline):
+            layers = self._real_layers(r, [(shape, outline)])
+            if layers is None:
+                raise _CannotBuild("a layer of the picture is defined in a way that cannot be drawn directly")
+            return {"rule": r.name, "testing": tag, "case": what, "expect": expect, "shapes": layers, "markers": []}
+        return [case("the corner as drawn", True, pts),
+                case("a box, every corner a right angle", False, [(min(xs), min(ys)), (max(xs), min(ys)), (max(xs), max(ys)), (min(xs), max(ys))])]
+
+    def _grid_cases(self, r, rule_dict):
+        """"On the grid": a box on it (quiet) and one with a corner 1 nm off it (reported)."""
+        if not rule_dict.get("grid"):
+            return None
+        g = round(rule_dict["grid"] * 1000)
+        if g < 2:
+            raise _CannotBuild("a grid of 1 nm cannot be missed in the test layout")
+        shape = next(iter(r.shapes))
+        out = [self._case(r, rule_dict, "on the grid", "every corner on the grid", False, [(shape, 0, 0, 400 * g, 200 * g)]),
+               self._case(r, rule_dict, "on the grid", "one side 1 nm off the grid", True, [(shape, 0, 0, 400 * g + 1, 200 * g)])]
+        for c in out:
+            c["snap"] = g
+        return out
+
+    def _form_cases(self, r, rule_dict):
+        """"Must be rectangular": a plain box (quiet) and an L made of two boxes (reported)."""
+        forms = [(sh, f) for sh, f in r.form_checks() if f in ("rectangle", "other")]
+        if not forms:
+            return None
+        if len(forms) != 1 or len(r.shapes) != 1 or len(rule_dict.get("constraints", [])) != 2:
+            raise _CannotBuild("a rectangle rule with further conditions is not built yet")
+        shape, form = forms[0]
+        tag = "check " + next(c["expr"] for c in rule_dict["constraints"] if ".corners" in c["expr"])
+        box, ell = [(shape, 0, 0, 4000, 2000)], [(shape, 0, 0, 4000, 2000), (shape, 0, 0, 2000, 4000)]
+        return [self._case(r, rule_dict, tag, "a rectangle", form != "rectangle", box),
+                self._case(r, rule_dict, tag, "an L shape", form == "rectangle", ell)]
 
     def _hole_cases(self, r, rule_dict):
         """"Every enclosed hole must be at least so large": a ring of the layer -- four
@@ -1030,6 +1103,37 @@ class CasesBackend(Backend):
                                   not both_needed, grid(rows, cols, gx, gy)))
         return out
 
+    def _total_cases(self, r, rule_dict):
+        """"What it holds must be so much area in all": a holder with TWO pieces in it
+        whose areas together are just outside the value, at it and well inside it."""
+        totals = r.held_area_bounds()
+        if not totals:
+            return None
+        if len(totals) != 1 or len(rule_dict.get("constraints", [])) != len(r.shapes) + 1:
+            raise _CannotBuild("a total area with further conditions is not built yet")
+        holder, held, lo, hi = totals[0]
+        check = next(c["expr"] for c in rule_dict["constraints"] if "rea(" in c["expr"])
+        out = []
+        for limit, is_min in ((lo, True), (hi, False)):
+            if limit is None:
+                continue
+            total = round(limit * 1e6)                     # nm2, as two strips of one height
+            h = next((d for d in range(int((total // 2) ** 0.5), 0, -1) if total % (2 * d) == 0), None)
+            if not h or h <= 4 * STEP_NM:
+                raise _CannotBuild("an area that does not split into whole nanometres")
+            w = total // (2 * h)
+            sign = -1 if is_min else 1
+
+            def boxes(w2):
+                return [(holder, 0, 0, 2 * w + w2 + 4 * h, 3 * h), (held, h, h, h + w, 2 * h),
+                        (held, 2 * h + w, h, 2 * h + w + w2, 2 * h)]
+            tag = f"check {check}"
+            out += [self._case(r, rule_dict, tag, "two pieces, together just outside the value", True, boxes(w + sign * STEP_NM)),
+                    self._case(r, rule_dict, tag, "two pieces, together exactly the value", False, boxes(w)),
+                    self._case(r, rule_dict, tag, "two pieces, together well inside the value", False,
+                               boxes(w * 2 if is_min else w // 2))]
+        return out
+
     def _share_cases(self, r, rule_dict):
         """"What it holds must take up so much of its area": a square holder with a
         strip in it whose width sets the share exactly -- just outside the value, at
@@ -1174,6 +1278,8 @@ class CasesBackend(Backend):
                 got, why = self.cases_of(rd)
             except Exception as ex:                    # noqa: BLE001  never let one rule stop the rest
                 got, why = [], f"could not be generated ({type(ex).__name__}: {ex})"
+            if any(abs(v) > 20_000_000 for c in got for sh in c["shapes"] for pt in sh["points"] for v in pt):
+                got, why = [], "its test layout would be larger than 20 mm"
             if why:
                 skipped.append((rd.get("name") or "(unnamed)", why))
             cases += got
@@ -1191,6 +1297,8 @@ class CasesBackend(Backend):
             ys = [p[1] for s in c["shapes"] for p in s["points"]]
             pad = max(max(xs) - min(xs), max(ys) - min(ys)) // 4 + 1000
             dx, dy = x - min(xs) + pad, -min(ys) + pad
+            if c.get("snap"):                          # a case about the grid stays on it
+                dx, dy = dx - dx % c["snap"], dy - dy % c["snap"]
             for s in c["shapes"]:
                 s["points"] = [[p[0] + dx, p[1] + dy] for p in s["points"]]
             w, h = max(xs) - min(xs) + 2 * pad, max(ys) - min(ys) + 2 * pad

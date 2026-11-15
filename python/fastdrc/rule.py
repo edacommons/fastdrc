@@ -73,6 +73,7 @@ class Bound:
         self.var, self.op, self.value = var, op, value
         self.kind = kind                      # the constraint's kind: "match" / "check"
         self.zero_ok = False                  # written `W >= v or W == 0`: coinciding edges pass
+        self.exact = False                    # one half of `W == v`
 
     @property
     def is_min(self):
@@ -294,18 +295,37 @@ class Rule:
                         out.append((kind, sa, ea, leaf["op"], eb))
         return out
 
+    def _corner_counts(self):
+        """``(kind, shape, is_rectangle)`` from ``F.corners == 4`` / ``!= 4`` (also
+        ``> 4``): a shape with four corners is a rectangle."""
+        out = []
+        for kind, ast in self.constraints:
+            for leaf in _and_leaves(ast):
+                if not (isinstance(leaf, dict) and leaf.get("op") in ("==", "!=", ">")):
+                    continue
+                a, b = leaf["args"]
+                ref = a.get("ref", "") if isinstance(a, dict) else ""
+                if ref.endswith(".corners") and ref[:-8] in self.shapes and isinstance(b, dict) and b.get("num") == 4:
+                    out.append((kind, ref[:-8], leaf["op"] == "=="))
+        return out
+
     def shape_forms(self) -> dict:
         """``{shape: "square" | "oblong"}`` -- the shape class a FILTER states: a `match`
         that two sides are equal picks the squares of the layer, one that they differ
         (``!=``, ``<``, ``>``) the others (a bar)."""
-        return {shape: "square" if op == "==" else "oblong"
-                for kind, shape, _, op, _ in self.side_relations() if kind != "check"}
+        forms = {shape: "rectangle" if rect else "other"
+                 for kind, shape, rect in self._corner_counts() if kind != "check"}
+        forms.update({shape: "square" if op == "==" else "oblong"       # `>=` only orders the sides
+                      for kind, shape, _, op, _ in self.side_relations() if kind != "check" and op not in (">=", "<=")})
+        return forms
 
     def form_checks(self) -> list:
         """``(shape, form)``: a CHECK comparing two sides asserts the shape class --
         ``a.length == b.length`` "must be square" (the others are flagged)."""
-        return [(shape, "square" if op == "==" else "oblong")
-                for kind, shape, _, op, _ in self.side_relations() if kind == "check"]
+        return ([(shape, "square" if op == "==" else "oblong")
+                 for kind, shape, _, op, _ in self.side_relations() if kind == "check" and op not in (">=", "<=")]
+                + [(shape, "rectangle" if rect else "other")
+                   for kind, shape, rect in self._corner_counts() if kind == "check"])
 
     def side_roles(self) -> dict:
         """``{edge: "long" | "short"}`` for sides a constraint orders by length
@@ -500,7 +520,10 @@ class Rule:
             if m.get("of_shape"):
                 continue                         # a cross over the shape: no position of its own
             if self.shape_of_edge(m["from"]) == shape == self.shape_of_edge(m["to"]):
-                fm, tm = self._edge_mid(m["from"]), self._edge_mid(m["to"])
+                if m.get("at") is not None:          # the arrow is put on a chosen part of the edges
+                    fm, tm = self.measure_spots(m["name"]) if "name" in m else (self._edge_mid(m["from"]), self._edge_mid(m["to"]))
+                else:
+                    fm, tm = self._edge_mid(m["from"]), self._edge_mid(m["to"])
                 return ((fm[0] + tm[0]) / 2, (fm[1] + tm[1]) / 2)
         return self.interior_point(shape)
 
@@ -637,6 +660,7 @@ class Rule:
                     "wide": self.wide_filters().get(shape),
                     "wide_strict": self._wide_strict.get(shape, False),
                     "form": self.shape_forms().get(shape),
+                    "area": self.area_filters().get(shape),
                     "array": self.array_filters().get(shape),
                     "nets": self.net_relation(sf, st) is not None,
                     "count": (lambda c: c and (self.layer_of(c[0]), c[1], c[2]))(
@@ -957,9 +981,11 @@ class Rule:
                 if b.kind == "check" and b.is_min:
                     w["gap"], w["var"] = b.value, b.var
                 elif b.kind != "check" and b.is_max:
-                    near = b.value
+                    near, near_var = b.value, b.var
             if near is not None and w["gap"] is not None:
                 w["gap"] = near
+            elif near is not None:         # no spacing is checked (a count of arrays): the filter alone
+                w["gap"], w["var"] = near, near_var
         return {s: w for s, w in want.items() if w["gap"] is not None}
 
     def array_edges(self):
@@ -1043,7 +1069,13 @@ class Rule:
     def _drawn_joined(self, a, b):
         return self.relation(a, b) not in ("disjoint", "outside", None)
 
-    def _counts(self, kinds):
+    def held_area_bounds(self) -> list:
+        """``(holder, held, lo, hi)``: the CHECK ``Area(K) <= v`` / ``>= v`` -- the area
+        of K's layer a shape holds, all of it together, in µm². The holder is read from
+        the picture, as for ``Count``."""
+        return [(h, k, lo, hi) for k, (h, lo, hi) in self._counts(("check",), "area").items()]
+
+    def _counts(self, kinds, fn="count"):
         """``{counted shape: [container, lo, hi]}`` from ``Count(K) <cmp> n`` constraints
         of the given kinds. WHAT is counted in WHAT is read from the picture: K's
         layer, in the shape K is drawn inside (or, failing that, overlapping)."""
@@ -1056,9 +1088,9 @@ class Rule:
                     continue
                 a, b = leaf["args"]
                 op = leaf["op"]
-                if isinstance(b, dict) and b.get("op") == "count":
+                if isinstance(b, dict) and b.get("op") == fn:
                     a, b, op = b, a, _FLIP.get(op, op)
-                if not (isinstance(a, dict) and a.get("op") == "count" and isinstance(b, dict) and "num" in b):
+                if not (isinstance(a, dict) and a.get("op") == fn and isinstance(b, dict) and "num" in b):
                     continue
                 k = a["args"][0].get("ref")
                 if k not in self.shapes:
@@ -1067,12 +1099,13 @@ class Rule:
                            or [s for s in self.shapes if s != k and self._drawn_joined(k, s)])
                 if not holders:
                     continue
-                n = int(b["num"])
+                n = int(b["num"]) if fn == "count" else b["num"]
                 span = out.setdefault(k, [holders[0], None, None])
+                step = 1 if fn == "count" else 0     # an area is not stepped: > reads as >=
                 if op in ("==", ">=", ">"):
-                    span[1] = n + (op == ">")
+                    span[1] = n + step * (op == ">")
                 if op in ("==", "<=", "<"):
-                    span[2] = n - (op == "<")
+                    span[2] = n - step * (op == "<")
         return out
 
     def count_bounds(self) -> list:
@@ -1235,10 +1268,12 @@ class Rule:
             if kind == "check" and self._either(ast) is not None:
                 continue                        # "one of two sides": see either_bounds
             for leaf in _and_leaves(ast):       # a two-sided range is one `and`
-                b = _bound(leaf, names)
-                if b is not None:
-                    b.kind, b.zero_ok = kind, zero_ok
-                    out.append(b)
+                exact = _exact(leaf, names)     # `E == v`: at least v and at most v
+                for b in ([_bound(leaf, names)] if exact is None else
+                          [Bound(exact[0], ">=", exact[1]), Bound(exact[0], "<=", exact[1])]):
+                    if b is not None:
+                        b.kind, b.zero_ok, b.exact = kind, zero_ok, exact is not None
+                        out.append(b)
         return out
 
     def _either(self, ast):
@@ -1300,9 +1335,18 @@ class Rule:
         for kind, ast in self.constraints:
             if kind == "check" and isinstance(ast, dict) and ast.get("op") == "in":
                 a, b = ast["args"]
-                if a.get("ref") in self.shapes and b.get("ref") in self.shapes:
-                    out.append((a["ref"], b["ref"]))
+                outer = b.get("ref") or ""
+                if outer.endswith(".holes") and self.holes(outer[:-6]):
+                    outer = outer[:-6]           # inside the drawn void of a ring
+                if a.get("ref") in self.shapes and outer in self.shapes:
+                    out.append((a["ref"], outer))
         return out
+
+    def in_holes(self, inner, outer) -> bool:
+        """Is the check ``inner in outer.holes`` -- "must be surrounded by a ring of"?"""
+        return any(kind == "check" and isinstance(ast, dict) and ast.get("op") == "in"
+                   and ast["args"][0].get("ref") == inner and ast["args"][1].get("ref") == outer + ".holes"
+                   for kind, ast in self.constraints)
 
     def wide_filters(self) -> dict:
         """``{shape: w}``: shapes that a FILTER says are wide -- a `match` minimum on a
@@ -1347,6 +1391,8 @@ class Rule:
             if (b.kind != "check" and b.is_min and self.shape_of_edge(m["from"]) in wide
                     and self.shape_of_edge(m["from"]) == self.shape_of_edge(m["to"])):
                 continue                                 # a filter on an operand, not a rule
+            if b.kind == "check" and b.exact and b.is_min and b.value == 0:
+                continue                                 # `S == 0`: only "at most 0" says anything
             if b.kind == "check":
                 out.append((b.var, b, None, False) if b.is_min else (b.var, None, b, False))
             else:
@@ -1359,6 +1405,30 @@ class Rule:
         shape -- like an edge's length -- so ``<shape>.holes.area`` measures it and
         a relation can sit inside it (``X.inside(L.holes)``)."""
         return bool(self.shapes.get(shape, {}).get("hole_loops"))
+
+    def area_filters(self) -> dict:
+        """``{shape: (lo, lo_strict, hi, hi_strict)}``: a FILTER on a shape's area beside
+        a check of the rule -- "if larger than 15000 µm², then ..." -- narrows the shape
+        to those of its layer with such an area."""
+        out = {}
+        if not any(kind == "check" for kind, _ in self.constraints):
+            return out                           # filters alone: what they pick is flagged
+        for kind, ast in self.constraints:
+            if kind == "check":
+                continue
+            for leaf in _and_leaves(ast):
+                if not (isinstance(leaf, dict) and leaf.get("op") in _CMP):
+                    continue
+                a, b = leaf["args"]
+                ref = a.get("ref", "") if isinstance(a, dict) else ""
+                if ref.endswith(".area") and not ref.endswith(".holes.area") and ref[:-5] in self.shapes \
+                        and isinstance(b, dict) and "num" in b and ref[:-5] not in self.antenna_shapes():
+                    span = out.setdefault(ref[:-5], [None, False, None, False])
+                    if leaf["op"] in (">", ">="):
+                        span[0], span[1] = b["num"], leaf["op"] == ">"
+                    else:
+                        span[2], span[3] = b["num"], leaf["op"] == "<"
+        return {k: tuple(v) for k, v in out.items()}
 
     def area_bounds(self) -> list:
         """Area rules -> (shape, op, value, on_holes), `op value` being what must HOLD
@@ -1376,6 +1446,8 @@ class Rule:
                     continue
                 if ref.split(".")[0] in antenna:
                     continue                     # "with a diode of at least ...": a net filter
+                if kind != "check" and ref.split(".")[0] in self.area_filters():
+                    continue                     # a filter beside a check: it narrows the shape
                 # the op returned is the ASSERTION whose failures are flagged. A check
                 # is one already; a match is a filter ("the ones with area < 2", crossed
                 # out on a datasheet) -- flagging those is asserting the opposite.
@@ -1407,6 +1479,18 @@ class Rule:
                     hi = num
                 ranges[edge] = [lo, hi]
         return [(e, lo, hi) for e, (lo, hi) in ranges.items()]
+
+    def orientation_checks(self) -> list:
+        """``(edge, angle, must)`` from the CHECK ``e.angle == 0`` ("must run along x";
+        90: along y) or ``e.angle != 0`` ("must not") on a straight edge."""
+        out = []
+        for kind, ast in self.constraints:
+            if kind != "check":
+                continue
+            for edge, op, num in _attr_cmps(ast, ".angle"):
+                if op in ("==", "!=") and self.shape_of_edge(edge):
+                    out.append((edge, num, op == "=="))
+        return out
 
     def corner_facts(self) -> list:
         """Corner constraints as WRITTEN: ``(edge, kind, form, lo, hi)`` on
@@ -1526,6 +1610,18 @@ def _is_zero(ast, varnames):
         return ((a.get("ref") in varnames and b.get("num") == 0)
                 or (b.get("ref") in varnames and a.get("num") == 0))
     return False
+
+
+def _exact(ast, varnames):
+    """If ast is ``var == num`` (either order), ``(var, num)``."""
+    if isinstance(ast, dict) and ast.get("op") == "==":
+        a, b = ast["args"]
+        if isinstance(a, dict) and isinstance(b, dict):
+            if a.get("ref") in varnames and "num" in b:
+                return a["ref"], b["num"]
+            if b.get("ref") in varnames and "num" in a:
+                return b["ref"], a["num"]
+    return None
 
 
 def _bound(ast, varnames):

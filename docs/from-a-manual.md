@@ -92,6 +92,11 @@ which shapes the rule is about.
 | density, over the chip or per window | `check  M.density >= 0.2`, the material drawn inside the area or window | DN.1, DN.2 |
 | area per connected gate area | `check  M.area <= 400 * G.area` | AN.1 |
 | share of a plate's area | `check  S.area >= 0.06 * P.area`, S drawn inside P | (see the reference) |
+| "Min/Max", "exactly" on a distance | `check  E == 0.1` on the arrow | (see the reference) |
+| must be surrounded by a guard ring | the ring drawn as a donut, the device in its hole: `check  D in G.holes` | (see the reference) |
+| must be rectangular | `check  F.corners == 4` | (see the reference) |
+| total area on one plate | `check  Area(F) <= 10000`, F drawn in the plate | (see the reference) |
+| every shape on the manufacturing grid | `"grid": 0.005` in `process.json` | (see the reference) |
 | abutting shapes are fine everywhere | `"touching": "allowed"` in `process.json` | (see the reference) |
 | an option of the process — metal stack, thick top metal ("for the 3 µm top metal: …") | `"parameters"` in `process.json`; in the rule a switch on one: `"value": {"switch": "top_metal", "cases": {...}}`, or `"when"` | built with `--profile` / `--set top_metal=30K` |
 | must not exist / must not straddle | a cross on the shape or on the arrow | (see the reference) |

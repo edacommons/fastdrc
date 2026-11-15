@@ -80,6 +80,9 @@ for deck in sys.argv[1:]:
         data = json.load(open(f))
         if isinstance(data.get("rules"), list) or data.get("or"):
             print("  left alone (several drawings):", os.path.basename(f)); continue
+        if any(sh.get("hole_loops") for sh in data.get("shapes", [])):
+            same += 1                                    # a ring: its hole is drawn against its outline
+            continue
         before = reading(data, ctx)
         both, straight = tidy(data)
         moved = tidy(data, straighten=False)[0]          # the positions alone, the edges as drawn

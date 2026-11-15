@@ -106,12 +106,22 @@ class DocsBackend(Backend):
     # --- one English sentence per check the rule carries ---
     def _sentences(self, rule):
         out = []
+        if rule.data.get("grid"):
+            shape = next(iter(rule.shapes))
+            return [f"every vertex of {self._name(rule.layer_of(shape))} must be on the "
+                    f"{_fmt(rule.data['grid'])} µm grid."]
         eol = rule.eol_measures()               # an end-of-line is ONE rule: its measure and
         eol_vars = {v for v, _, _ in eol}       # the two qualifying edge lengths are not
         eol_edges = rule.eol_edges()            # separate assertions
         for var, lo, hi, select in rule.distance_rules():
-            if var not in eol_vars:
-                out.append(self._dim(rule, var, lo, hi, select))
+            if var in eol_vars or (hi is not None and hi.exact and hi.value != 0 and not select):
+                continue                        # the maximum half of `E == v`: said with the minimum
+            text = self._dim(rule, var, lo, hi, select)
+            if hi is not None and hi.exact and hi.value == 0 and not select:
+                text = text.replace(" must have ", " must abut ", 1).replace(" within 0 µm", "", 1)
+            if lo is not None and lo.exact and not select:
+                text = text.replace("at least", "exactly", 1)
+            out.append(text)
         for shape, op, value, on_holes in rule.area_bounds():
             kind = "at least" if op in (">", ">=") else "at most"
             d, _, consumed = rule.check_derivations(shape, shape)
@@ -145,9 +155,18 @@ class DocsBackend(Backend):
             what = _join([self._name(rule.layer_of(h)) for h in held])
             out.append(f"{what} must take up {much} of the area of every "
                        f"{self._deriv_en(rule, holder)}.")
+        for holder, held, lo, hi in rule.held_area_bounds():
+            d, _ = rule.holder_derivation(holder, [held])
+            lim = " and ".join(([f"at least {_fmt(lo)} µm²"] if lo is not None else [])
+                               + ([f"at most {_fmt(hi)} µm²"] if hi is not None else []))
+            out.append(f"every {self._fmt_deriv_en(d)} must hold {lim} of {self._name(rule.layer_of(held))} in all.")
         for holder, counted, lo, hi in rule.count_bounds():
-            out.append(f"every {self._fmt_deriv_en(rule.holder_derivation(holder, [counted])[0])} must hold "
-                       f"{_how_many(lo, hi)} {self._name(rule.layer_of(counted))}.")
+            alike = [x for x in rule.shapes if rule.layer_of(x) == rule.layer_of(counted)]
+            arr = rule.array_filters().get(counted)
+            arrayed = (f" in an array of at least {arr['rows']} rows and {arr['columns']} columns "
+                       f"(shapes within {_fmt(arr['gap'])} µm of each other)") if arr else ""
+            out.append(f"every {self._fmt_deriv_en(rule.holder_derivation(holder, alike)[0])} must hold "
+                       f"{_how_many(lo, hi)} {self._name(rule.layer_of(counted))}{arrayed}.")
         for collectors, gate, ratio, filters in rule.antenna_bounds():
             g = self._name(rule.layer_of(gate))
             what = _join([self._name(rule.layer_of(c)) for c in collectors])
@@ -191,18 +210,27 @@ class DocsBackend(Backend):
                 core = (f"{me} must be at least {v} µm from {other} on at least one of any two "
                         f"adjacent sides (in one direction)")
             out.append(self._with_scope(core + ".", self._scope(rule, sf, consumed)))
+        for edge, angle, must in rule.orientation_checks():
+            shape = rule.shape_of_edge(edge)
+            way = {0: "along x (horizontal)", 90: "along y (vertical)"}.get(angle, f"at {_fmt(angle)}°")
+            scope = self._scope(rule, shape, {shape} | set(rule.covering(shape)) | set(rule.removed(shape)))
+            out.append(self._with_scope(f"{self._gate_en(rule, shape)} must {'' if must else 'not '}run {way}.", scope))
         for shape, form in rule.form_checks():
             subj = self._deriv_en(rule, shape)
-            out.append(f"every {subj} shape must be a square." if form == "square"
-                       else f"no {subj} shape may be a square.")
+            out.append({"square": f"every {subj} shape must be a square.",
+                        "oblong": f"no {subj} shape may be a square.",
+                        "rectangle": f"every {subj} shape must be a rectangle.",
+                        "other": f"no {subj} shape may be a rectangle."}[form])
         for var in [v for v, mm in rule.measures.items() if mm.get("crossed")]:
             out.append(self._presence(rule, var))
         for var, cap, side in eol:
             out.append(self._eol(rule, var, cap, side))
         for inner, outer in rule.inside_checks():
             d_in, d_out, used = rule.check_derivations(inner, outer)
+            where = ("be surrounded by an unbroken ring of " if rule.in_holes(inner, outer)
+                     else "lie wholly inside ")
             out.append(self._with_scope(
-                f"every {self._fmt_deriv_en(d_in)} must lie wholly inside "
+                f"every {self._fmt_deriv_en(d_in)} must {where}"
                 f"{self._fmt_deriv_en(d_out)}.", self._scope(rule, inner, used)))
         return out
 
@@ -270,6 +298,11 @@ class DocsBackend(Backend):
         ds, dt, consumed = rule.measure_derivations(var)    # the shared analysis
         subj, arg = self._fmt_deriv_en(ds), self._fmt_deriv_en(dt)
         scope = self._scope(rule, sf, consumed)
+        if not select and hi is not None and (rule.overlap_reading(var) or {}).get("kind") == "overlap":
+            over = rule.overlap_reading(var)
+            a, b = self._fmt_deriv_en(over["outer"]), self._fmt_deriv_en(over["inner"])
+            return self._with_scope(f"{a} must overlap {b} by at most {_fmt(hi.value)} µm ({mt}).",
+                                    self._scope(rule, over["outer_shape"], over["consumed"]))
         if not select and hi is not None:               # MAX check -> must not exceed it
             v = _fmt(hi.value)
             if sf == st:
@@ -371,7 +404,13 @@ class DocsBackend(Backend):
         from collections import defaultdict
         phrase = self._name(d["base"])
         if d.get("form"):                    # the shape class a filter states
-            phrase = ("square " if d["form"] == "square" else "non-square ") + phrase
+            phrase = {"square": "square ", "oblong": "non-square ", "rectangle": "rectangular ",
+                      "other": "non-rectangular "}[d["form"]] + phrase
+        if d.get("area"):                    # only those of such an area
+            lo, lo_strict, hi, hi_strict = d["area"]
+            phrase += " of " + " and ".join(
+                ([f"{'more than' if lo_strict else 'at least'} {_fmt(lo)} µm²"] if lo is not None else [])
+                + ([f"{'less than' if hi_strict else 'at most'} {_fmt(hi)} µm²"] if hi is not None else []))
         if d.get("count"):                   # only those holding so many of a layer
             phrase += f" holding {_how_many(d['count'][1], d['count'][2])} {self._name(d['count'][0])}"
         arr = d.get("array")

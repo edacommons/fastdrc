@@ -212,7 +212,12 @@ Draw the shape as a **donut** — an outer outline with an inner **hole loop**
 compiler recovers "the layer's enclosed voids" from the drawn hole and the threshold
 from the constraint. A min-void-area rule flags pinholes/slivers in a fill.
 → `nplus.holes.with_area(nil, 0.35)`
-(The same drawn void is what lets `X.inside(G.holes)` express "X surrounded by ring G".)
+
+### A ring that must surround something
+Draw it as the manual does: the guard ring as a **donut** and the thing it guards in its
+hole. The check is `D in G.holes` — "must lie inside", said of the ring's void:
+→ `dnwell.not_inside(pcomp.holes)` — *every dnwell must be surrounded by an unbroken
+ring of pcomp.* A ring with a gap has no hole, so a broken ring is reported too.
 
 ### A check on the overlap of two layers (a device)
 Draw **both real layers**, with the second one **covering the measured region**
@@ -486,6 +491,15 @@ per shape), not about every edge:
 Written as a **`check`**, the comparison is the rule itself: `k0.length == k1.length`
 means "must be square" and flags `layer.non_squares`.
 
+Ordered with `>=` (`k0.length >= k1.length`) the two sides are still the long and the
+short one, and a square is not left out. A filter on the shape's **area** beside the
+check says which shapes are meant: `match D.area > 15000` with `check k1.length <= 80`
+— *the shorter side of every ndmy of more than 15000 µm² must be at most 80 µm.*
+
+**A rectangle** is the shape with four corners: `F.corners == 4`. As a check it is
+"must be rectangular" (→ `layer.non_rectangles`); as a filter the shape stands for the
+rectangles of its layer (`layer.rectangles`; `F.corners != 4` for the others).
+
 ### Nets — "different potential", "same net"
 
 ![NW.3](img/demo/NW.3.svg)
@@ -521,7 +535,7 @@ of nets and no `connect` list is given.
 
 `examples/demo`, V1.2 — filter `Ww >= 2`, check `Count(VW) >= 2`: *every met1 at least 2 µm wide must hold at least 2 via1.*
 
-`Count(K)` is the one function in a constraint: how many shapes of K's layer a shape
+`Count(K)` is a function in a constraint: how many shapes of K's layer a shape
 holds. *Which* shape is read from the picture — the one K is drawn in. Draw the pad
 with one via in it and write:
 
@@ -534,6 +548,14 @@ with one via in it and write:
 
 Everything that touches or overlaps the holder counts, a via lying across its edge
 included.
+
+Counted shapes may be filtered like any others: with `match V.rows >= 2 and V.columns >= 2`
+on the via (and `match S < 0.36` on the arrow to its neighbour — how close makes an
+array), `Count(V) >= 1` reads "must hold a 2 × 2 array of vias".
+
+`Area(K)` is its companion: how much **area** of K's layer the shape holds, all of it
+together, in µm². "The MIM capacitors on one bottom plate may be 10000 µm² in all" is
+the plate with a capacitor in it and `Area(F) <= 10000`.
 
 ### A share of a shape's area — what it holds
 "Slit density of a metal plate at least 6 %": the area of what a shape **holds**,
@@ -691,6 +713,10 @@ Use it when a rule holds only in part of the plane — "N+ must reach 0.16 µm p
 *within 0.43 µm of the well edge*": the zone covers the picture, and what is measured is
 the COMP's edge in that zone, not a polygon cut off at the zone's boundary.
 
+**Which way a gate runs.** A check on a straight edge's direction — `g.angle == 0`,
+"must run along x" (90: along y) — flags the gate edges that run any other way:
+→ `poly2.edges.and(tgate.edges).without_angle(0)`
+
 ### Maximum bounds and narrow-region selectors (`.drc`)
 A bound on a distance reads by its **kind**, like every constraint.
 
@@ -704,6 +730,12 @@ As a **`check`** (what must hold — where it fails is flagged):
 | `S <= 20`, the arrow between the two **facing** edges of A and B | every A with no B within 20 — "must have a tap within 20 µm" | `A.not_interacting(B.sized(20))` |
 | `S <= 20`, the arrow from B **through** A to its far side | every part of A farther than 20 from any B — "any portion within 20 µm of a tap" | `A.not(B.sized(20))` |
 | `E <= 6` (inner inside outer) | the parts of the outer reaching more than 6 beyond the inner | `outer.not(inner.sized(6))` |
+
+**Exactly** — a manual's "Min/Max" on one arrow — is `E == 0.1`: the minimum and the
+maximum together, each read as in the table. On the depth two layers **overlap** by, the
+maximum flags an overlap deeper than the value (`A.and(B)` with half the value taken off
+every side, and what is left grown back). `S == 0` between two shapes drawn apart says
+they must **abut**.
 
 A maximum between two shapes is read by **where the arrow ends**. Between the facing
 edges it says the shape needs a partner within reach; the arrow starts at the shape
@@ -752,6 +784,11 @@ DNWELL" is an `nwell` drawn inside `res_mk` (a link — *which* nwell) touching 
 `dnwell` with the **cross on that contact** (the check):
 → `nwell.inside(res_mk).interacting(dnwell)` — "nwell that lies inside res_mk must not
 touch or overlap dnwell".
+
+**Two things that must not share a holder** — "3.3 V and 5 V PMOS cannot sit in the same
+Nwell" — is the well with one of each drawn in it: a link to the first (which wells),
+the cross on the arrow to the second, and each gate linked to what tells them apart:
+→ `nwell.covering(pgate.inside(dualgate)).covering(pgate.outside(dualgate))`
 
 **A cross on the subject alone** — across its own two parallel edges, like a width
 whose bound is "never" — forbids the subject's *region* itself: the layer as combined
@@ -891,6 +928,10 @@ them: `"columns": ["3.3V", "5V"]`.
 
 **A note** — "this rule does not apply inside OTP_MK" — is `"except": ["otp_mk"]` on
 the rule, instead of a cutout drawn into every shape.
+
+**The grid.** A manual says it once — "all shapes on a 0.005 µm grid" — and so does
+`process.json`: `"grid": 0.005`. The deck then holds one check per layer, `GRID.<layer>`
+in a section `Grid` (→ `layer.ongrid(0.005)`); there is nothing to draw.
 
 **The options of a process — parameters.** A column is chosen shape by shape, by a
 marker in the layout. An option — how many metals, how thick the top one, which
