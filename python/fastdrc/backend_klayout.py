@@ -418,7 +418,15 @@ class KLayoutBackend(Backend):
             if subject is None:
                 return None
             hv = self._fmt(hi.value)
-            body, v_scope = f"{subject}.drc({pred} {_BEYOND[hi.op]} {hv}.um)", hv
+            if sf == st:
+                # a maximum WIDTH: what is left of the shape after taking v/2 off every side
+                # is wider than v both ways -- grown back, the part that is too wide.
+                # (`drc(width > v)` is not that: an edge with nothing facing it has no
+                # width at all and is reported, as real polygons showed.)
+                half = self._fmt(hi.value / 2)
+                body, v_scope = f"{subject}.sized(-{half}.um).sized({half}.um)", hv
+            else:
+                body, v_scope = f"{subject}.drc({pred} {_BEYOND[hi.op]} {hv}.um).polygons(0.001)", hv
             if sf != st and dl(sf) != dl(st):
                 # A maximum between two shapes is about B grown by v. (A pairwise
                 # "distance > v" is not that: it holds for some pair of edges of any two

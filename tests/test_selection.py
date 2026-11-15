@@ -607,9 +607,9 @@ def test_distance_bound_kind_decides_the_reading():
     ops, en = line("check", "W >= 0.34")                 # min width
     assert ops == ["metal1.width(0.34.um, euclidian).polygons(0.001)"]
     ops, en = line("check", "W <= 5")                    # MAX width: the wider ones fail
-    assert ops == ["metal1.drc(width > 5.um)"] and "metal1 must be at most 5 µm wide" in en
+    assert ops == ["metal1.sized(-2.5.um).sized(2.5.um)"] and "metal1 must be at most 5 µm wide" in en
     ops, en = line("check", "W >= 0.34 and W <= 5")      # both must hold: two checks
-    assert ops == ["metal1.width(0.34.um, euclidian).polygons(0.001)", "metal1.drc(width > 5.um)"]
+    assert ops == ["metal1.width(0.34.um, euclidian).polygons(0.001)", "metal1.sized(-2.5.um).sized(2.5.um)"]
     ops, en = line("match", "W <= 0.34")                 # filter: the narrow regions
     assert ops == ["metal1.drc(width <= 0.34.um)"] and "selects metal1 regions where width ≤ 0.34" in en
     ops, en = line("match", "W >= 2")                    # filter: the wide regions

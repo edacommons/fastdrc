@@ -604,7 +604,7 @@ As a **`check`** (what must hold — where it fails is flagged):
 | check | flags | compiles to |
 |---|---|---|
 | `W >= 0.28` | the narrower | `metal1.width(0.28)` |
-| `W <= 5` | the wider (a *maximum* width) | `metal1.drc(width > 5)` |
+| `W <= 5` | the wider (a *maximum* width) | `metal1.sized(-2.5).sized(2.5)` (what is left after taking half the value off every side) |
 | `W >= 0.28 and W <= 5` | both | the two checks above |
 | `S <= 20`, the arrow between the two **facing** edges of A and B | every A with no B within 20 — "must have a tap within 20 µm" | `A.not_interacting(B.sized(20))` |
 | `S <= 20`, the arrow from B **through** A to its far side | every part of A farther than 20 from any B — "any portion within 20 µm of a tap" | `A.not(B.sized(20))` |
@@ -744,7 +744,7 @@ And the phrases manuals use map onto drawings like this:
 | *C prohibited over D* / *must not touch* / *must not be inside* | the two shapes in that relation, crossed | `C.overlapping(D)` / `.interacting` / `.inside` |
 | *C must not straddle D* (inside is fine) | C drawn across D's edge, crossed as "never straddle" | `C.overlapping(D).not_inside(D)` |
 | *K must be on A or B* | a shape whose layer is the set `{A, B}`, K inside it, the check `K in X` | `K.not_inside(A.or(B))` |
-| *A maximum width* / *maximum within* | the check `W <= v` | `A.drc(width > v)` |
+| *A maximum width* / *maximum within* | the check `W <= v` | `A.sized(-v/2).sized(v/2)` |
 | *gate length*: poly edges over diffusion | poly crossing diffusion, an edge-to-edge width | `poly.edges.and((poly & diff).edges).width(v)` |
 | *minimum area* / *enclosed area* | `A.area >= v` / `A.holes.area >= v` | `A.with_area(nil, v)` / `A.holes.with_area(nil, v)` |
 
