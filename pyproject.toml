@@ -28,7 +28,7 @@ fastdrc = "fastdrc.cli:main"
 packages = ["python/fastdrc"]
 
 [tool.hatch.build.targets.sdist]
-exclude = ["/build", "/docs/gf180mcu", "/docs/sky130", "/docs/ihp", "/docs/fp45"]
+exclude = ["/build", "/private", "/docs/gf180mcu", "/docs/sky130", "/docs/ihp", "/docs/fp45"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
