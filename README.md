@@ -133,7 +133,7 @@ drawn-rule corpus read from `docs/gf180mcu/`, which is not part of this reposito
 ```
 python/fastdrc/    the Python package: the rule compiler, its backends, the editor
 examples/demo/     a complete deck for an invented process, with every kind of rule
-docs/              the tutorial (from-a-manual.md) and the reference (drawing-model.md)
+docs/              the tutorial (from-a-manual.md), the reference (drawing-model.md), what is new (own-and-known.md)
 docs/img/          the docs' figures, drawn from rule files by tools/doc_figures.py
 tools/             validation of the compiler against a reference deck
 tests/             pytest
@@ -164,6 +164,11 @@ pytest
 
 With [uv](https://docs.astral.sh/uv/): `uv sync` then `uv run pytest`. Tests that run a
 deck need [KLayout](https://www.klayout.de) and are skipped without it.
+
+## What is new here
+
+Which part of FastDRC is its own, and which was already known from design manuals
+and earlier publications: [docs/own-and-known.md](docs/own-and-known.md).
 
 ## Licence
 

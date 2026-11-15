@@ -14,7 +14,7 @@ def test_figures_are_current():
 
 
 def test_every_figure_shown_exists():
-    for doc in ("README.md", "docs/drawing-model.md", "docs/from-a-manual.md"):
+    for doc in ("README.md", "docs/drawing-model.md", "docs/from-a-manual.md", "docs/own-and-known.md"):
         text = open(os.path.join(ROOT, doc), encoding="utf-8").read()
         shown = re.findall(r"!\[[^\]]*\]\(([^)]+\.svg)\)", text)
         assert shown, doc
