@@ -242,6 +242,21 @@ def test_the_example_process_behaves_as_drawn(tmp_path):
     res = process.selftest(DEMO, str(tmp_path))
     assert res["wrong"] == [] and sum(v == "ok" for v in res["rules"].values()) == 18
     assert sum(1 for (_, t) in res["constraints"] if t.startswith("match ")) == 5
+    assert res["stray"] == {}                           # nothing is reported where nothing was drawn
+
+
+@pytest.mark.skipif(not process.klayout_binary(), reason="KLayout is not installed")
+def test_the_self_test_names_a_rule_that_reports_outside_every_case(tmp_path):
+    import json
+    deck, _, _, notes = process.build(DEMO, str(tmp_path), extra=("cases",))
+    expect_path = os.path.splitext(deck)[0] + ".cases.json"
+    expect = json.load(open(expect_path))
+    # forget the cases drawn for one rule: what it reports there now belongs to no case
+    expect["cases"] = [c for c in expect["cases"] if c["rule"] != "NW.1"]
+    json.dump(expect, open(expect_path, "w"))
+    res = process._run_selftest(deck, notes)
+    assert set(res["stray"]) == {"NW.1"} and res["stray"]["NW.1"] >= 1
+    assert any("outside every test case: NW.1" in n for n in res["notes"])
 
 
 @pytest.mark.skipif(not process.klayout_binary(), reason="KLayout is not installed")

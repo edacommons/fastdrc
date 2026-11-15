@@ -435,7 +435,8 @@ def selftest(folder, out_dir=None, only=None, skip=None, optimise=True, backend=
 
     Returns ``{"rules": {rule: "ok" | "wrong" | "not generated"},
     "constraints": {(rule, constraint under test): "ok" | "wrong"}, "wrong": [text, ...],
-    "not_generated": [(rule, why), ...], "notes": [...], "files": {...}}``."""
+    "not_generated": [(rule, why), ...], "stray": {rule: markers outside every test case},
+    "notes": [...], "files": {...}}``."""
     deck, _, n, notes = build(folder, out_dir, extra=("cases",), only=only, skip=skip, optimise=optimise,
                               backend=backend)
     return _run_selftest(deck, notes, backend)
@@ -495,6 +496,21 @@ def _run_selftest(deck, notes, backend="klayout"):
                       eng.run(deck, layout, top=cell, report=path)["rules"].items()}
                for cell, path in reports.items()}
     result["files"].update(layout=layout, report=report)
+    # a marker in no case's tile is a rule reporting where nothing was drawn for it
+    tiles = {}
+    for c in expect["cases"]:
+        tiles.setdefault(c.get("cell", "CASES"), []).append([v / 1000.0 for v in c["tile"]])
+    stray = {}
+    for cell, found in markers.items():
+        for rule, boxes in found.items():
+            n = sum(1 for b in boxes if not any(x0 <= (b[0] + b[2]) / 2 <= x1 and y0 <= (b[1] + b[3]) / 2 <= y1
+                                                for x0, y0, x1, y1 in tiles.get(cell, [])))
+            if n:
+                stray[rule] = stray.get(rule, 0) + n
+    result["stray"] = stray
+    if stray:
+        result["notes"].append("reported outside every test case: "
+                               + ", ".join(f"{r} ({n})" for r, n in sorted(stray.items())))
     for c in expect["cases"]:
         x0, y0, x1, y1 = (v / 1000.0 for v in c["tile"])
         flagged = any(x0 <= (b[0] + b[2]) / 2 <= x1 and y0 <= (b[1] + b[3]) / 2 <= y1

@@ -971,6 +971,9 @@ layers together and a diode condition included), hole areas (rings are built) an
 lengths are generated. A rule the generator cannot build a case for is listed as such,
 never as passing.
 
+A marker that lies in no test case is counted against its rule and the rule is named
+("reported outside every test case"): it fires where nothing was drawn for it.
+
 **Backends are plugins.** `fastdrc backends` lists them: `klayout` (the deck), `docs`
 (sentences), `svg` (each rule's drawing as a picture, shapes named by their layer, one
 colour per layer across the deck), `facts`, `cases` (the test cases above). A backend may

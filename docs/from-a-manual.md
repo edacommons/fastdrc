@@ -169,6 +169,8 @@ Every constraint is tested on its own, on layouts made from the rule's picture: 
 (must not); a `match` with a violation just outside the filter (must *not* be
 reported — the filter filters) and just inside it. `-v` lists them. A rule that does
 not behave as drawn means the picture and its meaning disagree; fix the drawing.
+A rule that reports somewhere outside every test case is named too: it fires where
+nothing was drawn for it.
 A few kinds are not generated yet (antenna over several layers or with a diode, run
 lengths, corners, shapes with a hole); `-v` names them, and they need cases of your
 own, as below.
