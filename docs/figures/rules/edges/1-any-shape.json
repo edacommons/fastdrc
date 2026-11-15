@@ -1,0 +1,70 @@
+{
+ "name": "1-any-shape",
+ "desc": "No straight edge: any shape of the layer",
+ "shapes": [
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      14,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      14,
+      0
+     ],
+     "end": [
+      14,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_2",
+     "start": [
+      14,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "A.layer == metal"
+  },
+  {
+   "kind": "check",
+   "expr": "A.area >= 0.1"
+  }
+ ]
+}

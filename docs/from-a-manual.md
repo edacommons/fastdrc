@@ -51,12 +51,24 @@ sections: wells, devices, metal.
 
 - A **shape** is an example of a layer: `NA.layer == nwell`. Its size on the page means
   nothing; only how shapes lie relative to each other does (inside, across, apart).
-- An **arrow** between two edges is a distance. The rule gives it a number.
+- An **edge** is drawn **straight** or **wavy**, and that is what turns a picture into
+  a rule. A straight edge is one the rule uses: it is measured, or its length or
+  corner matters. A wavy edge says "nothing is asked of this side — the shape goes
+  on, or ends, as it likes". In the editor, double-click an edge to switch it.
+- An **arrow** between two straight edges is a distance. The rule gives it a number.
+  An arrow that ends on a wavy edge is a **link**: it measures nothing and says how
+  the two shapes lie ("the diffusion *inside* the well").
 - Names the manual uses for combinations go in the process's **legend** once
   (`pdiff = diff and pimp`) and are then drawn like any layer.
 - A table with a value per column (thin / thick oxide, 3.3 V / 5 V) is the deck's
   `"columns"` plus `"values"` on the rule, with `?` where the number goes: one rule
   file, one rule per column in the deck.
+
+The same rectangle, four meanings — only the kind of its edges differs:
+
+| ![any shape](img/edges/1-any-shape.svg) | ![a wire](img/edges/2-wire.svg) | ![a wire's end](img/edges/3-line-end.svg) | ![a link](img/edges/4-link.svg) |
+|---|---|---|---|
+| **no straight edge** — any shape of the layer: *metal must be at least 0.1 µm² in area* | **two straight sides** — a wire of any length: *metal must be at least 0.3 µm wide* | **the cap straight too** — the wire's end: *the end-of-line edge of a narrow metal wire must enclose via by at least 0.06 µm* | **an arrow to a wavy edge** — a link: *diff that lies inside well must be at least 0.4 µm wide* |
 
 ## 3. Say what the manual says
 
@@ -82,6 +94,17 @@ which shapes the rule is about.
 | share of a plate's area | `check  S.area >= 0.06 * P.area`, S drawn inside P | (see the reference) |
 | abutting shapes are fine everywhere | `"touching": "allowed"` in `process.json` | (see the reference) |
 | must not exist / must not straddle | a cross on the shape or on the arrow | (see the reference) |
+
+Four of the example's rules, each as it is drawn, what is written on it, and the
+sentence the compiler reads back:
+
+| ![PO.2](img/demo/PO.2.svg) | ![CO.4](img/demo/CO.4.svg) | ![V1.2](img/demo/V1.2.svg) | ![LU.1](img/demo/LU.1.svg) |
+|---|---|---|---|
+| **PO.2** `check Xp >= 0.2` | **CO.4** `match ka_0.length == ka_1.length`, `check Ek >= 0.1` | **V1.2** `match Ww >= 2`, `check Count(VW) >= 2` | **LU.1** `check Sl <= 20` |
+| *poly must extend at least 0.2 µm beyond diff* | *diff must enclose square cont by at least 0.1 µm* | *every met1 at least 2 µm wide must hold at least 2 via1* | *every part of pdiff combined with nwell must be within 20 µm of ndiff combined with nwell* |
+
+The figures are made from the rule files by the `svg` backend
+(`fastdrc build examples/demo --with svg` writes one per rule).
 
 **Nets.** Rules about nets need to know how layers connect: which layers are one net
 where they touch. That is said once for the deck, in `process.json`:

@@ -28,3 +28,4 @@ venv/
 .doit.db
 # a process's generated deck and rule text
 examples/*/build/
+docs/figures/build/

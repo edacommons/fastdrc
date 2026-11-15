@@ -48,6 +48,24 @@ the one or two things the manual says about it (`W >= 0.8`, `A.net != B.net`,
 `Count(V) >= 2`). You do *not* write `.and` / `.not` / `.inside`: the compiler reads
 what lies inside, across or beside what off the drawing and derives the operations.
 
+| ![PO.2](docs/img/demo/PO.2.svg) | ![V1.2](docs/img/demo/V1.2.svg) | ![LU.1](docs/img/demo/LU.1.svg) |
+|---|---|---|
+| `Xp >= 0.2` | `Ww >= 2` (which metal), `Count(VW) >= 2` | `Sl <= 20` |
+| *poly must extend at least 0.2 µm beyond diff* | *every met1 at least 2 µm wide must hold at least 2 via1* | *every part of pdiff combined with nwell must be within 20 µm of ndiff combined with nwell* |
+| `poly.enclosing(diff, 0.2.um, euclidian)` | `met1.sized(-0.999.um).sized(0.999.um).not_interacting(via1, 2)` | `pdiff.and(nwell).not(ndiff.and(nwell).sized(20.um))` |
+
+Three rules of the example deck: the drawing, what is written on it, the sentence read
+back from it, and the KLayout statement it compiles to.
+
+**Straight and wavy edges.** Every edge of a drawn shape is one or the other, and this
+is what makes a picture a rule and not a fixed pattern. A **straight** edge is one the
+rule uses — it is measured, or its length or corner matters. A **wavy** edge asks
+nothing of that side: the shape goes on, or ends, as it likes. The same rectangle:
+
+| ![any shape](docs/img/edges/1-any-shape.svg) | ![a wire](docs/img/edges/2-wire.svg) | ![a wire's end](docs/img/edges/3-line-end.svg) | ![a link](docs/img/edges/4-link.svg) |
+|---|---|---|---|
+| no straight edge: **any shape** of the layer (a minimum area) | two straight sides: **a wire** of any length (a minimum width) | the cap straight too: **the wire's end** (an end-of-line enclosure) | an arrow that ends on a wavy edge is **a link**, not a distance: the diff *inside* the well |
+
 ```
 fastdrc init mydeck             # a deck is a folder: process.json + rules/<section>/<rule>.json
 fastdrc gui mydeck              # draw the rules: one rule, one file, one drawing
@@ -104,6 +122,7 @@ tools/compare_reports.py          two DRC runs of one layout, compared rule by r
 tools/cells_in_a_row.rb           a cell library laid out flat, to try a deck on
 tools/perturb_layout.rb           random small errors put into a layout
 tools/tidy_drawings.py            a deck's drawings redrawn neatly, their meaning unchanged
+tools/doc_figures.py              the docs' figures, drawn from the rule files (--check: are they current?)
 ```
 
 The other `tools/` scripts validate the compiler against a reference deck and a
@@ -115,6 +134,7 @@ drawn-rule corpus read from `docs/gf180mcu/`, which is not part of this reposito
 python/fastdrc/    the Python package: the rule compiler, its backends, the editor
 examples/demo/     a complete deck for an invented process, with every kind of rule
 docs/              the tutorial (from-a-manual.md) and the reference (drawing-model.md)
+docs/img/          the docs' figures, drawn from rule files by tools/doc_figures.py
 tools/             validation of the compiler against a reference deck
 tests/             pytest
 ```

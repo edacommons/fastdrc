@@ -45,6 +45,15 @@ Every shape is a closed loop of edges. Each edge is one of:
   reads as "any polygon". A wavy edge does **not** mean the shape is unbounded — it
   means *this edge's geometry is unspecified*.
 
+The same rectangle, four meanings — only the kind of its edges differs:
+
+| ![any shape](img/edges/1-any-shape.svg) | ![a wire](img/edges/2-wire.svg) | ![a wire's end](img/edges/3-line-end.svg) | ![a link](img/edges/4-link.svg) |
+|---|---|---|---|
+| **No straight edge**: any shape of the layer. `A.area >= 0.1` → *metal must be at least 0.1 µm² in area.* | **Two straight sides**: a wire, as long as it likes. `W >= 0.3` → *metal must be at least 0.3 µm wide.* | **The cap straight as well**: this is the wire's *end*; the far end stays wavy. → *the end-of-line edge of a narrow metal wire must enclose via by at least 0.06 µm.* | **An arrow ending on wavy edges** (`IN`) is not a distance but a relation: → *diff that lies inside well must be at least 0.4 µm wide.* |
+
+These four are the rule files in [`docs/figures/`](figures); every figure in this
+document is drawn by the `svg` backend from a rule file (`tools/doc_figures.py`).
+
 > A min-width rule is **not** a fixed box — it's a *wire*: two parallel **straight**
 > edges the width `W` apart, **wavy** in the other direction (any length).
 
@@ -105,12 +114,22 @@ Each entry: **what you draw** → **what the compiler derives** (the `→` is th
 compiler's output, not anything you draw — see the box above).
 
 ### Min width
+
+![NW.1](img/demo/NW.1.svg)
+
+`examples/demo`, NW.1 — `Wn >= 0.8`: *nwell must be at least 0.8 µm wide.*
+
 One rect (a wire). The two parallel edges that define the width are **straight**;
 the other two are **wavy**. A measure `W` between the straight edges.
 `A.layer == metal1` (match), `W >= 0.28` (check).
 → `metal1.width(0.28)`
 
 ### Min space (same layer)
+
+![NW.2](img/demo/NW.2.svg)
+
+`examples/demo`, NW.2 — `Sn >= 1.0`: *any two shapes of nwell must be at least 1 µm apart.*
+
 Two rects of the **same** layer, side by side. The two **facing** edges are
 straight; a measure `S` across the gap.
 `A.layer == metal1`, `B.layer == metal1`, `S >= 0.28`.
@@ -121,6 +140,11 @@ Same as space, but `B` is a **different** layer.
 → `metal1.separation(comp, 0.28)`
 
 ### Enclosure
+
+![CO.4](img/demo/CO.4.svg)
+
+`examples/demo`, CO.4 — `Ek >= 0.1`: *diff must enclose square cont by at least 0.1 µm.*
+
 An **inner** rect inside an **outer** rect. A measure `E` from the outer edge to
 the matching inner edge (the margin).
 → `outer.enclosing(inner, 0.22)`
@@ -128,6 +152,11 @@ the matching inner edge (the margin).
 (When the inner one only *crosses* the outer, see *Extension / overhang / end cap*.)
 
 ### Extension / overhang / end cap (one layer crossing another)
+
+![PO.2](img/demo/PO.2.svg)
+
+`examples/demo`, PO.2 — `Xp >= 0.2`: *poly must extend at least 0.2 µm beyond diff.*
+
 "Poly2 must extend 0.22 beyond COMP", "COMP must extend 0.24 beyond the gate",
 "salicide block must extend beyond unsalicided poly": draw the two layers the way
 they sit — a **bar** and a **band crossing it** — and **one measure** from the edge
@@ -159,6 +188,11 @@ A context **linked** to either shape still filters that shape
 (`sab.outside(otp_mk).enclosing(poly2, 0.22)`).
 
 ### Min area
+
+![1-any-shape](img/edges/1-any-shape.svg)
+
+`docs/figures`, 1-any-shape — `A.area >= 0.1`: *metal must be at least 0.1 µm² in area.*
+
 One closed rect with **all edges wavy** — it stands for "any polygon"; only the
 total area is constrained, no edge is measured. `A.area >= 0.2025`.
 → `comp.with_area(nil, 0.2025)`
@@ -233,6 +267,11 @@ set is the union of its layers (`.not_interacting(dualgate.or(v5_xtor))`).
 > cut out (remove); all wavy = a domain marker (filter).
 
 ### Restrict the subject by a relationship to another layer
+
+![4-link](img/edges/4-link.svg)
+
+`docs/figures`, 4-link — `W >= 0.4` and the link `IN`: *diff that lies inside well must be at least 0.4 µm wide.*
+
 Draw a **context shape** of that other layer and a **link** from the subject to it:
 a measure drawn to a wavy edge. A link is not a distance, so it needs **no
 constraint** (an old-style `G >= 0` on it is accepted and adds nothing). The *relation* you draw is what the compiler reads — it derives the
@@ -377,6 +416,11 @@ A length filter usually qualifies another rule (an end-of-line, below). A rule t
 has only filters and no check flags what the filters select.
 
 ### End-of-line (a wire end)
+
+![3-line-end](img/edges/3-line-end.svg)
+
+`docs/figures`, 3-line-end — filters `line_0.length <= 0.34`, `line_1.length >= 0.28`, check `R >= 0.06`.
+
 A min-width wire is *two straight sides + wavy ends*. An **end-of-line** rule is that
 same wire with **one end made real**: draw the **cap** (the short end edge) **straight**
 while the *other* end stays **wavy** ("the wire continues"), keep the two sides straight,
@@ -406,6 +450,11 @@ is a violation. Draw the layer with a straight edge and the check `e.length == 0
 → `contact.edges.without_length(0.22).extended(0, 0, 0.001, 0.001)`
 
 ### Shape class — squares and bars (comparing two sides)
+
+![CO.1](img/demo/CO.1.svg)
+
+`examples/demo`, CO.1 — filter `ka_0.length == ka_1.length`, check `ka_0.length == 0.2`: *every square cont edge must be exactly 0.2 µm long.*
+
 Manuals often split one layer by the *kind* of shape: "contact" is the square one,
 "contact bar" the long one, each with its own rules. Say it the way the figure does —
 by how two **sides of the same shape** compare. It is a filter (`match`), so it narrows
@@ -429,6 +478,11 @@ Written as a **`check`**, the comparison is the rule itself: `k0.length == k1.le
 means "must be square" and flags `layer.non_squares`.
 
 ### Nets — "different potential", "same net"
+
+![NW.3](img/demo/NW.3.svg)
+
+`examples/demo`, NW.3 — filter `NA.net != NB.net`, check `Sn >= 2.0`: *any two shapes of nwell must be at least 2 µm apart where the two are on different nets.*
+
 Some spacings depend on whether the two shapes are electrically connected. Say it as a
 filter between the two measured shapes:
 
@@ -453,6 +507,11 @@ A well with no tap at all is a net of its own. `fastdrc rules` warns if a rule s
 of nets and no `connect` list is given.
 
 ### Counts — "must contain exactly n"
+
+![V1.2](img/demo/V1.2.svg)
+
+`examples/demo`, V1.2 — filter `Ww >= 2`, check `Count(VW) >= 2`: *every met1 at least 2 µm wide must hold at least 2 via1.*
+
 `Count(K)` is the one function in a constraint: how many shapes of K's layer a shape
 holds. *Which* shape is read from the picture — the one K is drawn in. Draw the pad
 with one via in it and write:
@@ -483,6 +542,11 @@ This is by *containment*, read from the drawing. Two shapes joined by connection
 (nets) with the same kind of constraint are an antenna rule, next.
 
 ### Antenna ratio — area collected per connected gate area
+
+![AN.1](img/demo/AN.1.svg)
+
+`examples/demo`, AN.1 — `MP.area <= 400 * GA.area`: *the area of met1 connected to gate must be at most 400 times the area of that gate.*
+
 During processing a conductor collects charge that can only leave through the gates
 it is connected to. Draw the gate and the conductor connected to it (through the drawn
 stack, see nets above) and bound one area by the other:
@@ -505,6 +569,11 @@ Two refinements, both read from the same picture:
 | a `match` on another connected shape: `D.area < 0.16` / `D.area >= 0.16` | only nets *without* / *with* that much of it — a protection diode | the same, with the condition on the finished stack |
 
 ### Density — how much of an area a layer covers
+
+![DN.2](img/demo/DN.2.svg)
+
+`examples/demo`, DN.2 — `MN.density <= 0.9`, the window given a side and a step: *met1 must cover at most 90 % of every 100 × 100 µm window (stepped by 50 µm) of chip.*
+
 Draw the material and say how much of the area it must cover:
 `M.density >= 0.35`, `M.density <= 0.6` (a fraction, or a percentage: `>= 35`). Where
 the density is taken is read from the picture:
@@ -523,6 +592,11 @@ measured window by window (KLayout's own tiling returns nothing for a single row
 once, at the top.
 
 ### "On one of two adjacent sides" — either of two arrows is enough
+
+![V1.1](img/demo/V1.1.svg)
+
+`examples/demo`, V1.1 — `Ea >= 0.1 or Eb >= 0.1`: *met1 must enclose via1 by at least 0.1 µm on at least one of any two adjacent sides.*
+
 Via and contact enclosures are often stated per side: *enclosed by 0.06 on one of two
 adjacent sides* (equivalently: on two opposite sides), the *endcap* enclosure. Draw the
 inner shape near a corner of the outer one, an arrow on each of two **adjacent** sides,
@@ -545,6 +619,11 @@ Sy >= v`. (`E >= v or E == 0` on a *single* arrow is something else: coinciding 
 are allowed.)
 
 ### Arrays — "spacing in an N × N or larger array"
+
+![CO.3](img/demo/CO.3.svg)
+
+`examples/demo`, CO.3 — `Sk >= 0.3 or Sk2 >= 0.3`, each contact filtered to arrays of 4 × 4 or more.
+
 Draw two neighbours of the array with the spacing arrow and its check, and say with a
 filter on each that it sits in an array: `match K.rows >= 4 and K.columns >= 4`
 (`> 4` for "more than 4"). Two more filters make it exact, both read off the same
