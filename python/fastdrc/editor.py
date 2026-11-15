@@ -187,7 +187,14 @@ def format_layers(d):
 
 
 def parse_values(text):
-    """`3.3V=0.22, 5V=0.3` -> {"3.3V": 0.22, "5V": 0.3}"""
+    """`3.3V=0.22, 5V=0.3` -> {"3.3V": 0.22, "5V": 0.3}; a switch on a parameter is written
+    as it is in the file: {"switch": ..., "cases": {...}}"""
+    if text.strip().startswith("{"):
+        import json
+        try:
+            return json.loads(text)
+        except ValueError:
+            return {}
     out = {}
     for part in text.split(","):
         if "=" in part:
@@ -200,6 +207,10 @@ def parse_values(text):
 
 
 def format_values(d):
+    from .params import has_switch
+    if d is not None and (not isinstance(d, dict) or has_switch(d)):   # depends on a parameter of the deck
+        import json
+        return json.dumps(d)
     return ", ".join(f"{k}={v:g}" for k, v in (d or {}).items())
 
 
@@ -1723,6 +1734,9 @@ class Editor:
         if not c:
             return data
         d = dict(data)
+        if c.get("values") is not None:                    # as the deck's default parameters make it
+            from . import process
+            d, _ = process.settled_rule(d, c["values"], c.get("gone", ()))
         if c.get("legend") or d.get("layers"):
             d["layers"] = {**c.get("legend", {}), **(d.get("layers") or {})}
         if c.get("columns") or d.get("domains"):
@@ -1739,8 +1753,9 @@ class Editor:
         self._ctx = {}
         if folder:
             try:
-                proc, sheets = process.load(folder)
-                self._ctx = {"legend": proc.get("legend") or {}, "columns": proc.get("columns") or {},
+                proc, sheets = process.load(folder, absent=True)
+                self._ctx = {"values": proc.get("_values") or {},
+                             "legend": proc.get("legend") or {}, "columns": proc.get("columns") or {},
                              "layers": {k: tuple(v) for k, v in (proc.get("layers") or {}).items()},
                              "connect": next((d["connect"] for _, d in sheets if d.get("connect")), [])}
                 self._proc_files = [p for p, _ in sheets]
@@ -1936,8 +1951,10 @@ class Editor:
         row("Name", "the process", proc.get("name", ""), 1)
         row("Layers", "one per line:  name  gds-layer/datatype      e.g.  nwell 1/0",
             format_layers(proc.get("layers")), 10)
-        row("Legend", "names for combinations, one per line:  pdiff = diff and pimp",
-            "\n".join(f"{k} = {v}" for k, v in (proc.get("legend") or {}).items()), 5)
+        by_parameter = [k for k, v in (proc.get("legend") or {}).items() if not isinstance(v, str)]
+        row("Legend", "names for combinations, one per line:  pdiff = diff and pimp"
+            + (f"\n(kept as they are, set by a parameter of the deck: {', '.join(by_parameter)})" if by_parameter else ""),
+            "\n".join(f"{k} = {v}" for k, v in (proc.get("legend") or {}).items() if isinstance(v, str)), 5)
         row("Columns", "a table's columns, one per line:  thin: not_interacting thick",
             "\n".join(f"{k}: " + ", ".join(f"{op} {layer}" for op, layer in v)
                       for k, v in (proc.get("columns") or {}).items()), 3)
@@ -1969,6 +1986,9 @@ class Editor:
         new["name"] = name
         new["layers"] = parse_layers(layers)
         new["legend"] = parse_legend(legend.replace("\n", ";"))
+        # a name that a parameter of the deck decides is not text in the window: it stays
+        new["legend"].update({k: v for k, v in ((old or {}).get("legend") or {}).items()
+                              if not isinstance(v, str) and k not in new["legend"]})
         new["columns"] = parse_columns(columns.replace("\n", "|"))
         return new
 

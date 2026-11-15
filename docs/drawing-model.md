@@ -892,6 +892,49 @@ them: `"columns": ["3.3V", "5V"]`.
 **A note** — "this rule does not apply inside OTP_MK" — is `"except": ["otp_mk"]` on
 the rule, instead of a cutout drawn into every shape.
 
+**The options of a process — parameters.** A column is chosen shape by shape, by a
+marker in the layout. An option — how many metals, how thick the top one, which
+capacitor — is chosen **once for a chip**. Name the options in `process.json`:
+
+```json
+"parameters": {
+  "metal_stack": {"choices": ["5LM", "6LM"], "default": "6LM"},
+  "top_metal":   {"choices": ["6K", "9K", "30K"], "default": "9K"},
+  "thick_top":   {"switch": "top_metal", "cases": {"30K": true}, "default": false}
+},
+"profiles": {"thick-5": {"metal_stack": "5LM", "top_metal": "30K"}}
+```
+
+A parameter is defined **once**: it is either *chosen* (it lists its choices) or
+*derived* (a switch on another parameter). Nothing sets or clears it anywhere else, so
+what a parameter is can be read in one place; parameters defined by each other are
+refused. A **profile** is a named set of choices.
+
+Wherever a value stands, a **switch** on a parameter may stand instead — the case of
+the parameter's value, else the `default`, else nothing:
+
+| where | written | means |
+|---|---|---|
+| a rule's value (`?` in its constraint) | `"value": {"switch": "top_metal", "cases": {"6K": 0.36, "9K": 0.44}}` | 0.36 or 0.44; with the 30K metal the rule gives no value, so it is **not in the deck** |
+| a value of one column | `"values": {"3.3V": {"switch": …}, "5V": 0.3}` | a column with no value is left out |
+| whether a rule is there | `"when": {"switch": "top_metal", "cases": {"30K": true}, "default": false}` | the rules of the thick metal only |
+| a legend name | `"top_via": {"switch": "metal_stack", "cases": {"5LM": "via4", "6LM": "via5"}}` | draw `top_via`; the stack says which layer it is |
+
+A case may itself be a switch (a value that depends on two parameters). A rule drawn
+on a legend name that comes out as nothing is not in the deck either. The drawing does
+not change: the same picture, built for one choice —
+
+```
+fastdrc parameters mydeck                      # the parameters, their choices, the profiles
+fastdrc build mydeck --profile thick-5         # a profile
+fastdrc check chip.gds mydeck --set top_metal=6K   # one parameter; the rest as by default
+```
+
+Everything is settled when the deck is built: the script is the deck of that choice
+(its first lines say which), fitted to it like any other set of rules. In the editor a
+rule is shown as the default choice makes it; a switch in a rule's values is shown, and
+kept, as it is written.
+
 **Sheets (older files).** For a while a file could hold one drawn scene with several
 rules on it (a "sheet"). Such files are still read, but a shape drawn for one rule
 could silently become part of another, so they are not the way to work:

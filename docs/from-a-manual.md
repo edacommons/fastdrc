@@ -93,6 +93,7 @@ which shapes the rule is about.
 | area per connected gate area | `check  M.area <= 400 * G.area` | AN.1 |
 | share of a plate's area | `check  S.area >= 0.06 * P.area`, S drawn inside P | (see the reference) |
 | abutting shapes are fine everywhere | `"touching": "allowed"` in `process.json` | (see the reference) |
+| an option of the process — metal stack, thick top metal ("for the 3 µm top metal: …") | `"parameters"` in `process.json`; in the rule a switch on one: `"value": {"switch": "top_metal", "cases": {...}}`, or `"when"` | built with `--profile` / `--set top_metal=30K` |
 | must not exist / must not straddle | a cross on the shape or on the arrow | (see the reference) |
 
 Four of the example's rules, each as it is drawn, what is written on it, and the

@@ -26,7 +26,7 @@ LO, HI = 4, 6
 
 def reading(data, ctx):
     proc, layermap = ctx
-    d = copy.deepcopy(data)
+    d, _ = process.settled_rule(copy.deepcopy(data), proc.get("_values") or {})
     d.setdefault("layers", {}); d["layers"] = {**(proc.get("legend") or {}), **d["layers"]}
     if proc.get("columns") and "domains" not in d: d["domains"] = proc["columns"]
     if proc.get("connect") and "connect" not in d: d["connect"] = proc["connect"]

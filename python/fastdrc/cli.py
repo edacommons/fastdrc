@@ -64,7 +64,7 @@ def _set(args):
     except KeyError as ex:
         raise SystemExit(f"fastdrc: {ex.args[0]}")
     return {"only": args.only, "skip": args.skip, "optimise": not args.no_optimise, "backend": args.backend,
-            "deep": args.deep}
+            "deep": args.deep, "profile": args.profile, "params": args.set}
 
 
 def _set_options(p):
@@ -77,6 +77,10 @@ def _set_options(p):
     p.add_argument("--deep", action="store_true",
                    help="work on the layout's hierarchy (KLayout's deep mode): a cell is checked once however "
                         "often it is placed, and a violation is reported once, in the cell it lies in")
+    p.add_argument("--profile", metavar="NAME",
+                   help="build for this profile of the deck's parameters (see `fastdrc parameters DECK`)")
+    p.add_argument("--set", action="append", metavar="NAME=VALUE",
+                   help="choose one parameter of the deck (top_metal=30K); comma-separated or repeated")
     p.add_argument("--backend", default="klayout", metavar="NAME",
                    help="the backend that compiles the deck and runs it (default: klayout; see `fastdrc backends`)")
 
@@ -211,9 +215,43 @@ def main(argv=None):
         "gui", help="Launch the visual rule editor (Tkinter).")
     gui_p.add_argument("file", nargs="?", help="optional rule .json, or a deck (folder or .zip), to open")
 
+    par_p = sub.add_parser(
+        "parameters", help="List a deck's parameters (what is chosen once for a chip), their choices and its profiles.")
+    par_p.add_argument("process", nargs="?", default=".", help="deck folder or .zip (default: here)")
+
     args = parser.parse_args(argv)
+    from .params import ParameterError
+    try:
+        return _run(args)
+    except ParameterError as ex:
+        raise SystemExit(f"fastdrc: {ex}")
+
+
+def _parameters(args):
+    """`fastdrc parameters`: what can be chosen for this deck."""
+    from . import params, process
+    proc, _ = process.load(args.process)
+    defs = proc.get("parameters") or {}
+    if not defs:
+        print("this deck has no parameters")
+        return 0
+    for name, d in defs.items():
+        if "choices" in d:
+            now = params._key(proc["_values"][name])
+            print(f"  {name:14} " + "  ".join(f"[{params._key(c)}]" if params._key(c) == now else params._key(c) for c in d["choices"]))
+        else:
+            print(f"  {name:14} = {params._key(proc['_values'][name])}   (from {d.get('switch')})")
+    for name, picks in (proc.get("profiles") or {}).items():
+        print(f"  profile {name}: " + ", ".join(f"{k} = {params._key(v)}" for k, v in picks.items()))
+    print("choose with --profile NAME or --set name=value; [the default]")
+    return 0
+
+
+def _run(args):
     if args.command == "rules":
         return _compile_rules(args)
+    elif args.command == "parameters":
+        return _parameters(args)
     elif args.command == "init":
         from fastdrc import process
         made = process.init(args.process, args.name)

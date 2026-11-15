@@ -19,6 +19,8 @@ hand.
      "columns": {"thin": [["not_interacting", "thick"]], ...},  the table columns (domains)
      "each":    {"metalint": ["metal2", "metal3"]},             families a rule is repeated for
      "touching": "allowed",                                     abutting shapes never violate a minimum distance
+     "parameters": {"top_metal": {"choices": ["9K", "30K"]}},   what is chosen once for a chip (see `params`)
+     "profiles": {"thick": {"top_metal": "30K"}},               named sets of choices
      "connect": [["nwell", "ndiff"], ...]}                      optional; or draw the stack
 
 A sheet may still carry its own legend / columns / connections; the process supplies
@@ -36,6 +38,7 @@ import shutil
 import tempfile
 import zipfile
 
+from . import params as _params
 from .rule import Rule
 from .sheet import rules_of, sheet_warnings
 
@@ -180,23 +183,77 @@ def rule_files(folder) -> list:
     return out
 
 
-def load(folder):
+def settled_rule(data, values, gone=()):
+    """One rule file with its switches settled for the parameter `values`:
+    ``(rule, is it in the deck)``. A rule is not in the deck when its ``"when"`` is
+    false, when its value comes out as nothing, or when it is drawn on a legend name
+    the process does not have with these parameters (`gone`)."""
+    import re
+    d = _params.settle(data, values)
+    present = True
+    if "when" in d:
+        present = bool(d.pop("when"))
+    single = [d.pop(k) for k in ("value",) if k in d]
+    if "values" in d and not isinstance(d["values"], dict):   # a switch that gave one number
+        single.append(d.pop("values"))
+    for v in single:
+        if v is None:
+            present = False
+        else:
+            d["constraints"] = [dict(c, expr=c.get("expr", "").replace("?", repr(v))) for c in d.get("constraints", [])]
+    if isinstance(d.get("values"), dict):
+        stated = {k: v for k, v in d["values"].items() if v is not None}
+        if d["values"] and not stated:
+            present = False
+        if stated:
+            d["values"] = stated
+        else:
+            d.pop("values")
+    if gone:
+        if d.get("except"):
+            d["except"] = [x for x in d["except"] if x not in gone]
+        said = " ".join(c.get("expr", "") for c in d.get("constraints", []))
+        if set(re.findall(r"[A-Za-z_]\w*", said)) & set(gone):
+            present = False
+    return d, present
+
+
+def load(folder, profile=None, params=None, absent=False):
     """``(process, [(path, sheet), ...])`` with the process's legend, columns and
     connections merged into every sheet (a sheet's own entries win). For a zipped
-    deck the paths read ``mydeck.zip/rules/...``."""
+    deck the paths read ``mydeck.zip/rules/...``.
+
+    A deck with parameters is loaded for ONE choice of them -- `profile` (a name from
+    its ``"profiles"``) and `params` (``{name: value}`` or ``["name=value"]``) over
+    the defaults: every switch is settled, and a rule that is not in the deck for that
+    choice is left out (`absent` keeps it in the list, marked ``"_absent"``). The
+    choice is ``process["_values"]``."""
     if is_zip(folder):
         with opened(folder) as tmp:
-            proc, merged = load(tmp)
+            proc, merged = load(tmp, profile, params, absent)
         return proc, [(os.path.join(folder, os.path.relpath(p, tmp)), d) for p, d in merged]
     proc = {}
     pf = os.path.join(folder, PROCESS_FILE)
     if os.path.isfile(pf):
         with open(pf) as f:
             proc = json.load(f)
+    values = _params.resolve(proc, profile, params)
+    kept = {k: proc[k] for k in ("parameters", "profiles") if k in proc}
+    proc = _params.settle({k: v for k, v in proc.items() if k not in kept}, values)
+    gone = {k for k, v in (proc.get("legend") or {}).items() if v is None}
+    if gone:                                     # names the process does not have with these parameters
+        proc["legend"] = {k: v for k, v in proc["legend"].items() if v is not None}
+    proc.update(kept, _values=values)
     sheets = []
     for p in rule_files(folder):
         with open(p) as f:
-            sheets.append((p, json.load(f)))
+            data = json.load(f)
+        if isinstance(data.get("rules"), list):  # an older sheet of several rules: its switches only
+            sheets.append((p, _params.settle(data, values)))
+            continue
+        data, present = settled_rule(data, values, gone)
+        if present or absent:
+            sheets.append((p, data if present else dict(data, _absent=True)))
     # A legend name means one thing in a process: names defined on any sheet are known
     # on all of them (the process's own legend first, a sheet's own definition last).
     shared = {}
@@ -376,7 +433,7 @@ def rules_and_warnings(sheets, only=None, skip=None):
 
 
 def build(folder, out_dir=None, extra=(), only=None, skip=None, optimise=True, backend="klayout",
-          deep=False):
+          deep=False, profile=None, params=None):
     """Compile a process: ``(deck path, text path, number of rules, warnings)``. `extra`
     names further backends (plugins) whose files are written beside the deck.
 
@@ -390,9 +447,11 @@ def build(folder, out_dir=None, extra=(), only=None, skip=None, optimise=True, b
 
     `deep`: the deck works on the layout's hierarchy where its backend can (KLayout's
     deep mode): a cell is checked once however often it is placed, and a violation is
-    reported once, in the cell it lies in. The same places are found as without it."""
+    reported once, in the cell it lies in. The same places are found as without it.
+
+    `profile`, `params`: the choice of the deck's parameters it is built for (see `load`)."""
     from .backend import get, runner
-    proc, sheets = load(folder)
+    proc, sheets = load(folder, profile, params)
     name = proc.get("name") or deck_name(folder)
     rules, notes = rules_and_warnings(sheets, only, skip)
     layermap = {k: tuple(v) for k, v in (proc.get("layers") or {}).items()}
@@ -400,6 +459,8 @@ def build(folder, out_dir=None, extra=(), only=None, skip=None, optimise=True, b
     deck = kl.compile_all(rules)
     notes += getattr(kl, "problems", [])
     about = []                                       # what this deck is, for its first lines
+    if _params.chosen(proc):
+        about.append("built for " + _params.said(proc["_values"], proc))
     if _patterns(only) or _patterns(skip):
         every = sum(len(rules_of(d)) for _, d in sheets)
         said = "; ".join(x for x in ("only " + ", ".join(_patterns(only)) if _patterns(only) else "",
@@ -434,7 +495,8 @@ def read_markers(path) -> dict:
             if any(boxes)}
 
 
-def selftest(folder, out_dir=None, only=None, skip=None, optimise=True, backend="klayout", deep=False):
+def selftest(folder, out_dir=None, only=None, skip=None, optimise=True, backend="klayout", deep=False,
+             profile=None, params=None):
     """Do the rules behave as drawn?  Builds the deck, generates test cases from the
     drawings (the ``cases`` backend), runs the deck on them with its backend, and compares.
 
@@ -443,7 +505,7 @@ def selftest(folder, out_dir=None, only=None, skip=None, optimise=True, backend=
     "not_generated": [(rule, why), ...], "stray": {rule: markers outside every test case},
     "notes": [...], "files": {...}}``."""
     deck, _, n, notes = build(folder, out_dir, extra=("cases",), only=only, skip=skip, optimise=optimise,
-                              backend=backend, deep=deep)
+                              backend=backend, deep=deep, profile=profile, params=params)
     return _run_selftest(deck, notes, backend)
 
 

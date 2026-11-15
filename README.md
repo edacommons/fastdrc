@@ -74,6 +74,7 @@ fastdrc selftest mydeck         # does every constraint of every rule behave as 
 fastdrc check chip.gds mydeck   # run the deck on a layout, list the violations per rule
 fastdrc check chip.gds mydeck --only "3-metal,NW.*"   # part of the deck: one script fitted to that set
 fastdrc check chip.gds mydeck --deep   # on the layout's hierarchy: a cell placed many times is checked once
+fastdrc check chip.gds mydeck --profile NAME    # a process with options (metal stack, ...): `fastdrc parameters mydeck`
 fastdrc pack mydeck             # -> mydeck.zip: the same deck in one file; every command and the editor take it
 ```
 
@@ -113,6 +114,7 @@ python/fastdrc/constraint.py      the constraint language (a Python-expression s
 python/fastdrc/rule.py            the analyzed-rule API the backends work against
 python/fastdrc/sheet.py           rule files: a value per table column, layer families (and older multi-rule sheets)
 python/fastdrc/process.py         a deck folder: build, check, self-test
+python/fastdrc/params.py          the parameters of a process (its options), profiles, and the switch that reads them
 python/fastdrc/backend.py         the backend registry and plugin discovery
 python/fastdrc/backend_klayout.py -> a KLayout DRC deck
 python/fastdrc/backend_docs.py    -> the rules as plain sentences
