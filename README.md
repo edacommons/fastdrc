@@ -15,6 +15,31 @@ the whole deck, or part of it — so what several rules need is computed once.
 > developed separately, on the `cpp-core` branch, to become a second backend; it is
 > not part of `main` and nothing here needs it.
 
+## Where it comes from
+
+FastDRC began as a DRC engine, and the name is from that. The idea: a deck is not a
+list of separate checks but one graph of operations — Boolean operations on layers,
+sizing, selections, and the checks at the ends. Over a whole deck most of that graph
+is shared, so each operation can be computed once, kept while something still needs
+it, and run in parallel with the others. That is what should make millions of checks
+fast.
+
+An engine needs the rules in a form it can reason about, so the work started there:
+how can a design rule be stated formally and still look like the page of the manual
+it comes from? That question grew into what is here now — rules drawn by example and
+a compiler that reads the drawing.
+
+A rule stated this way belongs to no tool. The drawing and its constraints say what
+the rule *is*; each backend turns that into something of its own — a KLayout script,
+the rule as a sentence, its figure, the test layouts that show whether a deck obeys
+it. The same description is meant to carry over to other checking tools as backends
+are written for them.
+
+The graph is already at work: the compiler builds one for the set of rules being run
+and writes the KLayout script from it, so what several rules need is computed once.
+The C++ core that will execute the graph itself is still in progress, on the
+`cpp-core` branch.
+
 ## Authoring rules by drawing
 
 You describe a rule the way a design manual does: **draw the shapes** of the layers in
@@ -119,3 +144,9 @@ pytest
 
 With [uv](https://docs.astral.sh/uv/): `uv sync` then `uv run pytest`. Tests that run a
 deck need [KLayout](https://www.klayout.de) and are skipped without it.
+
+## Licence
+
+FastDRC is released under the [Apache License 2.0](LICENSE); copyright 2026 Serge
+Rabyking. The licence covers the tool. A deck you compile from your own drawings is
+yours: the generated KLayout script, text and pictures carry no licence of FastDRC's.
