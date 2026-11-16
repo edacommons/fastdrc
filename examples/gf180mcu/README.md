@@ -14,11 +14,11 @@ manual:
 
 ## What is in it
 
-435 rule files in 28 sections (a rule with a value per column — 3.3 V and 5 V/6 V — is
+443 rule files in 28 sections (a rule with a value per column — 3.3 V and 5 V/6 V — is
 one file and one check per column). The section `Grid` holds what the manual says once
 for every layer: the manufacturing grid, 0.005 µm (`"grid"` in `process.json`, one check
 per layer), and "no acute angle" (one drawing, `ANGLE`, on the family `every_layer`).
-Built as it is by default — six metals, 9K top metal, MIM option B — that is 673 checks,
+Built as it is by default — six metals, 9K top metal, MIM option B — that is 680 checks,
 210 of them those two per layer.
 
 | sections | the manual's chapter |
@@ -53,8 +53,8 @@ deck; with no shapes on those layers they report nothing.
 ## How it was checked
 
 - **Against its own drawings.** `fastdrc selftest examples/gf180mcu` builds test layouts
-  from every rule's picture and runs the deck on them: of the default deck's 673 checks,
-  648 behave as drawn; `DE.3` and `O.PL.ORT` have no generated layout yet. The 23
+  from every rule's picture and runs the deck on them: of the default deck's 680 checks,
+  648 behave as drawn; `DE.3`, `O.PL.ORT` and the seven coverage rules (`PL.8`, `Mn.4`, `MT.3`) have no generated layout. The 23
   that do not are limits of the generated layouts, not of the rules: the end-of-line
   enclosures (`CO.6a`, `Vn.3c`, `Vn.4b`, and `MT30.6` with the 3 µm metal — the generated line end is shorter than
   it is wide), the rules that hold within 0.43 µm of a well edge (`NP.3bi`, `NP.5ci`,
@@ -119,7 +119,7 @@ deck; with no shapes on those layers they report nothing.
 ## Checked against the manual
 
 [`MANUAL_CHECK.md`](MANUAL_CHECK.md) lists every rule file with its row in the manual, whether its values are the
-manual's (compared by script for all 435), and whether the manual's figure for it has been read (32 so far). A
+manual's (compared by script for all but the 8 added since), and whether the manual's figure for it has been read (48 so far). A
 rule counts as checked only after that read.
 
 ## Not drawn

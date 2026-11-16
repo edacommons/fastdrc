@@ -1087,6 +1087,13 @@ class Rule:
             out.append((shape, lo, hi, window))
         return out
 
+    def density_strict(self, shape) -> tuple:
+        """``(more than, less than)``: is the density bound written ``>`` / ``<`` rather
+        than ``>=`` / ``<=``?  "Coverage shall be >30%" leaves exactly 30 % out."""
+        ops = {op for kind, ast in self.constraints if kind == "check"
+               for sh, op, _ in _attr_cmps(ast, ".density") if sh == shape}
+        return ">" in ops, "<" in ops
+
     def density_edges(self):
         """Edges of a density window whose exact length is the window SIZE."""
         wins = {w["shape"] for _, _, _, w in self.density_bounds() if w}

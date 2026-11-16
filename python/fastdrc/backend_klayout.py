@@ -842,8 +842,9 @@ end"""
             size = float(window["size"])
             return (f"out_of_density.call({layer}, {rng}, {area}, {size!r}, "
                     f"{float(window['step'] or size)!r})")
-        tests = ([f"{layer}.area < {f(lo)} * {area}.area"] if lo is not None else []) + (
-            [f"{layer}.area > {f(hi)} * {area}.area"] if hi is not None else [])
+        more, less = rule.density_strict(shape)            # "more than": exactly the value fails too
+        tests = ([f"{layer}.area {'<=' if more else '<'} {f(lo)} * {area}.area"] if lo is not None else []) + (
+            [f"{layer}.area {'>=' if less else '>'} {f(hi)} * {area}.area"] if hi is not None else [])
         return f"({' || '.join(tests)}) ? {area}.dup : polygon_layer"
 
     def _holding(self, layer, lo, hi, select, expr=None):

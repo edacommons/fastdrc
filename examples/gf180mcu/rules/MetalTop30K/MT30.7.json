@@ -1,0 +1,77 @@
+{
+ "name": "MT30.7",
+ "desc": "MT30.7 : Thick MetalTop coverage over the entire die shall be >30%.",
+ "shapes": [
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      6,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      6,
+      0
+     ],
+     "end": [
+      6,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_2",
+     "start": [
+      6,
+      6
+     ],
+     "end": [
+      0,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      0,
+      6
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "A.layer == metaltop"
+  },
+  {
+   "kind": "check",
+   "expr": "A.density > 30"
+  }
+ ],
+ "when": {
+  "switch": "top_metal",
+  "cases": {
+   "30K": true
+  },
+  "default": false
+ }
+}

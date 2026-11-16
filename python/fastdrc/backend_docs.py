@@ -181,6 +181,9 @@ class DocsBackend(Backend):
             pct = lambda x: f"{_fmt(round(x * 100, 6))} %"
             much = (f"between {pct(lo)} and {pct(hi)}" if lo is not None and hi is not None
                     else f"at least {pct(lo)}" if lo is not None else f"at most {pct(hi)}")
+            more, less = rule.density_strict(shape)
+            much = much.replace("at least", "more than") if more else much
+            much = much.replace("at most", "less than") if less else much
             area = (self._name(window["layer"]) if window and window["layer"] else "the layout")
             if window and window["size"] is not None:
                 sz = _fmt(window["size"])
