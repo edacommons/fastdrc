@@ -1,0 +1,83 @@
+{
+ "desc": "an LDPMOS finger: no ring. MDP.3c reports it: no part of the device is within 15 \u00b5m of a DNWELL tab (the process's own deck examines existing tabs only)",
+ "shapes": [
+  {
+   "layer": "ldmos_xtor",
+   "box": [
+    -8,
+    -8,
+    16,
+    18
+   ]
+  },
+  {
+   "layer": "dualgate",
+   "box": [
+    -7,
+    -7,
+    15,
+    17
+   ]
+  },
+  {
+   "layer": "dnwell",
+   "box": [
+    -6.5,
+    -6.5,
+    14.5,
+    16.5
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    0,
+    0,
+    3,
+    10
+   ]
+  },
+  {
+   "layer": "poly2",
+   "box": [
+    2,
+    -0.5,
+    3.2,
+    10.5
+   ]
+  },
+  {
+   "layer": "mvpsd",
+   "box": [
+    2.6,
+    -1,
+    7,
+    11
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    3.36,
+    0,
+    5.5,
+    10
+   ]
+  },
+  {
+   "layer": "pplus",
+   "box": [
+    -0.3,
+    -0.3,
+    5.8,
+    10.3
+   ]
+  }
+ ],
+ "reports": [
+  "DF.14",
+  "DN.3",
+  "MDP.3",
+  "MDP.3c"
+ ]
+}

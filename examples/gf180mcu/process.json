@@ -507,6 +507,26 @@
     "overlapping",
     "dualgate"
    ]
+  ],
+  "5Vonly": [
+   [
+    "overlapping",
+    "dualgate"
+   ],
+   [
+    "interacting",
+    "v5_xtor"
+   ]
+  ],
+  "6V": [
+   [
+    "overlapping",
+    "dualgate"
+   ],
+   [
+    "not_interacting",
+    "v5_xtor"
+   ]
   ]
  },
  "connect": [

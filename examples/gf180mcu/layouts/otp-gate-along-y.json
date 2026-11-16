@@ -1,0 +1,44 @@
+{
+ "desc": "OTP gate along y",
+ "shapes": [
+  {
+   "layer": "otp_mk",
+   "box": [
+    -3,
+    -3,
+    13,
+    9
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    0,
+    2,
+    10,
+    4
+   ]
+  },
+  {
+   "layer": "poly2",
+   "box": [
+    4,
+    0,
+    4.5,
+    6
+   ]
+  },
+  {
+   "layer": "nplus",
+   "box": [
+    -0.5,
+    1.5,
+    10.5,
+    4.5
+   ]
+  }
+ ],
+ "reports": [
+  "O.PL.ORT"
+ ]
+}

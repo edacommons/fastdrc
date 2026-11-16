@@ -166,7 +166,8 @@
   {
    "name": "E",
    "from": "nc_1",
-   "to": "k_1"
+   "to": "k_1",
+   "within": true
   },
   {
    "name": "BUTT",

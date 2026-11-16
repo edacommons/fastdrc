@@ -205,5 +205,8 @@
    "30K": true
   },
   "default": false
- }
+ },
+ "except": [
+  "guard_ring_mk"
+ ]
 }

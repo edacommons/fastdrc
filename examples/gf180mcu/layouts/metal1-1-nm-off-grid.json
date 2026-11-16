@@ -1,0 +1,17 @@
+{
+ "desc": "metal1 1 nm off grid",
+ "shapes": [
+  {
+   "layer": "metal1",
+   "box": [
+    0,
+    0,
+    2.001,
+    1
+   ]
+  }
+ ],
+ "reports": [
+  "GRID.metal1"
+ ]
+}

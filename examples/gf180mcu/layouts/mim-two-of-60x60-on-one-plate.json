@@ -1,0 +1,42 @@
+{
+ "desc": "MIM two of 60x60 on one plate",
+ "shapes": [
+  {
+   "layer": "metal5",
+   "box": [
+    0,
+    0,
+    250,
+    120
+   ]
+  },
+  {
+   "layer": "cap_mk",
+   "box": [
+    -2,
+    -2,
+    252,
+    122
+   ]
+  },
+  {
+   "layer": "fusetop",
+   "box": [
+    10,
+    10,
+    70,
+    70
+   ]
+  },
+  {
+   "layer": "fusetop",
+   "box": [
+    130,
+    10,
+    190,
+    70
+   ]
+  }
+ ],
+ "reports": []
+}

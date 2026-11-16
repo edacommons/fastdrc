@@ -1,6 +1,6 @@
 {
  "name": "PL.2n",
- "desc": "PL.2 : Gate Width (Channel Length), 5V NMOS.",
+ "desc": "PL.2 : Gate Width (Channel Length), 5V and 6V NMOS.",
  "shapes": [
   {
    "name": "IMP",
@@ -190,7 +190,8 @@
   }
  ],
  "values": {
-  "5V": 0.6
+  "5Vonly": 0.6,
+  "6V": 0.7
  },
  "except": [
   "otp_mk",

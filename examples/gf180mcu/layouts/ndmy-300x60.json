@@ -1,0 +1,15 @@
+{
+ "desc": "NDMY 300x60",
+ "shapes": [
+  {
+   "layer": "ndmy",
+   "box": [
+    0,
+    0,
+    300,
+    60
+   ]
+  }
+ ],
+ "reports": []
+}

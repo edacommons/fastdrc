@@ -1,0 +1,71 @@
+{
+ "desc": "well: 3.3V and 6V PMOS together",
+ "shapes": [
+  {
+   "layer": "nwell",
+   "box": [
+    -2,
+    -2,
+    22,
+    8
+   ]
+  },
+  {
+   "layer": "pplus",
+   "box": [
+    -1,
+    -1,
+    21,
+    7
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    0,
+    1,
+    6,
+    5
+   ]
+  },
+  {
+   "layer": "poly2",
+   "box": [
+    2.5,
+    0,
+    3.5,
+    6
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    12,
+    1,
+    18,
+    5
+   ]
+  },
+  {
+   "layer": "poly2",
+   "box": [
+    14.5,
+    0,
+    15.5,
+    6
+   ]
+  },
+  {
+   "layer": "dualgate",
+   "box": [
+    10,
+    -1.5,
+    20,
+    7.5
+   ]
+  }
+ ],
+ "reports": [
+  "DV.9"
+ ]
+}

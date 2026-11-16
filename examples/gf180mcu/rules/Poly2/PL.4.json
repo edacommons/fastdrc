@@ -113,7 +113,8 @@
   {
    "name": "E4",
    "from": "comp3",
-   "to": "g13"
+   "to": "g13",
+   "edges": true
   }
  ],
  "constraints": [
@@ -135,7 +136,6 @@
   "5V": 0.22
  },
  "except": [
-  "ldmos_xtor",
   "otp_mk",
   "ymtp_mk"
  ]

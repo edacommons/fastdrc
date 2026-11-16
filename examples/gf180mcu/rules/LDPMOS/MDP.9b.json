@@ -326,7 +326,8 @@
    "name": "E",
    "from": "cs_0",
    "to": "g_0",
-   "at": 22.0
+   "at": 22.0,
+   "edges": true
   }
  ],
  "constraints": [

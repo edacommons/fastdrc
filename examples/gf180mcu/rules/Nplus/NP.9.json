@@ -167,8 +167,7 @@
    "name": "E9",
    "from": "res2_2",
    "to": "n9_2",
-   "at": 10.0,
-   "within": true
+   "at": 10.0
   }
  ],
  "constraints": [

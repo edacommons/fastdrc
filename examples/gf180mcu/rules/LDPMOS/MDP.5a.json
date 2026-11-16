@@ -166,7 +166,8 @@
   {
    "name": "E",
    "from": "out_3",
-   "to": "in_3"
+   "to": "in_3",
+   "within": true
   }
  ],
  "constraints": [

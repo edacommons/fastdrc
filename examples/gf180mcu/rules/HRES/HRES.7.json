@@ -345,7 +345,8 @@
   {
    "name": "E",
    "from": "pp_3",
-   "to": "k_3"
+   "to": "k_3",
+   "within": true
   }
  ],
  "constraints": [
