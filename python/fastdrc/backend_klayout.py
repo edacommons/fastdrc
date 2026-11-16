@@ -1108,15 +1108,19 @@ end"""
         L = self._layer_var(rule.layer_of(sf))
         mt = m.get("metric") or self.metric
         lb = rule.length_spans()
-        weol, slen = f"{self._fmt(lb[cap][1])}.um", f"{self._fmt(lb[side][0])}.um"
+        weol = f"{self._fmt(lb[cap][1])}.um"
+        strict = rule.eol_strict(cap)                      # "narrower than w", or "at most w"
+        # an edge-length range leaves its upper end out: one database unit more keeps w itself
+        wcap = weol if strict else f"{self._fmt(round(lb[cap][1] + 0.001, 6))}.um"
         v = f"{self._fmt(next(b.value for b in rule.bounds() if b.var == var and b.is_min))}.um"
         rid = rule.name or f"{var}.eol"
         desc = rule.desc or rid
         res = self._result_var(rid, idx, total)
         cond, eol = f"{res}_cond", f"{res}_eol"            # the rule's own names: two such rules in one deck
-        self._checks.append(f"{cond} = {L}.drc(width <= {weol}).with_length({slen}, nil, both)")
+        long = f".with_length({self._fmt(lb[side][0])}.um, nil, both)" if side else ""   # sides at least so long
+        self._checks.append(f"{cond} = {L}.drc(width {'<' if strict else '<='} {weol}){long}")
         self._checks.append(
-            f"{eol} = {L}.edges.with_length(nil, {weol})"
+            f"{eol} = {L}.edges.with_length(nil, {wcap})"
             f".interacting({cond}.first_edges).interacting({cond}.second_edges)"
             f".not({cond}.first_edges).not({cond}.second_edges)")
         op = "enclosing" if rule.relation(sf, st) in ("contains", "inside") else "separation"

@@ -128,7 +128,7 @@
   },
   {
    "kind": "match",
-   "expr": "line_0.length <= 0.34"
+   "expr": "line_0.length < 0.34"
   },
   {
    "kind": "match",

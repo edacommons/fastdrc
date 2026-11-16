@@ -102,6 +102,8 @@ deck; with no shapes on those layers they report nothing.
     the process's deck lets them pass there (both report them by `SB.6`);
   - *not judged:* the two layouts with a drift region on both sides of the gate are not
     devices, and the decks disagree on several rules there.
+  The end-of-line rules read "narrower than" as the manual writes it (`<`), and `MT30.6`
+  looks at line ends of the thick metal narrower than 2.5 µm; the process's deck uses 0.34 there.
   On the real standard cells with 700 random edits `PL.4` still flags the same 141 places in
   both decks.
 - **Not shown yet:** the LDMOS, eFuse, resistor and MIM rules behave as their own drawings

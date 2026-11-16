@@ -898,9 +898,13 @@ class Rule:
                 continue
             side = next((s for s in (es[(i + 1) % 4], es[(i - 1) % 4])
                          if lb.get(s, (None, None))[0] is not None), None)
-            if side:
-                out.append((v, cap, side))
+            out.append((v, cap, side))                    # no length given for the sides: any line end
         return out
+
+    def eol_strict(self, cap) -> bool:
+        """Is the end-of-line width written ``<`` ("narrower than"), not ``<=``?"""
+        self.length_facts()
+        return any(op == "<" for (e, _, is_min), op in self._length_ops.items() if e == cap and not is_min)
 
     def checked_pairs(self):
         """``[(subject, operand, measure)]`` for everything the rule checks or flags: each
@@ -1000,7 +1004,7 @@ class Rule:
     def eol_edges(self):
         """The cap and side edges of every end-of-line construction: their length
         constraints QUALIFY the wire end (filters), they are not rules of their own."""
-        return {e for _, cap, side in self.eol_measures() for e in (cap, side)}
+        return {e for _, cap, side in self.eol_measures() for e in (cap, side) if e}
 
     def array_filters(self) -> dict:
         """``{shape: {"rows", "columns", "size", "gap"}}`` -- shapes a FILTER says sit in

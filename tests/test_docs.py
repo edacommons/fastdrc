@@ -72,10 +72,17 @@ def test_eol_construction():
                          {"kind": "check", "expr": "R >= 0.06"}]}
     drc = get("klayout", layermap={"metal1": (34, 0), "contact": (33, 0)}).compile(Rule(r))
     assert "metal1.drc(width <= 0.34.um).with_length(0.24.um, nil, both)" in drc
-    assert (".edges.with_length(nil, 0.34.um).interacting(co_6a_l1_cond.first_edges)"
+    # "at most 0.34": a cap of exactly 0.34 is one (the edge-length range leaves its upper end out)
+    assert (".edges.with_length(nil, 0.341.um).interacting(co_6a_l1_cond.first_edges)"
             ".interacting(co_6a_l1_cond.second_edges).not(co_6a_l1_cond.first_edges)"
             ".not(co_6a_l1_cond.second_edges)") in drc
     assert "co_6a_l1_eol.enclosing(contact.edges, 0.06.um, projection).polygons(0.001)" in drc
+    # "narrower than 0.34", and no length asked of the sides: any line end that narrow
+    r["constraints"][2]["expr"] = "a3.length < 0.34"
+    del r["constraints"][3]
+    drc = get("klayout", layermap={"metal1": (34, 0), "contact": (33, 0)}).compile(Rule(r))
+    assert "co_6a_l1_cond = metal1.drc(width < 0.34.um)\n" in drc and ".edges.with_length(nil, 0.34.um).interacting(" in drc
+    assert "(width < 0.34 µm)" in get("docs").compile(Rule(r))
     d = get("docs").compile(Rule(r))
     assert "end-of-line edge of a narrow metal1 wire" in d and "must enclose contact" in d
     # two such rules in one deck keep their helper layers apart (and the deck stays one graph)

@@ -272,8 +272,10 @@ class DocsBackend(Backend):
         verb = ("enclose" if rule.relation(sf, st) in ("contains", "inside")
                 else "be at least {} µm from".format(v))
         tail = f"{arg} by at least {v} µm" if verb == "enclose" else f"{arg}"
-        return (f"the end-of-line edge of a narrow {L} wire (width ≤ {_fmt(lb[cap][1])} µm, "
-                f"length ≥ {_fmt(lb[side][0])} µm) must {verb} {tail}.")
+        narrow = f"width {'<' if rule.eol_strict(cap) else '≤'} {_fmt(lb[cap][1])} µm"
+        if side:
+            narrow += f", length ≥ {_fmt(lb[side][0])} µm"
+        return f"the end-of-line edge of a narrow {L} wire ({narrow}) must {verb} {tail}."
 
     # --- the SAME analyzed view the KLayout backend formats, rendered in English ---
     def _deriv_en(self, rule, shape):       # single-shape derivation (area / angle / length)
