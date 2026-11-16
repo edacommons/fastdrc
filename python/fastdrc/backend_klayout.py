@@ -339,6 +339,18 @@ class KLayoutBackend(Backend):
                 a, b = self._fmt_deriv(over["outer"]), self._fmt_deriv(over["inner"])
                 core = {"extension": f"{a}.enclosing({b}, {v}.um, {mt})",
                         "overlap": f"{a}.overlap({b}, {v}.um, {mt})"}[over["kind"]]
+            elif m.get("edges") and sf != st and (rule.overlap_reading(var) or {}).get("kind") == "extension":
+                # an extension measured on EDGES: how far the outer layer reaches past
+                # those edges of the inner one that lie as the measured edge is drawn --
+                # across the outer's boundary (running out from under it), or wholly
+                # inside it
+                over = rule.overlap_reading(var)
+                consumed, scope_from = over["consumed"], over["outer_shape"]
+                a, b = self._fmt_deriv(over["outer"]), self._fmt_deriv(over["inner"])
+                mine = m["from"] if rule.shape_of_edge(m["from"]) == over["inner_shape"] else m["to"]
+                how = rule.edge_crosses(mine, over["outer_shape"])
+                pick = {"across": f".interacting({a}.edges)", "inside": f".not_interacting({a}.edges)"}.get(how, "")
+                core = f"{a}.edges.enclosing({b}.edges{pick}, {v}.um, {mt})"
             elif m.get("edges"):                           # gate-EDGE width/space/separation
                 if sf == st:
                     core = f"{edge_dl(sf)}.width({v}.um, {mt})"
@@ -346,7 +358,28 @@ class KLayoutBackend(Backend):
                     core = f"{edge_dl(sf)}.space({v}.um, {mt})"
                 elif rule.relation(sf, st) in ("inside", "contains"):   # the outer one's edges around the inner one's
                     o, i = (st, sf) if rule.relation(sf, st) == "inside" else (sf, st)
-                    core = f"{edge_dl(o)}.enclosing({edge_dl(i)}, {v}.um, {mt})"
+                    # WHICH edges of the outer one: those like the measured edge -- crossed
+                    # by a straight edge of another shape of the picture, or not
+                    mine = m["from"] if rule.shape_of_edge(m["from"]) == o else m["to"]
+                    kinds = rule.edge_kinds(mine, but=(sf, st))
+                    told = {c for c, _ in kinds}
+                    pick = "".join(f".{'interacting' if cut else 'not_interacting'}({self._layer_var(rule.layer_of(c))}.edges)"
+                                   for c, cut in kinds)
+                    if kinds:
+                        # the shapes that tell the edges apart are neither cut out of
+                        # the two regions nor a relation of theirs: they pick edges
+                        gone = {rule.layer_of(c) for c in told}
+
+                        def plain(shape):
+                            d = derivs[shape]
+                            keep = lambda xs: [x for x in xs if x[1]["base"] not in gone]   # noqa: E731
+                            return self._fmt_deriv(dict(d, nots=[n for n in d["nots"] if n not in gone],
+                                                        selections=keep(d["selections"]),
+                                                        pre_selections=keep(d.get("pre_selections", []))))
+                        consumed = consumed | told
+                        core = f"{plain(o)}.edges{pick}.enclosing({plain(i)}.edges, {v}.um, {mt})"
+                    else:
+                        core = f"{edge_dl(o)}.enclosing({edge_dl(i)}, {v}.um, {mt})"
                 else:
                     core = f"{edge_dl(sf)}.separation({edge_dl(st)}, {v}.um, {mt})"
             elif sf == st and "|" in (derivs[sf]["base"] or ""):
@@ -438,6 +471,15 @@ class KLayoutBackend(Backend):
             a, b = self._fmt_deriv(over["outer"]), self._fmt_deriv(over["inner"])
             hv, half = self._fmt(hi.value), self._fmt(hi.value / 2)
             body, v_scope = f"{a}.and({b}).sized(-{half}.um).sized({half}.um)", hv
+        elif not select and m.get("edges") and sf != st and rule.relation(sf, st) in ("disjoint", "outside", None):
+            # a maximum measured on EDGES: every edge of the shape the arrow starts at
+            # must have the other one facing it within reach -- the edges with none are
+            # the violation ("the tab at most 15 from the device's edge": from each edge)
+            hv = self._fmt(round(hi.value + 0.001, 6))
+            # straight across only: an edge beside the other shape's corner does not face it
+            near = f"{dl(sf)}.separation({dl(st)}, {hv}.um, projection, whole_edges).first_edges"
+            # (the very edges: one that only meets such an edge at a corner has none itself)
+            body, v_scope = f"{dl(sf)}.edges.not_in({near}).extended({self.EDGE_EXTEND})", self._fmt(hi.value)
         elif not select:                                   # MAX check -> flag what exceeds it
             subject, pred = self._drc_predicate(rule, sf, st, dl)
             if subject is None:
@@ -516,7 +558,7 @@ class KLayoutBackend(Backend):
                 self._layer_var(rule.layer_of(c)))
         gate = base + "".join(f".and({c})" for c in sorted(gate_covers))
         core = f"{base}.edges.and({gate}.edges)"
-        for r in sorted({self._layer_var(l) for c in rule.removed(shape)
+        for r in sorted({self._layer_var(l) for c in rule.removed(shape) if c not in measured
                          for l in rule.layer_of(c).split("|")}
                         | {self._layer_var(l) for l in rule.excepted()}):
             core += f".not({r})"

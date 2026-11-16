@@ -117,6 +117,7 @@ class Rule:
                             for name, s in self.shapes.items() for e in s["edges"]}
         self._wide_strict = {}   # shape -> its width filter is "wider than" (>), not "at least" (>=)
         self._anchors = {}    # shape -> the point it is checked at, while reading a measure
+        self._length_ops = {}  # (edge, kind, is a minimum) -> the operator written
         self._partners = set()   # shapes of the partner arrow of a "one of two sides" check
 
     @staticmethod
@@ -275,6 +276,7 @@ class Rule:
                 else:
                     lh = spans.setdefault((edge, kind), [None, None])
                     lh[0 if op in (">", ">=") else 1] = num
+                    self._length_ops[(edge, kind, op in (">", ">="))] = op
         out += [(e, k, "range", lo, hi) for (e, k), (lo, hi) in spans.items()]
         return out
 
@@ -345,6 +347,8 @@ class Rule:
         ANY kind -- the qualifiers a structural recognition (end-of-line) reads."""
         return {e: (lo, hi) for e, _, form, lo, hi in self.length_facts() if form != "not"}
 
+    LENGTH_STEP = 0.001   # µm: one database unit, the smallest step a length can differ by
+
     def length_bounds(self) -> list:
         """The edges an edge-length constraint FLAGS, as ``(edge, sel, lo, hi)`` with
         sel ``"with"`` -> ``with_length(lo, hi)`` (None = unbounded, lo == hi exact) or
@@ -353,8 +357,8 @@ class Rule:
         The constraint's KIND decides the reading. A ``match`` is a FILTER: it selects
         the edges that satisfy it. A ``check`` is an ASSERTION: it flags the edges that
         FAIL it -- ``e.length == 0.22`` flags every edge that is not 0.22 long,
-        ``e.length >= 0.1`` flags the shorter ones. (As everywhere, a bound's
-        strictness is not distinguished.)"""
+        ``e.length >= 0.1`` flags the shorter ones, and an edge of exactly 0.1 passes;
+        ``e.length <= 80`` flags the longer ones, not one of exactly 80."""
         out = []
         for edge, kind, form, lo, hi in self.length_facts():
             if kind != "check":                       # filter: the edges that satisfy it
@@ -363,12 +367,18 @@ class Rule:
                 out.append((edge, "without", lo, hi))
             elif form == "not":
                 out.append((edge, "with", lo, hi))
-            elif lo is not None and hi is not None:   # must lie in [lo, hi]
-                out.append((edge, "without", lo, hi))
+            elif lo is not None and hi is not None:   # must lie in [lo, hi]: `<= hi` keeps hi itself
+                more = self.LENGTH_STEP if self._length_ops.get((edge, kind, False)) == "<=" else 0
+                out.append((edge, "without", lo, round(hi + more, 6)))
             elif lo is not None:                      # must be >= lo -> the shorter fail
-                out.append((edge, "with", None, lo))
+                # the flagged range leaves its upper end out: exactly lo passes `>=`;
+                # for `>` it fails too -- one database unit more
+                more = self.LENGTH_STEP if self._length_ops.get((edge, kind, True)) == ">" else 0
+                out.append((edge, "with", None, round(lo + more, 6)))
             else:                                     # must be <= hi -> the longer fail
-                out.append((edge, "with", hi, None))
+                # ... and includes its lower end: exactly hi passes `<=`, so start above it
+                more = self.LENGTH_STEP if self._length_ops.get((edge, kind, False)) == "<=" else 0
+                out.append((edge, "with", round(hi + more, 6), None))
         return out
 
     def corner_angle(self, edge_id):
@@ -764,6 +774,50 @@ class Rule:
         # lie inside C -- so X needs no clipping
         return {"kind": "extension", "outer": d_out, "inner": d_in, "consumed": consumed,
                 "outer_shape": outer, "inner_shape": inner}
+
+    def edge_crosses(self, edge_id, shape):
+        """How the straight edge `edge_id` lies against another `shape` AS DRAWN:
+        ``"across"`` (it crosses the shape's boundary: one end inside, one outside),
+        ``"inside"`` (wholly inside it) or ``"outside"``. This is how a drawing says WHICH
+        edge of a shape is meant -- "the extension in the width direction" is past the
+        edges of the diffusion that run out from under the gate; "towards the drain" is
+        past the one that lies under it."""
+        (ax, ay), (bx, by) = self._edge_ends(edge_id)
+        poly = self.polygon(shape)
+        # sampled along its length: an edge the other shape runs across (a gate over a
+        # diffusion) is "across" as much as one that ends under it
+        ends = [topology.contains(poly, (ax + (bx - ax) * t / 50, ay + (by - ay) * t / 50)) for t in range(1, 50)]
+        return "inside" if all(ends) else "across" if any(ends) else "outside"
+
+    def edge_cut_by(self, edge_id, shape) -> bool:
+        """Does the straight edge `edge_id` cross a STRAIGHT edge of another `shape` as
+        drawn?  (A wavy edge is an arbitrary boundary: crossing it says nothing.)"""
+        (ax, ay), (bx, by) = self._edge_ends(edge_id)
+
+        def side(px, py, qx, qy, rx, ry):
+            return (qx - px) * (ry - py) - (qy - py) * (rx - px)
+        for e in self.shapes[shape]["edges"]:
+            if not e.get("edge"):
+                continue
+            (cx, cy), (dx, dy) = e["start"], e["end"]
+            if (side(ax, ay, bx, by, cx, cy) * side(ax, ay, bx, by, dx, dy) < 0
+                    and side(cx, cy, dx, dy, ax, ay) * side(cx, cy, dx, dy, bx, by) < 0):
+                return True
+        return False
+
+    def edge_kinds(self, edge_id, but=()) -> list:
+        """``[(other shape, crosses it)]`` for every other shape that tells the edges of
+        this edge's shape APART: a straight edge of it crosses some of them and not
+        others. The measured edge is then one of those that do (True) or do not."""
+        mine = self.shape_of_edge(edge_id)
+        out = []
+        for other in self.shapes:
+            if other == mine or other in but:
+                continue
+            cuts = {self.edge_cut_by(e["id"], other) for e in self.shapes[mine]["edges"] if e.get("edge")}
+            if cuts == {True, False}:
+                out.append((other, self.edge_cut_by(edge_id, other)))
+        return out
 
     def _marker(self, subj, other, measured, consumed):
         """``(op, marker-derivation)`` for a wavy-measured CONTEXT `other` of `subj`:

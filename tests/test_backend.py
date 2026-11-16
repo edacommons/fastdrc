@@ -235,7 +235,7 @@ def test_an_area_filter_beside_a_check_narrows_the_shape():
                [{"kind": "match", "expr": "D.area > 15000"}, {"kind": "match", "expr": "d_0.length >= d_1.length"},
                 {"kind": "check", "expr": "d_1.length <= 80"}])
     deck = get("klayout").compile(r)
-    assert "ndmy.with_area(15000.000001.um, nil).with_bbox_min(80.um, nil)" in deck and deck.count(".output(") == 1
+    assert "ndmy.with_area(15000.000001.um, nil).with_bbox_min(80.001.um, nil)" in deck and deck.count(".output(") == 1
     assert "non_squares" not in deck                      # `>=` orders the sides; a square is not left out
     assert "of more than 15000 µm²" in get("docs").compile(r)
 
@@ -266,3 +266,17 @@ def test_an_acute_corner_rule_gets_its_test_cases():
     r = _drawn([(tri, "comp")], [], [{"kind": "check", "expr": "a_0.corner >= 45"}])
     cases, why = get("cases").cases_of(r.data)
     assert why is None and [c["expect"] for c in cases] == [True, False]
+
+
+def test_which_edge_is_meant_is_read_from_how_it_is_drawn():
+    # the gate reaches past the diffusion: past the edges running out from under it (the
+    # width direction), or past the one lying under it (towards the drain)
+    shapes = [(_box("CS", 0, 4, 14, 10, "trb"), "comp"), (_box("G", 9, 0, 16, 14, "trbl"), "poly2")]
+    out = _drawn(shapes, [{"name": "E", "from": "cs_0", "to": "g_0", "edges": True, "at": 12}],
+                 [{"kind": "check", "expr": "E >= 0.4"}])
+    assert out.edge_crosses("cs_0", "G") == "across" and out.edge_crosses("cs_1", "G") == "inside"
+    assert "poly2.edges.enclosing(comp.edges.interacting(poly2.edges), 0.4.um" in get("klayout").compile(out)
+    assert "that run out from under it" in get("docs").compile(out)
+    under = _drawn(shapes, [{"name": "E", "from": "cs_1", "to": "g_1", "edges": True}],
+                   [{"kind": "check", "expr": "E >= 0.2"}])
+    assert "poly2.edges.enclosing(comp.edges.not_interacting(poly2.edges), 0.2.um" in get("klayout").compile(under)

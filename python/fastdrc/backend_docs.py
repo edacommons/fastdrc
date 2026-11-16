@@ -284,6 +284,34 @@ class DocsBackend(Backend):
         m = rule.measures[var]
         sf, st = rule.shape_of_edge(m["from"]), rule.shape_of_edge(m["to"])
         mt = m.get("metric") or "euclidian"
+        if (m.get("edges") and sf != st and lo is not None and not select
+                and (rule.overlap_reading(var) or {}).get("kind") == "extension"):
+            over = rule.overlap_reading(var)
+            a, b = self._fmt_deriv_en(over["outer"]), self._fmt_deriv_en(over["inner"])
+            mine = m["from"] if rule.shape_of_edge(m["from"]) == over["inner_shape"] else m["to"]
+            which = {"across": " that run out from under it", "inside": " that lie under it"}.get(
+                rule.edge_crosses(mine, over["outer_shape"]), "")
+            return self._with_scope(f"{a} must extend at least {_fmt(lo.value)} µm beyond the edges of {b}{which} ({mt}).",
+                                    self._scope(rule, over["outer_shape"], over["consumed"]))
+        if m.get("edges") and sf != st and hi is not None and not select \
+                and rule.relation(sf, st) in ("disjoint", "outside", None):
+            ds, dt, consumed = rule.measure_derivations(var)
+            return self._with_scope(f"every edge of {self._fmt_deriv_en(ds)} must have {self._fmt_deriv_en(dt)} "
+                                    f"facing it within {_fmt(hi.value)} µm.", self._scope(rule, sf, consumed))
+        if m.get("edges") and sf != st and lo is not None and not select and rule.relation(sf, st) in ("inside", "contains"):
+            o, i = (st, sf) if rule.relation(sf, st) == "inside" else (sf, st)
+            kinds = rule.edge_kinds(m["from"] if rule.shape_of_edge(m["from"]) == o else m["to"], but=(sf, st))
+            if kinds:
+                ds, dt, consumed = rule.measure_derivations(var)
+                gone = {rule.layer_of(c) for c, _ in kinds}
+                plain = lambda d: self._fmt_deriv_en(dict(d, nots=[n for n in d["nots"] if n not in gone],   # noqa: E731
+                                                          selections=[x for x in d["selections"] if x[1]["base"] not in gone],
+                                                          pre_selections=[]))
+                outer, inner = (plain(dt), plain(ds)) if o == st else (plain(ds), plain(dt))
+                which = " and ".join(f"{'are' if cut else 'are not'} crossed by an edge of {self._name(rule.layer_of(c))}"
+                                     for c, cut in kinds)
+                return self._with_scope(f"the edges of {outer} that {which} must enclose {inner} by at least "
+                                        f"{_fmt(lo.value)} µm ({mt}).", self._scope(rule, sf, consumed | {c for c, _ in kinds}))
         if m.get("edges"):                  # gate-edge (directional) width -- the edge_dl form
             scope = self._scope(rule, sf, {sf} | set(rule.covering(sf)) | set(rule.removed(sf)))
             v, most = _fmt((lo or hi).value), "at least" if lo else "at most"

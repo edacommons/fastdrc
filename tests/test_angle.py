@@ -186,9 +186,11 @@ def test_edge_length_check_flags_what_fails():
     assert _length_op(r, "contact") == "contact.edges.without_length(0.22.um)"
     assert _length_op(_length_rule("check", "a0.length != 0.22")) == "comp.edges.with_length(0.22.um)"
     assert _length_op(_length_rule("check", "a0.length >= 0.34")) == "comp.edges.with_length(nil, 0.34.um)"
-    assert _length_op(_length_rule("check", "a0.length <= 0.5")) == "comp.edges.with_length(0.5.um, nil)"
+    # an edge of exactly the maximum passes: the flagged range starts one database unit above it
+    assert _length_op(_length_rule("check", "a0.length <= 0.5")) == "comp.edges.with_length(0.501.um, nil)"
+    assert _length_op(_length_rule("check", "a0.length < 0.5")) == "comp.edges.with_length(0.5.um, nil)"
     assert _length_op(_length_rule("check", "a0.length >= 0.1 and a0.length <= 0.5")) == \
-        "comp.edges.without_length(0.1.um, 0.5.um)"
+        "comp.edges.without_length(0.1.um, 0.501.um)"
 
 
 def _corner_rule(kind, expr):

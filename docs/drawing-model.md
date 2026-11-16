@@ -713,6 +713,27 @@ Use it when a rule holds only in part of the plane — "N+ must reach 0.16 µm p
 *within 0.43 µm of the well edge*": the zone covers the picture, and what is measured is
 the COMP's edge in that zone, not a polygon cut off at the zone's boundary.
 
+**Which edge is meant.** "Poly extension beyond COMP in the width direction (other than
+towards the drain)" is about some edges of the diffusion and not others. The picture
+already says which: put the arrow on that edge and mark it as measured on edges
+(`"edges": true`). An edge drawn **running out from under** the other shape — one end
+under the gate, one outside — stands for the edges that do so; an edge drawn **wholly
+under** it stands for those:
+→ `poly2.edges.enclosing(comp.edges.interacting(poly2.edges), 0.4)` (running out), or
+`….not_interacting(poly2.edges)` (lying under).
+
+The same for an enclosure measured on edges: another shape drawn with a **straight**
+edge crossing some edges of the outer shape and not others tells them apart, and the
+measured edge is of one kind — "MVPSD enclosing the drain, in the drain direction and
+along the width" is every drift edge the channel diffusion does *not* cross:
+→ `mvpsd.edges.not_interacting(comp.edges).enclosing(comp.edges, 0.8)`
+(Crossing a wavy edge says nothing: a wavy edge is an arbitrary boundary.)
+
+**A maximum from every edge.** `S <= 15` on an arrow measured on edges, between two
+shapes drawn apart: every edge of the shape the arrow starts at must have the other one
+facing it within 15 — "the tab at most 15 µm from the device's edge" holds on each side:
+→ `A.edges.not_in(A.separation(B, 15.001, projection, whole_edges).first_edges)`
+
 **Which way a gate runs.** A check on a straight edge's direction — `g.angle == 0`,
 "must run along x" (90: along y) — flags the gate edges that run any other way:
 → `poly2.edges.and(tgate.edges).without_angle(0)`
@@ -1077,6 +1098,28 @@ antenna ratios (the connecting stack is built from the process's connections; se
 layers together and a diode condition included), hole areas (rings are built) and run
 lengths are generated. A rule the generator cannot build a case for is listed as such,
 never as passing.
+
+**Whole devices: `layouts/`.** A rule's own picture shows that rule and nothing else. A
+rule drawn too broadly — "poly resistors must lie inside N+", said of *every* resistor —
+passes on its own picture and then reports on every P+ resistor of a real chip. So a
+deck may carry layouts drawn by hand, `mydeck/layouts/*.json`, each a device or another
+piece of layout and the rules that must report on it:
+
+```json
+{"desc": "an LDNMOS finger, its guard ring left open",
+ "shapes": [{"layer": "comp", "box": [0, 0, 3, 10]},
+            {"layer": "metal1", "points": [[0, 0], [8, 0], [8, 2]]}],
+ "reports": ["MDN.17"],
+ "not_judged": []}
+```
+
+Coordinates are µm, layers the process's own. `selftest` runs the **whole** deck on
+every layout: a rule named in `reports` must report it, and every other rule must be
+silent (but those in `not_judged`, where the answer is not known). A clean device with
+`"reports": []` is the plainest test a deck can have. The layouts are also written as
+one layout file (the last line `selftest` prints), ready for another deck to be run on
+it — the foundry's own, say — and `tools/compare_reports.py` to set the two reports
+side by side.
 
 A marker that lies in no test case is counted against its rule and the rule is named
 ("reported outside every test case"): it fires where nothing was drawn for it.

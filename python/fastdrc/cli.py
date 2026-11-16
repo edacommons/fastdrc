@@ -121,6 +121,10 @@ def _selftest(args):
           f"{tally['not generated']} have no generated test yet "
           f"({checks} checks and {filters} filters tested one by one). "
           f"Cases: {res['files'].get('layout', res['files']['cases'])}")
+    if res.get("layouts"):
+        good = sum(1 for v in res["layouts"].values() if v == "ok")
+        print(f"{good} of the deck's {len(res['layouts'])} layouts are read as they should be. "
+              f"Layout: {res['files'].get('layouts')}")
     return 1 if res["wrong"] else 0
 
 
