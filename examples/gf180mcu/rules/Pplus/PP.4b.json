@@ -1,0 +1,192 @@
+{
+ "name": "PP.4b",
+ "desc": "PP.4b : Within 0.32um of channel, space to N-channel gate extension perpendicular to the direction of Poly2.",
+ "shapes": [
+  {
+   "name": "Z",
+   "edges": [
+    {
+     "id": "z_0",
+     "start": [
+      10,
+      0
+     ],
+     "end": [
+      22,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "z_1",
+     "start": [
+      22,
+      0
+     ],
+     "end": [
+      22,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "z_2",
+     "start": [
+      22,
+      14
+     ],
+     "end": [
+      10,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "z_3",
+     "start": [
+      10,
+      14
+     ],
+     "end": [
+      10,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "IMP",
+   "edges": [
+    {
+     "id": "imp_0",
+     "start": [
+      0,
+      4
+     ],
+     "end": [
+      6,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_1",
+     "start": [
+      6,
+      4
+     ],
+     "end": [
+      6,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "imp_2",
+     "start": [
+      6,
+      10
+     ],
+     "end": [
+      0,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_3",
+     "start": [
+      0,
+      10
+     ],
+     "end": [
+      0,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "EXT",
+   "edges": [
+    {
+     "id": "ext_0",
+     "start": [
+      14,
+      4
+     ],
+     "end": [
+      18,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "ext_1",
+     "start": [
+      18,
+      4
+     ],
+     "end": [
+      18,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "ext_2",
+     "start": [
+      18,
+      10
+     ],
+     "end": [
+      14,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "ext_3",
+     "start": [
+      14,
+      10
+     ],
+     "end": [
+      14,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "imp_1",
+   "to": "ext_3",
+   "metric": "projection",
+   "edges": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "Z.layer == ngate_reach"
+  },
+  {
+   "kind": "match",
+   "expr": "IMP.layer == pplus"
+  },
+  {
+   "kind": "match",
+   "expr": "EXT.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.22"
+  }
+ ]
+}

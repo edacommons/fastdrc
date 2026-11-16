@@ -318,7 +318,9 @@ class DocsBackend(Backend):
                 return self._with_scope(f"the edges of {outer} that {which} must enclose {inner} by at least "
                                         f"{_fmt(lo.value)} µm ({mt}).", self._scope(rule, sf, consumed | {c for c, _ in kinds}))
         if m.get("edges"):                  # gate-edge (directional) width -- the edge_dl form
-            scope = self._scope(rule, sf, {sf} | set(rule.covering(sf)) | set(rule.removed(sf)))
+            # the same shapes the script takes as said (a zone around the OTHER shape is not a scope of this one)
+            scope = self._scope(rule, sf, {sf} | set(rule.covering(sf)) | set(rule.removed(sf))
+                                | set(rule.measure_derivations(var)[2]))
             v, most = _fmt((lo or hi).value), "at least" if lo else "at most"
             core = (f"{self._gate_en(rule, sf)} must be {most} {v} µm wide (a directional "
                     f"edge-to-edge width, not the polygon width)" if sf == st

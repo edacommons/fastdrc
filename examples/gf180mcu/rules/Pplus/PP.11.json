@@ -173,7 +173,7 @@
  "constraints": [
   {
    "kind": "match",
-   "expr": "ZONE.layer in {nwell_rim, nwell_halo, lvpwell_rim, lvpwell_halo}"
+   "expr": "ZONE.layer in {nwell_edge_zone, lvpwell_edge_zone}"
   },
   {
    "kind": "match",

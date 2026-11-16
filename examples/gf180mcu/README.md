@@ -14,11 +14,11 @@ manual:
 
 ## What is in it
 
-443 rule files in 28 sections (a rule with a value per column — 3.3 V and 5 V/6 V — is
+445 rule files in 28 sections (a rule with a value per column — 3.3 V and 5 V/6 V — is
 one file and one check per column). The section `Grid` holds what the manual says once
 for every layer: the manufacturing grid, 0.005 µm (`"grid"` in `process.json`, one check
 per layer), and "no acute angle" (one drawing, `ANGLE`, on the family `every_layer`).
-Built as it is by default — six metals, 9K top metal, MIM option B — that is 680 checks,
+Built as it is by default — six metals, 9K top metal, MIM option B — that is 682 checks,
 210 of them those two per layer.
 
 | sections | the manual's chapter |
@@ -53,7 +53,7 @@ deck; with no shapes on those layers they report nothing.
 ## How it was checked
 
 - **Against its own drawings.** `fastdrc selftest examples/gf180mcu` builds test layouts
-  from every rule's picture and runs the deck on them: of the default deck's 680 checks,
+  from every rule's picture and runs the deck on them: of the default deck's 682 checks,
   648 behave as drawn; `DE.3`, `O.PL.ORT` and the seven coverage rules (`PL.8`, `Mn.4`, `MT.3`) have no generated layout. The 23
   that do not are limits of the generated layouts, not of the rules: the end-of-line
   enclosures (`CO.6a`, `Vn.3c`, `Vn.4b`, and `MT30.6` with the 3 µm metal — the generated line end is shorter than
@@ -124,7 +124,7 @@ rule counts as checked only after that read.
 
 ## Not drawn
 
-20 of the manual's rules that its KLayout deck checks:
+18 of the manual's rules that its KLayout deck checks:
 
 - guard rings with more to them than "surrounded by": `MDP.4`, `MDN.13d`, `MDP.17a`,
   `MDP.17c`;
@@ -132,7 +132,7 @@ rule counts as checked only after that read.
   `EF.22a`, `EF.22b`, `DF.3b`, `PRES.9a`, `LRES.9a`, `HRES.12a` (of `MDN.10c` the minimum
   half is drawn);
 - the order of things along a device: `MDN.13c`, `MDP.13c`, `MDP.3d`;
-- the rest: `DF.11`, `PL.7`, `NP.4b`, `PP.4b`, `SB.15b`, `NAT.6`.
+- the rest: `DF.11`, `PL.7`, `SB.15b`, `NAT.6`.
 
 Also not here: the manual's chapters its own
 deck does not check either (antenna ratios are in `examples/demo` as a kind of rule;
