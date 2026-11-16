@@ -56,59 +56,6 @@
    ]
   },
   {
-   "name": "NW",
-   "edges": [
-    {
-     "id": "nw_0",
-     "start": [
-      6,
-      16
-     ],
-     "end": [
-      24,
-      16
-     ],
-     "edge": true
-    },
-    {
-     "id": "nw_1",
-     "start": [
-      24,
-      16
-     ],
-     "end": [
-      24,
-      32
-     ],
-     "edge": false
-    },
-    {
-     "id": "nw_2",
-     "start": [
-      24,
-      32
-     ],
-     "end": [
-      6,
-      32
-     ],
-     "edge": false
-    },
-    {
-     "id": "nw_3",
-     "start": [
-      6,
-      32
-     ],
-     "end": [
-      6,
-      16
-     ],
-     "edge": false
-    }
-   ]
-  },
-  {
    "name": "PW",
    "edges": [
     {
@@ -227,10 +174,6 @@
   {
    "kind": "match",
    "expr": "DN.layer == dnwell"
-  },
-  {
-   "kind": "match",
-   "expr": "NW.layer == nwell"
   },
   {
    "kind": "match",

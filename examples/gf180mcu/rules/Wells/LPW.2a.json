@@ -3,6 +3,59 @@
  "desc": "Min. LVPWELL space, different potential",
  "shapes": [
   {
+   "name": "DN",
+   "edges": [
+    {
+     "id": "dn_0",
+     "start": [
+      -4,
+      -4
+     ],
+     "end": [
+      20,
+      -4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_1",
+     "start": [
+      20,
+      -4
+     ],
+     "end": [
+      20,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_2",
+     "start": [
+      20,
+      10
+     ],
+     "end": [
+      -4,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_3",
+     "start": [
+      -4,
+      10
+     ],
+     "end": [
+      -4,
+      -4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
    "name": "PA",
    "edges": [
     {
@@ -117,6 +170,10 @@
   }
  ],
  "constraints": [
+  {
+   "kind": "match",
+   "expr": "DN.layer == dnwell"
+  },
   {
    "kind": "match",
    "expr": "PA.layer == lvpwell"

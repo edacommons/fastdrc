@@ -75,9 +75,11 @@
   }
  ],
  "reports": [
-  "DF.14",
   "DN.3",
   "MDP.3",
   "MDP.3c"
+ ],
+ "not_judged": [
+  "DF.14"
  ]
 }

@@ -127,5 +127,8 @@
  "columns": [
   "3.3V",
   "5V"
+ ],
+ "except": [
+  "schottky_diode"
  ]
 }

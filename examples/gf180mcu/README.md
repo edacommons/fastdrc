@@ -63,7 +63,10 @@ deck; with no shapes on those layers they report nothing.
   drain does not reach the gate).
 - **Against the process's own KLayout deck**, on the same layouts and on the 41 standard
   cells of the 7-track library:
-  - the cells as they are: all 355 front-end rules are silent in both decks;
+  - the cells as they are: the front-end rules are silent in both decks, but for `DF.13`
+    and `DF.14` here — the tap distance, read for the device: a cell with no tap of its own
+    is reported until it stands beside its tap cells (the process's deck reads these two
+    from the tap's side and is silent);
   - the cells with about 1400 random small errors put in: the rules that fire flag the
     same places in both decks, but for `NP.5b` and one marker of `NP.3cii`;
   - the rules near a well edge and the end-of-line enclosures agree with it on layouts
