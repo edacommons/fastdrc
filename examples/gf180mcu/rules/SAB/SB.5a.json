@@ -123,7 +123,7 @@
   },
   {
    "kind": "match",
-   "expr": "B.layer == poly2"
+   "expr": "B.layer == field_poly"
   },
   {
    "kind": "check",

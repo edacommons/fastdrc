@@ -495,7 +495,8 @@
   "ngate_reach": "ngate + 0.32",
   "ngate_ext": "poly2 and not comp and ngate_reach",
   "nwell_edge_zone": "(nwell_rim or nwell_halo) and not dnwell",
-  "lvpwell_edge_zone": "(lvpwell_rim or lvpwell_halo) and dnwell"
+  "lvpwell_edge_zone": "(lvpwell_rim or lvpwell_halo) and dnwell",
+  "field_poly": "poly2 and not comp"
  },
  "columns": {
   "3.3V": [

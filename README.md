@@ -88,7 +88,7 @@ fastdrc pack mydeck             # -> mydeck.zip: the same deck in one file; ever
 > ([`examples/demo/`](examples/demo)): `fastdrc build examples/demo`.
 >
 > **A real process: [`examples/gf180mcu/`](examples/gf180mcu)** — the open GF180MCU
-> design rules drawn from the public manual, 445 rule files, with the metal stack, the
+> design rules drawn from the public manual, 446 rule files, with the metal stack, the
 > top metal and the MIM option as parameters; compared with the process's own KLayout
 > deck. Its README says what was checked and what is not drawn yet.
 >

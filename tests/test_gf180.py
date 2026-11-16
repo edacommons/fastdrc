@@ -14,7 +14,7 @@ def test_every_rule_compiles(tmp_path):
     deck, text, n, notes = process.build(DECK, str(tmp_path))
     files = glob.glob(os.path.join(DECK, "rules", "*", "*.json"))
     grid = len(process.load(DECK)[0]["layers"])              # one grid check per layer
-    assert len(files) == 445 and n == 472 + 2 * grid == 682   # the default; the grid and the angle, per layer
+    assert len(files) == 446 and n == 473 + 2 * grid == 683   # the default; the grid and the angle, per layer
     assert notes == []                                    # no rule that checks nothing, no layer without a number
     said = open(text, encoding="utf-8").read()
     assert "(no checkable assertion found)" not in said

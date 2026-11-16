@@ -492,8 +492,9 @@ class DocsBackend(Backend):
         cuts = sorted({self._name(l) for c in rule.removed(shape)
                        for l in (rule.layer_of(c) or "?").split("|")}
                       | {self._name(l) for l in rule.excepted()})
-        phrase = (f"{self._name(base)} edges over the gate ({self._name(base)}"
-                  + "".join(f" & {self._name(g)}" for g in sorted(set(gate))) + ")") if gate \
+        # the part of the shape's edges that lies on what crosses it (poly over a diffusion: the gate)
+        phrase = (f"{self._name(base)} edges where they lie on "
+                  + _join([self._name(g) for g in sorted(set(gate))])) if gate \
             else f"{self._name(base)} edges"
         if cuts:
             phrase += " (excluding " + _join(cuts) + ")"

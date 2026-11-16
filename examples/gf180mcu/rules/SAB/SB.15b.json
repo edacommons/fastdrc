@@ -1,0 +1,193 @@
+{
+ "name": "SB.15b",
+ "desc": "SB.15b : Space from unsalicided Poly2 to unrelated Nplus/Pplus along Poly2 line.",
+ "shapes": [
+  {
+   "name": "SAB",
+   "edges": [
+    {
+     "id": "sab_0",
+     "start": [
+      0,
+      4
+     ],
+     "end": [
+      14,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_1",
+     "start": [
+      14,
+      4
+     ],
+     "end": [
+      14,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_2",
+     "start": [
+      14,
+      10
+     ],
+     "end": [
+      0,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab_3",
+     "start": [
+      0,
+      10
+     ],
+     "end": [
+      0,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PX",
+   "edges": [
+    {
+     "id": "px_0",
+     "start": [
+      5,
+      0
+     ],
+     "end": [
+      9,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "px_1",
+     "start": [
+      9,
+      0
+     ],
+     "end": [
+      9,
+      26
+     ],
+     "edge": true
+    },
+    {
+     "id": "px_2",
+     "start": [
+      9,
+      26
+     ],
+     "end": [
+      5,
+      26
+     ],
+     "edge": false
+    },
+    {
+     "id": "px_3",
+     "start": [
+      5,
+      26
+     ],
+     "end": [
+      5,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "IMP",
+   "edges": [
+    {
+     "id": "imp_0",
+     "start": [
+      0,
+      16
+     ],
+     "end": [
+      14,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "imp_1",
+     "start": [
+      14,
+      16
+     ],
+     "end": [
+      14,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_2",
+     "start": [
+      14,
+      22
+     ],
+     "end": [
+      0,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_3",
+     "start": [
+      0,
+      22
+     ],
+     "end": [
+      0,
+      16
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "sab_2",
+   "to": "imp_0",
+   "edges": true,
+   "at": 7.0,
+   "metric": "projection"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "SAB.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "PX.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "IMP.layer in {nplus, pplus}"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.32"
+  }
+ ]
+}
