@@ -275,7 +275,8 @@ def test_which_edge_is_meant_is_read_from_how_it_is_drawn():
     out = _drawn(shapes, [{"name": "E", "from": "cs_0", "to": "g_0", "edges": True, "at": 12}],
                  [{"kind": "check", "expr": "E >= 0.4"}])
     assert out.edge_crosses("cs_0", "G") == "across" and out.edge_crosses("cs_1", "G") == "inside"
-    assert "poly2.edges.enclosing(comp.edges.interacting(poly2.edges), 0.4.um" in get("klayout").compile(out)
+    # ... and of such an edge only the part under the gate (not the stretch beside it)
+    assert "poly2.edges.enclosing(comp.edges.interacting(poly2.edges).and(poly2), 0.4.um" in get("klayout").compile(out)
     assert "that run out from under it" in get("docs").compile(out)
     under = _drawn(shapes, [{"name": "E", "from": "cs_1", "to": "g_1", "edges": True}],
                    [{"kind": "check", "expr": "E >= 0.2"}])

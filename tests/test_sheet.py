@@ -343,7 +343,7 @@ def test_antenna_ratio_sees_the_stack_only_up_to_its_own_layer():
     assert deck[i - 3:i] == ["connect(field_poly, gate)", "connect(cont, field_poly)", "connect(cont, met1)"]
     j = deck.index("ant_p_l1 = antenna_check(gate, field_poly, 200.0)")
     # a different set for the poly rule (contacts come after poly): the deck starts over
-    assert deck[j - 2:j] == ["clear_connections", "connect(field_poly, gate)"]
+    assert deck[j - 3:j] == ["clear_connections", "connect(net_anchor, net_anchor)", "connect(field_poly, gate)"]
     en = get("docs").compile_data(ANTENNA)
     assert "the area of met1 connected to gate must be at most 400 times the area of that gate" in en
 

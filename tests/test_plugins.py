@@ -359,10 +359,11 @@ def test_a_density_case_is_a_layout_of_its_own():
         w = {s["layer"]: max(p[0] for p in s["points"]) - min(p[0] for p in s["points"]) for s in c["shapes"]}
         return w["met"] / w["chip"]
     assert share(by["coverage exactly at the minimum"]) == 0.2 and share(by["coverage exactly at the maximum"]) == 0.8
-    # without a drawn area there is nothing to take the density over in a test layout
+    # without a drawn area the density is the layout's own: two specks set its extent
     bare = dict(rule, shapes=[_rect("MT", 5, 5, 15, 15)],
                 constraints=[M("MT.layer == met"), C("MT.density >= 0.2")])
-    assert "draw the area" in get("cases").plan([bare])[1][0][1]
+    cases, skipped = get("cases").plan([bare])
+    assert skipped == [] and all(any(s["layer"] == "_extent" for s in c["shapes"]) for c in cases)
 
 
 def test_an_antenna_case_gets_its_connecting_stack_from_the_process():

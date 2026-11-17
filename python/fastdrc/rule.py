@@ -624,8 +624,11 @@ class Rule:
         describe the same facts. Encapsulates cover->and, cutout->not, wavy-measure->
         selection (op via the labeled-instances table), and selected-marker recovery."""
         measured = {sf, st}
-        counted = {k for k, _, _ in self.count_filters().values()}   # what a filter counts
-        consumed = set(self._partners) | (counted - measured)        # is not a context
+        lying = set(self.edges_lying_on(sf, measured)) | set(self.edges_lying_on(st, measured))
+        counted = set() if getattr(self, "_reading_counted", False) else (
+            {k for k, _, _ in self.count_filters().values()}             # what a filter counts,
+            | {k for _, k, _, _ in self._count_checks_cached()})           # ... or a check
+        consumed = set(self._partners) | (counted - measured) | lying   # is not a context
         sel = {sf: [], st: []}
         for sa, sb in self.relation_selections():
             for subj in (sf, st):
@@ -673,7 +676,10 @@ class Rule:
                     "area": self.area_filters().get(shape),
                     "array": self.array_filters().get(shape),
                     "nets": self.net_relation(sf, st) is not None,
-                    "count": (lambda c: c and (self.layer_of(c[0]), c[1], c[2]))(
+                    # a filter "holding so many K" where K is the other shape measured says nothing more
+                    "count": (lambda c: c and c[0] not in measured and (self.layer_of(c[0]), c[1], c[2]))(
+                        self.count_filters().get(shape)),
+                    "holes": (lambda c: bool(c) and c[0] not in measured and self.in_hole(c[0], shape))(
                         self.count_filters().get(shape)),
                     "pre_selections": pre,
                     "selections": [x for x in sel[shape] if x not in pre],
@@ -805,6 +811,30 @@ class Rule:
                 return True
         return False
 
+    def edges_lying_on(self, shape, measured=()) -> list:
+        """Shapes an edge measured on `shape` LIES ALONG (a straight edge of the arrow's
+        shape drawn on an edge of another shape: an implant edge butting a diffusion).
+        That edge is then the shared one: "at a butting edge"."""
+        mine = [m["from"] for m in self.measures.values()     # the edge the arrow starts at
+                if m.get("edges") and self.shape_of_edge(m["from"]) == shape]
+        out = []
+        for other in self.shapes:
+            if other == shape or other in measured:
+                continue
+            for eid in mine:
+                (ax, ay), (bx, by) = self._edge_ends(eid)
+                for e in self.shapes[other]["edges"]:
+                    (cx, cy), (dx, dy) = e["start"], e["end"]
+                    same_line = ((ax == bx == cx == dx) or (ay == by == cy == dy))
+                    if same_line and max(min(ax, bx), min(cx, dx)) <= min(max(ax, bx), max(cx, dx)) \
+                            and max(min(ay, by), min(cy, dy)) <= min(max(ay, by), max(cy, dy)) \
+                            and (ax, ay) != (bx, by):
+                        overlap = (min(max(ax, bx), max(cx, dx)) - max(min(ax, bx), min(cx, dx))
+                                   + min(max(ay, by), max(cy, dy)) - max(min(ay, by), min(cy, dy)))
+                        if overlap > 0 and other not in out:
+                            out.append(other)
+        return out
+
     def edge_kinds(self, edge_id, but=()) -> list:
         """``[(other shape, crosses it)]`` for every other shape that tells the edges of
         this edge's shape APART: a straight edge of it crosses some of them and not
@@ -815,8 +845,10 @@ class Rule:
             if other == mine or other in but:
                 continue
             cuts = {self.edge_cut_by(e["id"], other) for e in self.shapes[mine]["edges"] if e.get("edge")}
-            if cuts == {True, False}:
-                out.append((other, self.edge_cut_by(edge_id, other)))
+            if self.edge_cut_by(edge_id, other):         # drawn across the measured edge itself
+                out.append((other, True))
+            elif cuts == {True, False}:                  # ... across others of its edges, not this one
+                out.append((other, False))
         return out
 
     def _marker(self, subj, other, measured, consumed):
@@ -1173,6 +1205,12 @@ class Rule:
                     span[2] = n - step * (op == "<")
         return out
 
+    def _count_checks_cached(self):
+        if not hasattr(self, "_cc"):
+            self._cc = None                          # guard: _counts does not come back here
+            self._cc = self.count_bounds()
+        return self._cc or []
+
     def count_bounds(self) -> list:
         """``(holder, counted, lo, hi)``: the CHECK ``Count(K) == 2`` / ``>= 2`` /
         ``<= 4`` -- every shape like the holder must hold that many of K's layer."""
@@ -1242,6 +1280,8 @@ class Rule:
         share): its own filters and contexts apply, but its contents are neither cut
         out of it nor combined with it. Returns ``(derivation, consumed)``."""
         d, _, consumed = self.check_derivations(holder, holder)
+        if any(self.in_hole(c, holder) for c in contents):
+            d = dict(d, holes=True)                  # held in the ring's hole
         inner = {self.layer_of(c) for c in contents}
         d = dict(d, nots=[n for n in d["nots"] if n not in inner],
                  ands=[a for a in d["ands"] if a not in inner],
@@ -1463,6 +1503,37 @@ class Rule:
             else:
                 sel.setdefault(b.var, [None, None])[0 if b.is_min else 1] = b
         return out + [(v, lo, hi, True) for v, (lo, hi) in sel.items()]
+
+    def in_hole(self, k, holder) -> bool:
+        """Is shape `k` drawn in a drawn VOID of `holder` (in the hole of a ring, not on
+        its material)?  Then what holds `k` is the ring's hole."""
+        loops = self.shapes.get(holder, {}).get("hole_loops") or []
+        pt = self.interior_point(k)
+        return any(topology.contains([(float(e["start"][0]), float(e["start"][1])) for e in loop], pt)
+                   for loop in loops)
+
+    def counted_derivation(self, k, holder):
+        """The derivation of a COUNTED shape: its layer, narrowed by how it is drawn
+        against the other shapes the holder holds ("an Nwell drawn apart from the
+        DNWELL in the same ring" -- an Nwell outside DNWELL). Relations to anything
+        else are not part of what is counted."""
+        # only what the counted shape is linked TO (an arrow drawn from it) narrows it
+        sibs = {s for s in self.shapes if s not in (k, holder)
+                and (self.relation(s, holder) == "inside" or self.in_hole(s, holder))
+                and any(self.shape_of_edge(m.get("from")) == k and self.shape_of_edge(m.get("to")) == s
+                        for m in self.measures.values())}
+        if not sibs:
+            return None
+        self._partners = set(self.shapes) - sibs - {k}
+        self._reading_counted = True
+        try:
+            d, _, _ = self.check_derivations(k, k)
+        finally:
+            self._partners, self._reading_counted = set(), False
+        keep = {self.layer_of(s) for s in sibs}
+        d = dict(d, ands=[], nots=[], pre_selections=[],
+                 selections=[x for x in d["selections"] if x[1]["base"] in keep])
+        return d if d["selections"] else None
 
     def holes(self, shape: str) -> bool:
         """Does this shape carry a drawn VOID (a donut: outer loop + an inner

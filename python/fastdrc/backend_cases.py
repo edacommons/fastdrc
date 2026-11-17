@@ -89,7 +89,16 @@ def _expand(layer, legend, seen=()):
             out = []
             for a in ast["args"]:
                 if isinstance(a, dict) and a.get("op") == "not":
-                    continue                           # "and not x": simply do not draw x
+                    # "and not x": simply do not draw x -- unless x, or what it is taken from, is a
+                    # layer grown or shrunk: a zone along an edge ("within 0.43 of the well edge")
+                    # is a place in the layout, not something a box on one layer can be
+                    cut = walk(a["args"][0])
+                    if cut is None or any(isinstance(x, tuple) for x in cut):
+                        return None
+                    if any(isinstance(x, tuple) for b in ast["args"] if not (isinstance(b, dict) and b.get("op") == "not")
+                           for x in (walk(b) or [])):
+                        return None
+                    continue
                 got = walk(a)
                 if got is None:
                     return None
@@ -98,6 +107,8 @@ def _expand(layer, legend, seen=()):
         if op == "or":
             return walk(ast["args"][0])
         if op in ("+", "-") and "num" in ast["args"][1]:   # "nwell + 0.43": draw nwell, that much smaller
+            if ast["args"][0].get("ref") in legend:        # ... but a zone round a DERIVED thing (a gate) is
+                return None                                # made by the picture's own shapes, not by a box
             inner = walk(ast["args"][0])
             grow = ast["args"][1]["num"] * (1 if op == "+" else -1)
             if inner is None or any(isinstance(x, tuple) for x in inner):
@@ -270,8 +281,8 @@ class _Picture:
         """An edge-length constraint is about EVERY edge of the shape's layer ("every
         contact edge must be 0.2 long"), unless the rule tells the long side from the
         short one. So: the sides it speaks of -- all of the shape's, or just this one."""
-        if eid in self.rule.side_roles():
-            return [("side", eid)]
+        if eid in self.rule.side_roles() or eid in self.rule.eol_edges():
+            return [("side", eid)]                     # a long / short side, a line end's cap or side
         s, _ = self.where[eid]
         return [q for q in (self.quantity(e["id"] + ".length") for e in s["edges"]) if q]
 
@@ -288,6 +299,17 @@ class _Picture:
                 continue
             xs, ys = [p[0] for p in pts], [p[1] for p in pts]
             x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+            # a shape that abuts another along a vertical side keeps that side: the copies are
+            # stacked along it, so that every copy still touches what it is counted in
+            others = [[e["start"] for e in o["edges"]] for o in self.data["shapes"] if o is not s]
+            along_y = any(any(p[0] in (x0, x1) for p in op) and min(p[1] for p in op) < y1 and max(p[1] for p in op) > y0
+                          and (min(p[0] for p in op) == x1 or max(p[0] for p in op) == x0) for op in others)
+            if along_y:
+                h = (y1 - y0) // (2 * n - 1) if n else 0
+                for i in range(n):
+                    b = y0 + 2 * i * h
+                    out.append((s["name"], [(x0, b), (x1, b), (x1, b + h), (x0, b + h)]))
+                continue
             w = (x1 - x0) // (2 * n - 1) if n else 0   # copies and the gaps between them, equal
             for i in range(n):
                 a = x0 + 2 * i * w
@@ -310,7 +332,7 @@ class CasesBackend(Backend):
         from .backend import get
         r = Rule(rule_dict)
         try:
-            for special in (self._grid_cases, self._acute_cases, self._total_cases, self._form_cases, self._presence_cases, self._corner_cases, self._hole_cases, self._array_cases, self._share_cases,
+            for special in (self._orientation_cases, self._ring_count_cases, self._grid_cases, self._acute_cases, self._total_cases, self._form_cases, self._presence_cases, self._corner_cases, self._hole_cases, self._array_cases, self._share_cases,
                             self._density_cases, self._antenna_cases):
                 made = special(r, rule_dict)
                 if made is not None:
@@ -320,7 +342,7 @@ class CasesBackend(Backend):
             constraints = [(c.get("kind", "check"), c["expr"], parse(c["expr"])) for c in rule_dict.get("constraints", [])]
             if rule_dict.get("touching") == "allowed":     # every minimum distance: "... or exactly 0"
                 constraints = [(k, e, self._or_zero(r, a) if k == "check" else a) for k, e, a in constraints]
-            numbers = [abs(n) for _, _, ast in constraints for n in self._numbers(ast) if n]
+            numbers = [abs(n) for _, _, ast in constraints for n in self._lengths(ast) if n]
             unit_nm = ROOM * round(max(numbers) * 1000) if numbers else 1000
             self._presets = []                             # sizes fixed before anything is stepped
             self._optional = set()                         # alternatives of an "or" beyond its first
@@ -381,6 +403,12 @@ class CasesBackend(Backend):
                         continue                           # this case sets that quantity on purpose
                     if key in forced:
                         target = forced[key](pic)
+                    elif (other is not None and op in (">", ">=", "<", "<=") and q[0] == other[0] == "side"
+                          and other not in pinned and not self._satisfied(pic, q, op, v, other) is None):
+                        # two sides put in order (the long side and the short one): the partner
+                        # follows, half or twice as long, so the side a value is set on keeps its role
+                        q, longer = other, op in ("<", "<=")
+                        target = pic.value(key[1]) * 2 if longer else max(pic.value(key[1]) // 2, 1)
                     elif other is not None and q in pinned and other not in pinned:
                         # "this side equals that side", and this side is being set on
                         # purpose: let the other one follow
@@ -402,6 +430,15 @@ class CasesBackend(Backend):
                         for side in either_wide[key[1][1]]:        # neighbour follows it
                             if pic.value(side) != want(pic) and not pic.set(side, want(pic)):
                                 return None
+            for key, want in forced.items():               # an AREA filter stepped outside, on a shape that is
+                if key[1][0] == "aside" and key[0] not in checks:
+                    shape = r.shape_of_edge(key[1][1])     # also "the wide one": its neighbour must not be one
+                    for arrow, sides in either_wide.items():
+                        if r.shape_of_edge(r.measures[arrow]["from"]) == shape:
+                            narrow = round(r.wide_filters()[shape] * 1000) // 2
+                            for side in sides:
+                                if not pic.set(side, narrow):
+                                    return None
             for key, want in forced.items():               # each forced size must have been reached
                 if pic.value(key[1]) != want(pic):
                     return None
@@ -411,7 +448,7 @@ class CasesBackend(Backend):
             truth = [self._holds(pic, ast) for _, _, ast in constraints]
             filters = all(t for (kind, _, _), t in zip(constraints, truth) if kind != "check")
             failed = any(not truth[ci] for ci in checks) if checks else True
-            layers = self._real_layers(r, pic.outlines())
+            layers = self._real_layers(r, pic.outlines() + self._trunks(r, pic))
             if layers is None:
                 raise _CannotBuild("a layer of the picture is defined in a way that cannot be drawn directly")
             return {"rule": r.name, "testing": testing, "case": what, "expect": bool(filters and failed),
@@ -504,6 +541,20 @@ class CasesBackend(Backend):
             if m and "num" in ast["args"][1] and r.shape_of_edge(m["from"]) != r.shape_of_edge(m["to"]):
                 return {"op": "or", "args": [ast, {"op": "==", "args": [{"ref": ref}, {"num": 0}]}]}
         return ast
+
+    @classmethod
+    def _lengths(cls, ast):
+        """The numbers of a constraint as lengths (µm): an area (µm²) counts by its side."""
+        if isinstance(ast, dict) and ast.get("op") in ("==", "!=", "<", "<=", ">", ">="):
+            refs = [a.get("ref", "") for a in ast["args"] if isinstance(a, dict)]
+            if any(x.endswith(".area") for x in refs):
+                yield from (abs(n) ** 0.5 for n in cls._numbers(ast))
+                return
+        if isinstance(ast, dict) and ast.get("op") in ("and", "or", "not"):
+            for a in ast["args"]:
+                yield from cls._lengths(a)
+            return
+        yield from cls._numbers(ast)
 
     @staticmethod
     def _numbers(ast):
@@ -811,6 +862,120 @@ class CasesBackend(Backend):
         return [self._case(r, rule_dict, tag, "a rectangle", form != "rectangle", box),
                 self._case(r, rule_dict, tag, "an L shape", form == "rectangle", ell)]
 
+    def _orientation_cases(self, r, rule_dict):
+        """"Must run along x": the picture as drawn, and the same picture turned a quarter
+        round (every x and y swapped) -- the edge then runs the other way."""
+        orient = r.orientation_checks()
+        if not orient:
+            return None
+        if len(orient) != 1 or len(rule_dict.get("constraints", [])) != len(r.shapes) + 1:
+            raise _CannotBuild("an orientation rule with further conditions is not built yet")
+        edge, angle, must = orient[0]
+        pic = _Picture(r, rule_dict, 1000)
+        drawn = pic.outlines()
+        turned = [(n, [(y, x) for x, y in pts]) for n, pts in drawn]
+        e = pic._edge(edge)
+        runs_x = e["start"][1] == e["end"][1]
+        if angle not in (0, 90) or runs_x != (angle == 0):
+            raise _CannotBuild("the edge is not drawn the way the rule names")
+        tag = "check " + next(c["expr"] for c in rule_dict["constraints"] if ".angle" in c["expr"])
+
+        def case(what, expect, shapes):
+            layers = self._real_layers(r, shapes)
+            if layers is None:
+                raise _CannotBuild("a layer of the picture is defined in a way that cannot be drawn directly")
+            return {"rule": r.name, "testing": tag, "case": what, "expect": expect, "shapes": layers,
+                    "markers": [lay for op, lay in (rule_dict.get("scope") or []) if op in _INSIDE_OPS]}
+        return [case("as drawn", not must, drawn), case("turned a quarter round", must, turned)]
+
+    @staticmethod
+    def _trunks(r, pic):
+        """A line END is the end of a branch: its far (wavy) end continues. Built alone, a
+        short wire would have a second cap there; so the wire stands on a wide trunk of
+        its own layer -- as the manual's figures draw branches on a wider line."""
+        out = []
+        for _, cap, _ in r.eol_measures():
+            sh = r.shape_of_edge(cap)
+            es = [e["id"] for e in r.shapes[sh]["edges"]]
+            far, c = pic._edge(es[(es.index(cap) + 2) % 4]), pic._edge(cap)
+            (ax, ay), (bx, by) = far["start"], far["end"]
+            w = max(abs(bx - ax), abs(by - ay))
+            if ay == by:                                   # a horizontal far end: the trunk above / below
+                out_dir = 1 if ay > c["start"][1] else -1
+                x0, x1 = min(ax, bx) - 3 * w, max(ax, bx) + 3 * w
+                y0, y1 = sorted((ay, ay + out_dir * 3 * w))
+            else:                                          # a vertical far end: left / right
+                out_dir = 1 if ax > c["start"][0] else -1
+                y0, y1 = min(ay, by) - 3 * w, max(ay, by) + 3 * w
+                x0, x1 = sorted((ax, ax + out_dir * 3 * w))
+            out.append((sh, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]))
+        return out
+
+    def _ring_count_cases(self, r, rule_dict):
+        """"What a ring's hole holds": a ring (four bars around its drawn void) with what
+        the rule counts in it. Built: every count satisfied (quiet); each count one over
+        its maximum or one under its minimum (reported, unless a filter then no longer
+        holds); the ring left open (reported if the rule asks that something be in it)."""
+        rings = [h for h in r.shapes if r.shapes[h].get("hole_loops")]
+        if len(rings) != 1:
+            return None
+        ring = rings[0]
+        checks = [(k, lo, hi) for h, k, lo, hi in r.count_bounds() if h == ring and r.in_hole(k, ring)]
+        filters = [(k, lo, hi) for h, (k, lo, hi) in r.count_filters().items() if h == ring and r.in_hole(k, ring)]
+        if not checks:
+            return None
+        inside = [(i, o) for i, o in r.inside_checks() if o == ring and r.in_holes(i, ring)]
+        for kind, ast in r.constraints:
+            for leaf in _plain_leaves(ast):
+                refs = [x.get("ref", "") for x in leaf.get("args", []) if isinstance(x, dict)]
+                if not (any(x.endswith(".layer") for x in refs) or leaf.get("op") == "in"
+                        or any(isinstance(x, dict) and x.get("op") == "count" for x in leaf.get("args", []))):
+                    raise _CannotBuild("a ring rule with further conditions is not built yet")
+        need = {}                                        # shape -> how many make every count hold
+        for k, lo, hi in filters + checks:
+            want = max(lo or 0, need.get(k, 0))
+            need[k] = min(want, hi) if hi is not None else want
+        pic = _Picture(r, rule_dict, 1000)
+        tag = "check " + " and ".join(c["expr"] for c in rule_dict["constraints"]
+                                      if c.get("kind") == "check" and "Count(" in c["expr"])
+
+        def layout(counts, ring_open=False):
+            pic.copies = dict(counts)
+            out = []
+            for n, pts in pic.outlines():
+                if n != ring:
+                    out.append((n, pts))
+                    continue
+                hole = [e["start"] for e in r.shapes[ring]["hole_loops"][0]]
+                x0, x1 = min(p[0] for p in pts), max(p[0] for p in pts)
+                y0, y1 = min(p[1] for p in pts), max(p[1] for p in pts)
+                a0, a1 = round(min(p[0] for p in hole) * 1000), round(max(p[0] for p in hole) * 1000)
+                b0, b1 = round(min(p[1] for p in hole) * 1000), round(max(p[1] for p in hole) * 1000)
+                box = lambda u0, v0, u1, v1: [(u0, v0), (u1, v0), (u1, v1), (u0, v1)]   # noqa: E731
+                bars = [box(x0, y0, x1, b0), box(x0, b1, x1, y1), box(x0, b0, a0, b1), box(a1, b0, x1, b1)]
+                out += [(ring, b) for b in bars[: 3 if ring_open else 4]]
+            layers = self._real_layers(r, out)
+            if layers is None:
+                raise _CannotBuild("a layer of the picture is defined in a way that cannot be drawn directly")
+            return layers
+
+        def case(what, expect, counts, ring_open=False):
+            return {"rule": r.name, "testing": tag, "case": what, "expect": expect,
+                    "shapes": layout(counts, ring_open),
+                    "markers": [lay for op, lay in (rule_dict.get("scope") or []) if op in _INSIDE_OPS]}
+        out = [case("every count as it must be", False, need)]
+        for k, lo, hi in checks:
+            if hi is not None:
+                out.append(case(f"one {k} more than allowed", True, dict(need, **{k: hi + 1})))
+            if lo:
+                short = dict(need, **{k: lo - 1})
+                held = all(short.get(fk, 0) >= (flo or 0) and (fhi is None or short.get(fk, 0) <= fhi)
+                           for fk, flo, fhi in filters)
+                out.append(case(f"one {k} fewer than asked", held, short))
+        if inside:
+            out.append(case("the ring left open on one side", True, need, ring_open=True))
+        return out
+
     def _hole_cases(self, r, rule_dict):
         """"Every enclosed hole must be at least so large": a ring of the layer -- four
         bars around a rectangular hole -- with the hole just too small (reported),
@@ -854,16 +1019,21 @@ class CasesBackend(Backend):
                 k == "check" and not _mentions(a, ".density") for k, a in r.constraints):
             raise _CannotBuild("a density rule with further conditions is not built yet")
         shape, lo, hi, window = dens[0]
-        if not window or not window["layer"]:
-            raise _CannotBuild("a density over the layout's own extent cannot be tested: draw the area "
-                               "(a shape on a boundary layer) around the material")
-        side = round(window["size"] * 1000) if window["size"] else 100_000      # one window, or a 100 um area
+        whole = not window or not window["layer"]          # over the layout's own extent (the die)
+        side = round(window["size"] * 1000) if window and window["size"] else 100_000   # one window, or a 100 um area
         check = next(c["expr"] for c in rule_dict["constraints"] if ".density" in c["expr"])
+        more, less = r.density_strict(shape)
         out = []
 
         def case(what, expect, strip):
-            c = self._case(r, rule_dict, f"check {check}", what, expect,
-                           [(window["shape"], 0, 0, side, side)] + ([(shape, 0, 0, strip, side)] if strip else []))
+            if whole:                                      # the extent: two specks at opposite corners
+                c = self._case(r, rule_dict, f"check {check}", what, expect,
+                               [(shape, 0, 0, strip, side)] if strip else [])
+                c["shapes"] += [{"layer": "_extent", "points": [[x, y], [x + 10, y], [x + 10, y + 10], [x, y + 10]]}
+                                for x, y in ((0, 0), (side - 10, side - 10))]
+            else:
+                c = self._case(r, rule_dict, f"check {check}", what, expect,
+                               [(window["shape"], 0, 0, side, side)] + ([(shape, 0, 0, strip, side)] if strip else []))
             c["alone"] = True
             out.append(c)
         for limit, is_min in ((lo, True), (hi, False)):
@@ -877,7 +1047,7 @@ class CasesBackend(Backend):
             far = at // 2 if is_min else (at + side) // 2
             inside = round(((lo if lo is not None else limit / 2) + (hi if hi is not None else (1 + limit) / 2)) / 2 * side)
             case(f"coverage just {'below the minimum' if is_min else 'above the maximum'}", True, at + sign * STEP_NM)
-            case(f"coverage exactly at the {'minimum' if is_min else 'maximum'}", False, at)
+            case(f"coverage exactly at the {'minimum' if is_min else 'maximum'}", more if is_min else less, at)
             case(f"coverage far {'below the minimum' if is_min else 'above the maximum'}", True, far)
             if other is None or (is_min and inside < round(other * side)) or (not is_min and inside > round(other * side)):
                 case("coverage well inside", False, inside)
@@ -1283,6 +1453,15 @@ class CasesBackend(Backend):
             if why:
                 skipped.append((rd.get("name") or "(unnamed)", why))
             cases += got
+        # tiles stand apart by more than the farthest distance a rule of the set looks
+        # (a 20 um spacing between dummy-exclude marks reaches into the next tile otherwise)
+        reach = 0
+        for rd in rules:
+            r = rd if isinstance(rd, Rule) else Rule(rd.data if isinstance(rd, Rule) else rd)
+            for b in r.bounds():
+                if r.measures.get(b.var) and isinstance(b.value, (int, float)):
+                    reach = max(reach, min(float(b.value), 50.0))
+        reach_nm = round(reach * 1000)
         x, alone = 0, 0
         for c in cases:
             if c.get("alone"):                         # a layout of its own (a density)
@@ -1295,24 +1474,27 @@ class CasesBackend(Backend):
             c["cell"] = "CASES"
             xs = [p[0] for s in c["shapes"] for p in s["points"]]
             ys = [p[1] for s in c["shapes"] for p in s["points"]]
-            pad = max(max(xs) - min(xs), max(ys) - min(ys)) // 4 + 1000
+            pad = (max(max(xs) - min(xs), max(ys) - min(ys)) // 4 + 1000 + reach_nm // 2) // 10 * 10
             dx, dy = x - min(xs) + pad, -min(ys) + pad
             if c.get("snap"):                          # a case about the grid stays on it
                 dx, dy = dx - dx % c["snap"], dy - dy % c["snap"]
             for s in c["shapes"]:
                 s["points"] = [[p[0] + dx, p[1] + dy] for p in s["points"]]
             w, h = max(xs) - min(xs) + 2 * pad, max(ys) - min(ys) + 2 * pad
+            w, h = -(-w // 10) * 10, -(-h // 10) * 10     # tiles (and the markers drawn over them) on a 10 nm grid
             c["tile"] = [x, 0, x + w, h]               # nm; a marker inside it belongs to this case
             x += w + 4 * pad
+            x = -(-x // 10) * 10
         return cases, skipped
 
     def files(self, rules, stem):
         cases, skipped = self.plan(rules)
         used = sorted({s["layer"] for c in cases for s in c["shapes"]} | {m for c in cases for m in c["markers"]})
-        missing = [lay for lay in used if lay not in self.layermap]
+        missing = [lay for lay in used if lay not in self.layermap and not lay.startswith("_")]
         numbers = dict(self.layermap)
-        for i, lay in enumerate(missing):              # no number given: take free ones, and say so
-            numbers[lay] = (900 + i, 0)
+        for i, lay in enumerate(missing + [x for x in used if x.startswith("_") and x not in self.layermap]):
+            numbers[lay] = (900 + i, 0)                # no number given: take free ones (and say so, but
+                                                       # for the test layout's own helpers, "_extent")
         rb = ["# Generated by FastDRC: test cases made from the drawings.",
               "#   klayout -b -r <this file> -rd out=cases.gds",
               "ly = RBA::Layout.new", "ly.dbu = 0.001", "cells = {}",

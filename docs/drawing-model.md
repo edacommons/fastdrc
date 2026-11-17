@@ -553,6 +553,12 @@ Counted shapes may be filtered like any others: with `match V.rows >= 2 and V.co
 on the via (and `match S < 0.36` on the arrow to its neighbour — how close makes an
 array), `Count(V) >= 1` reads "must hold a 2 × 2 array of vias".
 
+**In a ring's hole.** A shape drawn in the void of a ring is held by the hole: `Count(D) == 1` with D in the hole
+of a guard ring G is "every hole of G must hold exactly one D" (→ `G.holes.not_interacting(D, 1, 1)`). A filter
+`match Count(D) >= 1` makes it the holes that hold a D at all. A counted shape is narrowed by the links drawn
+FROM it to the other shapes held: an Nwell linked as drawn apart from the DNWELL counts the Nwells outside it.
+`Count(K) == 0` is "must hold none" (→ `.interacting(K)`).
+
 `Area(K)` is its companion: how much **area** of K's layer the shape holds, all of it
 together, in µm². "The MIM capacitors on one bottom plate may be 10000 µm² in all" is
 the plate with a capacitor in it and `Area(F) <= 10000`.
@@ -719,7 +725,8 @@ already says which: put the arrow on that edge and mark it as measured on edges
 (`"edges": true`). An edge drawn **running out from under** the other shape — one end
 under the gate, one outside — stands for the edges that do so; an edge drawn **wholly
 under** it stands for those:
-→ `poly2.edges.enclosing(comp.edges.interacting(poly2.edges), 0.4)` (running out), or
+→ `poly2.edges.enclosing(comp.edges.interacting(poly2.edges).and(poly2), 0.4)` (running out: the part of
+such an edge that lies under the gate), or
 `….not_interacting(poly2.edges)` (lying under).
 
 The same for an enclosure measured on edges: another shape drawn with a **straight**
@@ -733,6 +740,10 @@ along the width" is every drift edge the channel diffusion does *not* cross:
 shapes drawn apart: every edge of the shape the arrow starts at must have the other one
 facing it within 15 — "the tab at most 15 µm from the device's edge" holds on each side:
 → `A.edges.not_in(A.separation(B, 15.001, projection, whole_edges).first_edges)`
+
+**At a butting edge.** An arrow measured on edges whose starting edge is drawn ON an edge of another shape (an
+implant edge drawn on a diffusion's edge) starts at the shared edge only: "Nplus space to the P-gate at a butting
+edge" → `nplus.edges.and(pcomp.edges).separation(pgate.edges, 0.32, projection)`.
 
 **Which way a gate runs.** A check on a straight edge's direction — `g.angle == 0`,
 "must run along x" (90: along y) — flags the gate edges that run any other way:

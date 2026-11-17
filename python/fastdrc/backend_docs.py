@@ -165,8 +165,10 @@ class DocsBackend(Backend):
             arr = rule.array_filters().get(counted)
             arrayed = (f" in an array of at least {arr['rows']} rows and {arr['columns']} columns "
                        f"(shapes within {_fmt(arr['gap'])} µm of each other)") if arr else ""
+            cd = None if arr else rule.counted_derivation(counted, holder)
+            what = self._fmt_deriv_en(cd) if cd else self._name(rule.layer_of(counted))
             out.append(f"every {self._fmt_deriv_en(rule.holder_derivation(holder, alike)[0])} must hold "
-                       f"{_how_many(lo, hi)} {self._name(rule.layer_of(counted))}{arrayed}.")
+                       f"{_how_many(lo, hi)} {what}{arrayed}.")
         for collectors, gate, ratio, filters in rule.antenna_bounds():
             g = self._name(rule.layer_of(gate))
             what = _join([self._name(rule.layer_of(c)) for c in collectors])
@@ -319,16 +321,23 @@ class DocsBackend(Backend):
                                         f"{_fmt(lo.value)} µm ({mt}).", self._scope(rule, sf, consumed | {c for c, _ in kinds}))
         if m.get("edges"):                  # gate-edge (directional) width -- the edge_dl form
             # the same shapes the script takes as said (a zone around the OTHER shape is not a scope of this one)
+            # which edges of each: as the script picks them (crossed by an edge of another shape, or not)
+            apart = sf != st and rule.relation(sf, st) not in ("inside", "contains")
+            kf = rule.edge_kinds(m["from"], but=(sf, st)) if apart else []
+            kt = rule.edge_kinds(m["to"], but=(sf, st)) if apart else []
+            told = {c for c, _ in kf + kt}
+            said = lambda kinds: "".join(   # noqa: E731
+                f" that {'are' if cut else 'are not'} crossed by an edge of {self._name(rule.layer_of(c))}" for c, cut in kinds)
             scope = self._scope(rule, sf, {sf} | set(rule.covering(sf)) | set(rule.removed(sf))
-                                | set(rule.measure_derivations(var)[2]))
+                                | set(rule.measure_derivations(var)[2]) | told)
             v, most = _fmt((lo or hi).value), "at least" if lo else "at most"
             core = (f"{self._gate_en(rule, sf)} must be {most} {v} µm wide (a directional "
                     f"edge-to-edge width, not the polygon width)" if sf == st
                     else f"{self._gate_en(rule, st if rule.relation(sf, st) == 'inside' else sf)} must enclose "
                          f"{self._gate_en(rule, sf if rule.relation(sf, st) == 'inside' else st)} by {most} {v} µm"
                     if rule.relation(sf, st) in ("inside", "contains")
-                    else f"{self._gate_en(rule, sf)} must be {most} {v} µm from "
-                         f"{self._gate_en(rule, st)}")
+                    else f"{self._gate_en(rule, sf)}{said(kf)} must be {most} {v} µm from "
+                         f"{self._gate_en(rule, st)}{said(kt)}")
             return self._with_scope(core + f" ({mt}).", scope)
         ds, dt, consumed = rule.measure_derivations(var)    # the shared analysis
         subj, arg = self._fmt_deriv_en(ds), self._fmt_deriv_en(dt)
@@ -438,6 +447,8 @@ class DocsBackend(Backend):
         exact counterpart of the KLayout backend's `_fmt_deriv`, over the SAME facts."""
         from collections import defaultdict
         phrase = self._name(d["base"])
+        if d.get("holes"):                   # the void of a ring
+            phrase = "hole in " + phrase
         if d.get("form"):                    # the shape class a filter states
             phrase = {"square": "square ", "oblong": "non-square ", "rectangle": "rectangular ",
                       "other": "non-rectangular "}[d["form"]] + phrase
@@ -487,7 +498,7 @@ class DocsBackend(Backend):
         gate, filt = [], []
         for c in rule.covering(shape):
             cl = rule.layer_of(c)
-            if cl and cl != base:
+            if cl and cl != base and rule.relation(shape, c) != "contains":
                 (filt if rule.relation(shape, c) == "inside" else gate).append(cl)
         cuts = sorted({self._name(l) for c in rule.removed(shape)
                        for l in (rule.layer_of(c) or "?").split("|")}
@@ -500,6 +511,9 @@ class DocsBackend(Backend):
             phrase += " (excluding " + _join(cuts) + ")"
         for f in sorted(set(filt)):
             phrase += f" within {self._name(f)}"
+        on = rule.edges_lying_on(shape, {shape})
+        if on:
+            phrase += " where they butt " + _join([self._name(rule.layer_of(o)) for o in on])
         return phrase
 
     def _scope(self, rule, shape, consumed):

@@ -494,13 +494,15 @@ def _density(constraints, window=True):
 
 def test_global_density_over_the_layout():
     op, en, _ = _density([("check", "M.density >= 0.35 and M.density <= 0.6")], window=False)
-    assert op == "(met.area < 0.35 * extent.area || met.area > 0.6 * extent.area) ? extent.dup : polygon_layer"
+    # exactly at a limit passes, however the areas round
+    assert op == ("(met.area < 0.35 * extent.area * 0.999999999 || met.area > 0.6 * extent.area * 1.000000001)"
+                  " ? extent.dup : polygon_layer")
     assert en == "• met must cover between 35 % and 60 % of the layout."
 
 
 def test_density_within_a_boundary_layer_given_in_percent():
     op, en, _ = _density([("match", "W.layer == chip"), ("check", "M.density >= 35")])
-    assert op == "(met.area < 0.35 * chip.area) ? chip.dup : polygon_layer"
+    assert op == "(met.area < 0.35 * chip.area * 0.999999999) ? chip.dup : polygon_layer"
     assert en == "• met must cover at least 35 % of chip."
 
 
@@ -535,8 +537,9 @@ def test_spacing_between_shapes_on_different_nets():
                   "different nets (euclidian).")
     # how layers connect is stated once, at the top of the deck, before the rules
     lines = deck.splitlines()
-    assert ["connect(nwell, ntap)", "connect(ntap, cont)", "connect(cont, met1)"] == [
+    assert ["connect(net_anchor, net_anchor)", "connect(nwell, ntap)", "connect(ntap, cont)", "connect(cont, met1)"] == [
         ln for ln in lines if ln.startswith("connect(")]
+    assert "net_anchor = extent" in lines                 # a net that is always there: no empty netlist
     assert lines.index("connect(nwell, ntap)") < next(i for i, ln in enumerate(lines) if ln.startswith("r_l1"))
 
 

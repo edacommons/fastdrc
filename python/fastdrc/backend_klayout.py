@@ -128,6 +128,7 @@ class KLayoutBackend(Backend):
         self._defs = {}       # legend: derived layer names -> definition
         self._named = {}      # long derived expression -> the name it is given once
         self._helpers = {}    # name -> a small Ruby helper the deck needs, emitted once
+        self._anchored = False  # `net_anchor` declared (once a deck)
         self._connect = None  # the connections currently declared in the deck
 
     def compile(self, rule: Rule) -> str:
@@ -210,7 +211,7 @@ class KLayoutBackend(Backend):
         off += len(eols)
         for k, (inner, outer) in enumerate(insides):     # MUST BE WITHIN: flag what is not
             d_in, d_out, used = rule.check_derivations(inner, outer)
-            ring = ".holes" if rule.in_holes(inner, outer) else ""
+            ring = ".holes" if rule.in_holes(inner, outer) and not d_out.get("holes") else ""
             expr = f"{self._fmt_deriv(d_in)}.not_inside({self._fmt_deriv(d_out)}{ring})"
             expr += "".join(f".{op}({mk})" for op, mk in self._scope(rule, used, inner))
             self._emit(rule, expr, off + k, total, rule.name or f"{inner} in {outer}")
@@ -242,6 +243,9 @@ class KLayoutBackend(Backend):
             d, consumed = rule.holder_derivation(holder, alike)
             arr = rule.array_filters().get(counted)      # counted only where they form such an array
             what = self._array(self._layer_var(rule.layer_of(counted)), arr) if arr else None
+            cd = rule.counted_derivation(counted, holder)  # ... or as drawn against what else it holds
+            if cd and not arr:
+                what = self._fmt_deriv(cd)
             expr = self._fmt_deriv(d) + self._holding(rule.layer_of(counted), lo, hi, select=False, expr=what)
             expr += "".join(f".{op}({mk})" for op, mk in self._scope(rule, consumed, holder))
             self._emit(rule, expr, off + k, total, rule.name or f"Count({counted})")
@@ -349,7 +353,9 @@ class KLayoutBackend(Backend):
                 a, b = self._fmt_deriv(over["outer"]), self._fmt_deriv(over["inner"])
                 mine = m["from"] if rule.shape_of_edge(m["from"]) == over["inner_shape"] else m["to"]
                 how = rule.edge_crosses(mine, over["outer_shape"])
-                pick = {"across": f".interacting({a}.edges)", "inside": f".not_interacting({a}.edges)"}.get(how, "")
+                # (of an edge running out from under it, the part that lies under it: the outer
+                # layer reaches past THAT, not past the stretch beside it)
+                pick = {"across": f".interacting({a}.edges).and({a})", "inside": f".not_interacting({a}.edges)"}.get(how, "")
                 core = f"{a}.edges.enclosing({b}.edges{pick}, {v}.um, {mt})"
             elif m.get("edges"):                           # gate-EDGE width/space/separation
                 if sf == st:
@@ -381,7 +387,17 @@ class KLayoutBackend(Backend):
                     else:
                         core = f"{edge_dl(o)}.enclosing({edge_dl(i)}, {v}.um, {mt})"
                 else:
-                    core = f"{edge_dl(sf)}.separation({edge_dl(st)}, {v}.um, {mt})"
+                    # WHICH edges of each: those like the measured one -- crossed by a straight
+                    # edge of another shape of the picture, or not (a gate's sides run on past the
+                    # diffusion edge that crosses them; a jog of the same poly does not)
+                    kf, kt = rule.edge_kinds(m["from"], but=(sf, st)), rule.edge_kinds(m["to"], but=(sf, st))
+                    told = {c for c, _ in kf + kt}
+                    pk = lambda kinds: "".join(   # noqa: E731
+                        f".{'interacting' if cut else 'not_interacting'}({self._layer_var(rule.layer_of(c))}.edges)"
+                        for c, cut in kinds)
+                    consumed = consumed | told
+                    core = (f"{self._edge_dl(rule, sf, measured | told)}{pk(kf)}"
+                            f".separation({self._edge_dl(rule, st, measured | told)}{pk(kt)}, {v}.um, {mt})")
             elif sf == st and "|" in (derivs[sf]["base"] or ""):
                 # "width of A or B": each of them, not their union -- two abutting
                 # narrow shapes of different layers are each too narrow
@@ -403,7 +419,8 @@ class KLayoutBackend(Backend):
                 else:                                      # diff layers -> separation
                     a, b = dl(sf), dl(st)
                     wide_one = (sf if derivs[sf].get("wide") else st if derivs[st].get("wide") else None)
-                    whole = lambda sh: self._fmt_deriv(dict(derivs[sh], wide=None))   # noqa: E731
+                    # (the layer itself: without what says WHICH of its shapes -- wide, of such an area)
+                    whole = lambda sh: self._fmt_deriv(dict(derivs[sh], wide=None, area=None))   # noqa: E731
                     if wide_one and bool(derivs[sf].get("wide")) != bool(derivs[st].get("wide")) \
                             and whole(sf) == whole(st):
                         # "space to a WIDE part of the same layer": every too-small space
@@ -552,8 +569,8 @@ class KLayoutBackend(Backend):
         base = self._layer_var(rule.layer_of(shape))
         gate_covers, filters = [], []
         for c in rule.covering(shape):
-            if c in measured:
-                continue
+            if c in measured or rule.relation(shape, c) == "contains":
+                continue                    # (what lies wholly IN the shape does not cover it)
             (filters if rule.relation(shape, c) == "inside" else gate_covers).append(
                 self._layer_var(rule.layer_of(c)))
         gate = base + "".join(f".and({c})" for c in sorted(gate_covers))
@@ -564,6 +581,8 @@ class KLayoutBackend(Backend):
             core += f".not({r})"
         for f in sorted(filters):           # mask region the gate edges sit inside
             core += f".and({f})"
+        for o in rule.edges_lying_on(shape, measured):   # the edge shared with another shape (butting)
+            core += f".and({self._layer_var(rule.layer_of(o))}.edges)"
         return core
 
     @staticmethod
@@ -843,8 +862,11 @@ end"""
             return (f"out_of_density.call({layer}, {rng}, {area}, {size!r}, "
                     f"{float(window['step'] or size)!r})")
         more, less = rule.density_strict(shape)            # "more than": exactly the value fails too
-        tests = ([f"{layer}.area {'<=' if more else '<'} {f(lo)} * {area}.area"] if lo is not None else []) + (
-            [f"{layer}.area {'>=' if less else '>'} {f(hi)} * {area}.area"] if hi is not None else [])
+        # areas are floating µm²: "exactly 14 %" must compare as exactly, not a rounding off it
+        lo_x = f"{f(lo)} * {area}.area * {'1.000000001' if more else '0.999999999'}" if lo is not None else None
+        hi_x = f"{f(hi)} * {area}.area * {'0.999999999' if less else '1.000000001'}" if hi is not None else None
+        tests = ([f"{layer}.area {'<=' if more else '<'} {lo_x}"] if lo is not None else []) + (
+            [f"{layer}.area {'>=' if less else '>'} {hi_x}"] if hi is not None else [])
         return f"({' || '.join(tests)}) ? {area}.dup : polygon_layer"
 
     def _holding(self, layer, lo, hi, select, expr=None):
@@ -852,6 +874,10 @@ end"""
         it). `select`: the shapes whose count is in the range; else those whose count
         is NOT (a shape holding none included) -- the violations of a count check."""
         k = expr or self._layer_var(layer)
+        if lo == 0:                                  # "at least none" says nothing (KLayout takes no 0)
+            lo = None
+        if lo is None and hi is None:
+            return ".interacting(polygon_layer)" if not select else ""
         if lo is None:                               # at most hi
             return f".not_interacting({k}, {hi + 1})" if select else f".interacting({k}, {hi + 1})"
         rng = f"{lo}" if hi is None else f"{lo}, {hi}"
@@ -891,6 +917,14 @@ end"""
         if not set(have) <= set(pairs):
             self._checks.append("clear_connections")
             have = []
+        if not have:
+            # a net of its own that is always there: on a layout with nothing on the connected
+            # layers (a cell of wiring only, a test layout) the netlist would have no circuit at
+            # all, and KLayout stops at the first `.nets`
+            if not self._anchored:
+                self._checks.append("net_anchor = extent")
+                self._anchored = True
+            self._checks.append("connect(net_anchor, net_anchor)")
         self._checks += [f"connect({self._layer_var(a)}, {self._layer_var(b)})"
                          for a, b in pairs if (a, b) not in have]
         self._connect = have + [p for p in pairs if p not in have]
@@ -949,7 +983,9 @@ end"""
         precede the cutouts; then .not(cutouts); then each remaining selection
         .op(marker), the marker itself a rendered derivation. This is the
         ONLY place the KLayout backend turns the shared analysis into op text."""
-        own = self._layer_var(d["base"]) + self._FORM.get(d.get("form"), "") + self._with_area(d.get("area"))
+        # the void DIRECTLY inside a ring: a ring lying in the hole of a wider one cuts its own hole out of it
+        own = (self._layer_var(d["base"]) + (f".holes.not({self._layer_var(d['base'])})" if d.get("holes") else "")
+               + self._FORM.get(d.get("form"), "") + self._with_area(d.get("area")))
         if d.get("array"):
             own = self._array(own, d["array"])
         if d.get("count"):                           # only those holding so many of a layer
