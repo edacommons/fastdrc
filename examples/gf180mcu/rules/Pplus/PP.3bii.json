@@ -230,7 +230,7 @@
   },
   {
    "kind": "match",
-   "expr": "ZONE.layer == near_lvpwell"
+   "expr": "ZONE.layer == lvpwell_halo"
   },
   {
    "kind": "match",
@@ -242,7 +242,7 @@
   },
   {
    "kind": "check",
-   "expr": "S >= 0.16"
+   "expr": "S >= 0.16 or S == 0"
   }
  ]
 }

@@ -168,7 +168,8 @@
    "from": "esd_0",
    "to": "g_0",
    "metric": "projection",
-   "at": 11.0
+   "at": 11.0,
+   "edges": true
   }
  ],
  "constraints": [

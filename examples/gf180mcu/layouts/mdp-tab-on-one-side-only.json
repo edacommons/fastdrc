@@ -1,5 +1,5 @@
 {
- "desc": "an LDPMOS finger: tab on one side only. MDP.3c does not report it: every part of the device is within 15 \u00b5m of the tab (the process's own deck asks for the tab on four sides)",
+ "desc": "an LDPMOS finger: tab on one side only. MDP.3c does not report it: every part of the device is within 15 µm of the tab (the process's own deck asks for the tab on four sides)",
  "shapes": [
   {
    "layer": "ldmos_xtor",

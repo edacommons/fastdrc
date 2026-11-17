@@ -185,7 +185,7 @@
   },
   {
    "kind": "check",
-   "expr": "S >= 0.16"
+   "expr": "S >= 0.16 or S == 0"
   }
  ],
  "except": [

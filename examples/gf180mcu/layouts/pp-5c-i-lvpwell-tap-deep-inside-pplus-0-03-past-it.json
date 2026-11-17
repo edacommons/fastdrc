@@ -1,0 +1,44 @@
+{
+ "desc": "PP.5c(i) LVPWELL tap deep inside, Pplus 0.03 past it",
+ "shapes": [
+  {
+   "layer": "dnwell",
+   "box": [
+    -4,
+    -4,
+    24,
+    14
+   ]
+  },
+  {
+   "layer": "lvpwell",
+   "box": [
+    0,
+    0,
+    10,
+    10
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    4,
+    4,
+    4.5,
+    5
+   ]
+  },
+  {
+   "layer": "pplus",
+   "box": [
+    3.97,
+    3.97,
+    4.53,
+    5.03
+   ]
+  }
+ ],
+ "reports": [
+  "DN.3"
+ ]
+}

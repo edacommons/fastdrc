@@ -1,0 +1,44 @@
+{
+ "desc": "NP.5c(ii) DNWELL tap far from it, Nplus 0.03 past it",
+ "shapes": [
+  {
+   "layer": "dnwell",
+   "box": [
+    -4,
+    -4,
+    24,
+    14
+   ]
+  },
+  {
+   "layer": "lvpwell",
+   "box": [
+    0,
+    0,
+    10,
+    10
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    15,
+    4,
+    15.5,
+    5
+   ]
+  },
+  {
+   "layer": "nplus",
+   "box": [
+    14.97,
+    3.97,
+    15.53,
+    5.03
+   ]
+  }
+ ],
+ "reports": [
+  "DN.3"
+ ]
+}

@@ -8,11 +8,11 @@
     {
      "id": "out_0",
      "start": [
-      0,
+      10,
       0
      ],
      "end": [
-      10,
+      20,
       0
      ],
      "edge": false
@@ -20,35 +20,35 @@
     {
      "id": "out_1",
      "start": [
-      10,
+      20,
       0
      ],
      "end": [
-      10,
-      12
+      20,
+      16
      ],
      "edge": true
     },
     {
      "id": "out_2",
      "start": [
-      10,
-      12
+      20,
+      16
      ],
      "end": [
-      0,
-      12
+      10,
+      16
      ],
      "edge": false
     },
     {
      "id": "out_3",
      "start": [
-      0,
-      12
+      10,
+      16
      ],
      "end": [
-      0,
+      10,
       0
      ],
      "edge": false
@@ -61,11 +61,11 @@
     {
      "id": "in_0",
      "start": [
-      6,
+      16,
       4
      ],
      "end": [
-      16,
+      26,
       4
      ],
      "edge": false
@@ -73,20 +73,61 @@
     {
      "id": "in_1",
      "start": [
-      16,
+      26,
       4
      ],
      "end": [
-      16,
-      8
+      26,
+      12
      ],
      "edge": true
     },
     {
      "id": "in_2",
      "start": [
+      26,
+      12
+     ],
+     "end": [
       16,
-      8
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "in_3",
+     "start": [
+      16,
+      12
+     ],
+     "end": [
+      16,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DNW",
+   "edges": [
+    {
+     "id": "dnw_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      6,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "dnw_1",
+     "start": [
+      6,
+      0
      ],
      "end": [
       6,
@@ -95,14 +136,26 @@
      "edge": false
     },
     {
-     "id": "in_3",
+     "id": "dnw_2",
      "start": [
       6,
       8
      ],
      "end": [
-      6,
-      4
+      0,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "dnw_3",
+     "start": [
+      0,
+      8
+     ],
+     "end": [
+      0,
+      0
      ],
      "edge": false
     }
@@ -115,9 +168,18 @@
    "from": "in_1",
    "to": "out_1",
    "crossed": "straddle"
+  },
+  {
+   "name": "OUTDN",
+   "from": "out_3",
+   "to": "dnw_1"
   }
  ],
  "constraints": [
+  {
+   "kind": "match",
+   "expr": "DNW.layer == dnwell"
+  },
   {
    "kind": "match",
    "expr": "OUT.layer == dualgate"

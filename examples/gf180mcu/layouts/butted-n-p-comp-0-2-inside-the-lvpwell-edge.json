@@ -1,0 +1,57 @@
+{
+ "desc": "butted N/P COMP 0.2 inside the LVPWELL edge",
+ "shapes": [
+  {
+   "layer": "dnwell",
+   "box": [
+    -4,
+    -4,
+    24,
+    14
+   ]
+  },
+  {
+   "layer": "lvpwell",
+   "box": [
+    0,
+    0,
+    10,
+    10
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    9.5,
+    2,
+    9.8,
+    6
+   ]
+  },
+  {
+   "layer": "pplus",
+   "box": [
+    9.3,
+    1.8,
+    10.0,
+    4
+   ]
+  },
+  {
+   "layer": "nplus",
+   "box": [
+    9.3,
+    4,
+    10.0,
+    6.2
+   ]
+  }
+ ],
+ "reports": [
+  "DF.8",
+  "DN.3",
+  "NP.11",
+  "PP.11",
+  "PP.3a"
+ ]
+}

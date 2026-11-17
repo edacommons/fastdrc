@@ -1,0 +1,44 @@
+{
+ "desc": "butted N/P COMP deep in the Nwell. NP.11 does not report it: the butting is far from the Nwell edge (the process's own deck reports NP.11 anywhere in an Nwell); PP.3ci does not report it: a butted NCOMP is PP.3d, space 0 (the process's own deck reports it as a spacing)",
+ "shapes": [
+  {
+   "layer": "nwell",
+   "box": [
+    0,
+    0,
+    10,
+    10
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    3,
+    2,
+    3.3,
+    6
+   ]
+  },
+  {
+   "layer": "pplus",
+   "box": [
+    2.8,
+    1.8,
+    3.5,
+    4
+   ]
+  },
+  {
+   "layer": "nplus",
+   "box": [
+    2.8,
+    4,
+    3.5,
+    6.2
+   ]
+  }
+ ],
+ "reports": [
+  "NP.3a"
+ ]
+}

@@ -1,0 +1,45 @@
+{
+ "desc": "NP.5c(i) DNWELL tap near the LVPWELL, Nplus 0.1 past it",
+ "shapes": [
+  {
+   "layer": "dnwell",
+   "box": [
+    -4,
+    -4,
+    24,
+    14
+   ]
+  },
+  {
+   "layer": "lvpwell",
+   "box": [
+    0,
+    0,
+    10,
+    10
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    10.4,
+    4,
+    10.9,
+    5
+   ]
+  },
+  {
+   "layer": "nplus",
+   "box": [
+    10.3,
+    3.9,
+    11.0,
+    5.1
+   ]
+  }
+ ],
+ "reports": [
+  "DN.3",
+  "NP.5ci"
+ ]
+}

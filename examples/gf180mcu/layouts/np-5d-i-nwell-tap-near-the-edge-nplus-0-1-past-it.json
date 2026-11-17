@@ -1,0 +1,35 @@
+{
+ "desc": "NP.5d(i) Nwell tap near the edge, Nplus 0.1 past it",
+ "shapes": [
+  {
+   "layer": "nwell",
+   "box": [
+    0,
+    0,
+    10,
+    10
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    9.1,
+    4,
+    9.6,
+    5
+   ]
+  },
+  {
+   "layer": "nplus",
+   "box": [
+    9.0,
+    3.9,
+    9.7,
+    5.1
+   ]
+  }
+ ],
+ "reports": [
+  "NP.5di"
+ ]
+}

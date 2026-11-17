@@ -117,7 +117,7 @@
       7
      ],
      "end": [
-      22,
+      18,
       7
      ],
      "edge": false
@@ -125,11 +125,11 @@
     {
      "id": "d_1",
      "start": [
-      22,
+      18,
       7
      ],
      "end": [
-      22,
+      18,
       17
      ],
      "edge": false
@@ -137,7 +137,7 @@
     {
      "id": "d_2",
      "start": [
-      22,
+      18,
       17
      ],
      "end": [
@@ -159,9 +159,68 @@
      "edge": false
     }
    ]
+  },
+  {
+   "name": "N",
+   "edges": [
+    {
+     "id": "n_0",
+     "start": [
+      21,
+      9
+     ],
+     "end": [
+      24,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "n_1",
+     "start": [
+      24,
+      9
+     ],
+     "end": [
+      24,
+      15
+     ],
+     "edge": false
+    },
+    {
+     "id": "n_2",
+     "start": [
+      24,
+      15
+     ],
+     "end": [
+      21,
+      15
+     ],
+     "edge": false
+    },
+    {
+     "id": "n_3",
+     "start": [
+      21,
+      15
+     ],
+     "end": [
+      21,
+      9
+     ],
+     "edge": false
+    }
+   ]
   }
  ],
- "measures": [],
+ "measures": [
+  {
+   "name": "APART",
+   "from": "n_3",
+   "to": "d_1"
+  }
+ ],
  "constraints": [
   {
    "kind": "match",
@@ -172,8 +231,24 @@
    "expr": "D.layer == dnwell"
   },
   {
+   "kind": "match",
+   "expr": "N.layer in {nwell, ncomp, nat}"
+  },
+  {
+   "kind": "match",
+   "expr": "Count(D) >= 1"
+  },
+  {
    "kind": "check",
    "expr": "D in G.holes"
+  },
+  {
+   "kind": "check",
+   "expr": "Count(D) == 1"
+  },
+  {
+   "kind": "check",
+   "expr": "Count(N) == 0"
   }
  ]
 }

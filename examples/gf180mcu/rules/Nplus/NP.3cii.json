@@ -113,7 +113,8 @@
   {
    "name": "S3ii",
    "from": "n2_3",
-   "to": "p2_1"
+   "to": "p2_1",
+   "edges": true
   }
  ],
  "constraints": [
@@ -127,10 +128,11 @@
   },
   {
    "kind": "check",
-   "expr": "S3ii >= 0.08"
+   "expr": "S3ii >= 0.08 or S3ii == 0"
   }
  ],
  "except": [
+  "dnwell",
   "near_nwell"
  ]
 }

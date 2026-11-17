@@ -1,0 +1,33 @@
+{
+ "desc": "NP.5d(ii) Nwell tap deep inside, Nplus 0.03 past it",
+ "shapes": [
+  {
+   "layer": "nwell",
+   "box": [
+    0,
+    0,
+    10,
+    10
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    4,
+    4,
+    4.5,
+    5
+   ]
+  },
+  {
+   "layer": "nplus",
+   "box": [
+    3.97,
+    3.97,
+    4.53,
+    5.03
+   ]
+  }
+ ],
+ "reports": []
+}

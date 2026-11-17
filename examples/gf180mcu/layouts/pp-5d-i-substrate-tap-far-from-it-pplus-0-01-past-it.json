@@ -1,0 +1,35 @@
+{
+ "desc": "PP.5d(i) substrate tap far from it, Pplus 0.01 past it",
+ "shapes": [
+  {
+   "layer": "nwell",
+   "box": [
+    0,
+    0,
+    10,
+    10
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    15,
+    4,
+    15.5,
+    5
+   ]
+  },
+  {
+   "layer": "pplus",
+   "box": [
+    14.99,
+    3.99,
+    15.51,
+    5.01
+   ]
+  }
+ ],
+ "reports": [
+  "PP.5di"
+ ]
+}

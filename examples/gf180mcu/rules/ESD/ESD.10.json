@@ -12,7 +12,7 @@
       0
      ],
      "end": [
-      10,
+      14,
       0
      ],
      "edge": false
@@ -20,24 +20,24 @@
     {
      "id": "out_1",
      "start": [
-      10,
+      14,
       0
      ],
      "end": [
-      10,
-      12
+      14,
+      14
      ],
-     "edge": true
+     "edge": false
     },
     {
      "id": "out_2",
      "start": [
-      10,
-      12
+      14,
+      14
      ],
      "end": [
       0,
-      12
+      14
      ],
      "edge": false
     },
@@ -45,7 +45,7 @@
      "id": "out_3",
      "start": [
       0,
-      12
+      14
      ],
      "end": [
       0,
@@ -61,11 +61,11 @@
     {
      "id": "in_0",
      "start": [
-      6,
+      4,
       4
      ],
      "end": [
-      16,
+      10,
       4
      ],
      "edge": false
@@ -73,35 +73,35 @@
     {
      "id": "in_1",
      "start": [
-      16,
+      10,
       4
      ],
      "end": [
-      16,
-      8
+      10,
+      10
      ],
-     "edge": true
+     "edge": false
     },
     {
      "id": "in_2",
      "start": [
-      16,
-      8
+      10,
+      10
      ],
      "end": [
-      6,
-      8
+      4,
+      10
      ],
      "edge": false
     },
     {
      "id": "in_3",
      "start": [
-      6,
-      8
+      4,
+      10
      ],
      "end": [
-      6,
+      4,
       4
      ],
      "edge": false
@@ -109,14 +109,7 @@
    ]
   }
  ],
- "measures": [
-  {
-   "name": "X",
-   "from": "in_1",
-   "to": "out_1",
-   "crossed": "straddle"
-  }
- ],
+ "measures": [],
  "constraints": [
   {
    "kind": "match",
@@ -125,6 +118,10 @@
   {
    "kind": "match",
    "expr": "IN.layer == esd_comp"
+  },
+  {
+   "kind": "check",
+   "expr": "IN in OUT"
   }
  ]
 }

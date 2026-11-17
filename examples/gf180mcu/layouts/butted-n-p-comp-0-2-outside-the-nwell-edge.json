@@ -1,0 +1,47 @@
+{
+ "desc": "butted N/P COMP 0.2 outside the Nwell edge. PP.11 reports it: within 0.43 of the Nwell edge, outside it (the process's own deck looks only inside the Nwell)",
+ "shapes": [
+  {
+   "layer": "nwell",
+   "box": [
+    0,
+    0,
+    10,
+    10
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    10.2,
+    2,
+    10.5,
+    6
+   ]
+  },
+  {
+   "layer": "pplus",
+   "box": [
+    10.0,
+    1.8,
+    10.7,
+    4
+   ]
+  },
+  {
+   "layer": "nplus",
+   "box": [
+    10.0,
+    4,
+    10.7,
+    6.2
+   ]
+  }
+ ],
+ "reports": [
+  "DF.16",
+  "NP.11",
+  "PP.11",
+  "PP.3a"
+ ]
+}

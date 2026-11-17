@@ -8,11 +8,11 @@
     {
      "id": "z_0",
      "start": [
-      10,
+      6,
       0
      ],
      "end": [
-      22,
+      26,
       0
      ],
      "edge": false
@@ -20,35 +20,35 @@
     {
      "id": "z_1",
      "start": [
-      22,
+      26,
       0
      ],
      "end": [
-      22,
-      14
+      26,
+      28
      ],
      "edge": false
     },
     {
      "id": "z_2",
      "start": [
-      22,
-      14
+      26,
+      28
      ],
      "end": [
-      10,
-      14
+      6,
+      28
      ],
      "edge": false
     },
     {
      "id": "z_3",
      "start": [
-      10,
-      14
+      6,
+      28
      ],
      "end": [
-      10,
+      6,
       0
      ],
      "edge": false
@@ -56,53 +56,53 @@
    ]
   },
   {
-   "name": "IMP",
+   "name": "CP",
    "edges": [
     {
-     "id": "imp_0",
+     "id": "cp_0",
      "start": [
-      0,
-      4
+      10,
+      18
      ],
      "end": [
-      6,
-      4
-     ],
-     "edge": false
-    },
-    {
-     "id": "imp_1",
-     "start": [
-      6,
-      4
-     ],
-     "end": [
-      6,
-      10
+      22,
+      18
      ],
      "edge": true
     },
     {
-     "id": "imp_2",
+     "id": "cp_1",
      "start": [
-      6,
-      10
+      22,
+      18
      ],
      "end": [
-      0,
-      10
+      22,
+      24
      ],
      "edge": false
     },
     {
-     "id": "imp_3",
+     "id": "cp_2",
      "start": [
-      0,
-      10
+      22,
+      24
      ],
      "end": [
-      0,
-      4
+      10,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "cp_3",
+     "start": [
+      10,
+      24
+     ],
+     "end": [
+      10,
+      18
      ],
      "edge": false
     }
@@ -131,7 +131,7 @@
      ],
      "end": [
       18,
-      10
+      28
      ],
      "edge": false
     },
@@ -139,11 +139,11 @@
      "id": "ext_2",
      "start": [
       18,
-      10
+      28
      ],
      "end": [
       14,
-      10
+      28
      ],
      "edge": false
     },
@@ -151,13 +151,66 @@
      "id": "ext_3",
      "start": [
       14,
-      10
+      28
      ],
      "end": [
       14,
       4
      ],
      "edge": true
+    }
+   ]
+  },
+  {
+   "name": "IMP",
+   "edges": [
+    {
+     "id": "imp_0",
+     "start": [
+      0,
+      8
+     ],
+     "end": [
+      10,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_1",
+     "start": [
+      10,
+      8
+     ],
+     "end": [
+      10,
+      14
+     ],
+     "edge": true
+    },
+    {
+     "id": "imp_2",
+     "start": [
+      10,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      8
+     ],
+     "edge": false
     }
    ]
   }
@@ -168,7 +221,8 @@
    "from": "imp_1",
    "to": "ext_3",
    "metric": "projection",
-   "edges": true
+   "edges": true,
+   "at": 10.57
   }
  ],
  "constraints": [
@@ -178,11 +232,15 @@
   },
   {
    "kind": "match",
-   "expr": "IMP.layer == nplus"
+   "expr": "CP.layer == comp"
   },
   {
    "kind": "match",
    "expr": "EXT.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "IMP.layer == nplus"
   },
   {
    "kind": "check",

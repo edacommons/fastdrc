@@ -135,6 +135,10 @@
    "expr": "Wa > 80"
   },
   {
+   "kind": "match",
+   "expr": "A.area > 15000"
+  },
+  {
    "kind": "check",
    "expr": "S >= 20"
   }

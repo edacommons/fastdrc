@@ -1,0 +1,44 @@
+{
+ "desc": "PP.5c(ii) LVPWELL tap near its edge, Pplus 0.2 past it",
+ "shapes": [
+  {
+   "layer": "dnwell",
+   "box": [
+    -4,
+    -4,
+    24,
+    14
+   ]
+  },
+  {
+   "layer": "lvpwell",
+   "box": [
+    0,
+    0,
+    10,
+    10
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    9.0,
+    4,
+    9.5,
+    5
+   ]
+  },
+  {
+   "layer": "pplus",
+   "box": [
+    8.8,
+    3.8,
+    9.7,
+    5.2
+   ]
+  }
+ ],
+ "reports": [
+  "DN.3"
+ ]
+}

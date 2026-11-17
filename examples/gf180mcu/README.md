@@ -14,11 +14,11 @@ manual:
 
 ## What is in it
 
-446 rule files in 28 sections (a rule with a value per column — 3.3 V and 5 V/6 V — is
+447 rule files in 28 sections (a rule with a value per column — 3.3 V and 5 V/6 V — is
 one file and one check per column). The section `Grid` holds what the manual says once
 for every layer: the manufacturing grid, 0.005 µm (`"grid"` in `process.json`, one check
 per layer), and "no acute angle" (one drawing, `ANGLE`, on the family `every_layer`).
-Built as it is by default — six metals, 9K top metal, MIM option B — that is 683 checks,
+Built as it is by default — six metals, 9K top metal, MIM option B — that is 684 checks,
 210 of them those two per layer.
 
 | sections | the manual's chapter |
@@ -53,27 +53,27 @@ deck; with no shapes on those layers they report nothing.
 ## How it was checked
 
 - **Against its own drawings.** `fastdrc selftest examples/gf180mcu` builds test layouts
-  from every rule's picture and runs the deck on them: of the default deck's 683 checks,
-  648 behave as drawn; `DE.3`, `O.PL.ORT` and the seven coverage rules (`PL.8`, `Mn.4`, `MT.3`) have no generated layout. The 23
-  that do not are limits of the generated layouts, not of the rules: the end-of-line
-  enclosures (`CO.6a`, `Vn.3c`, `Vn.4b`, and `MT30.6` with the 3 µm metal — the generated line end is shorter than
-  it is wide), the rules that hold within 0.43 µm of a well edge (`NP.3bi`, `NP.5ci`,
-  `NP.5di`, `PP.5cii`, `PP.5dii`, `NP.11`, `PP.11`), three exact eFuse lengths (`EF.03`, `EF.06`,
-  `EF.09`), the count of drains at a gate (`MDN.13b`, `MDP.13b` — the generated second
-  drain does not reach the gate).
-- **Against the process's own KLayout deck**, on the same layouts and on the 41 standard
-  cells of the 7-track library:
+  from every rule's picture and runs the deck on them: of the default deck's 684 checks,
+  all 669 that are tested behave as drawn. 15 have no generated test: the rules that hold
+  in a zone along a well edge (`NP.3bi`, `NP.3ci`, `NP.5ci`, `NP.5cii`, `NP.5di`,
+  `PP.3bii`, `PP.3cii`, `PP.5cii`, `PP.5dii`, `NP.11`, `PP.11`) and near a gate's poly
+  extension (`NP.4b`, `PP.4b`, `NP.12`, `PP.12`) — a zone is a place in a layout, not a box on a layer, so
+  the generator does not draw it; every one of them is tested on the layouts below,
+  just inside and just outside its value.
+- **Against the process's own KLayout deck**, on the same layouts and on the 7-track standard-cell
+  library (one cell of each of its 69 types):
   - the cells as they are: the front-end rules are silent in both decks, but for `DF.13`
     and `DF.14` here — the tap distance, read for the device: a cell with no tap of its own
     is reported until it stands beside its tap cells (the process's deck reads these two
     from the tap's side and is silent);
-  - the cells with about 1400 random small errors put in: the rules that fire flag the
-    same places in both decks, but for `NP.5b` and one marker of `NP.3cii`;
-  - the rules near a well edge and the end-of-line enclosures agree with it on layouts
-    made by hand.
-- **On its own layouts.** `layouts/` holds 35 pieces of layout drawn by hand, each naming
+  - the cells with about 2800 random small errors put in: the rules that fire flag the same
+    places in both decks, but for `DF.13`, `DF.14` (above) and two markers of `NP.5b`,
+    where the process's deck takes a whole Nplus shape that touches an LVPWELL anywhere
+    and reports a tap of it that lies in an Nwell — `NP.5b` is for COMP inside LVPWELL or
+    outside Nwell and DNWELL; that tap is `NP.5d`'s, which both decks report alike.
+- **On its own layouts.** `layouts/` holds 87 pieces of layout drawn by hand, each naming
   the rules that must report on it; `fastdrc selftest` runs the whole deck on them, and a
-  rule that reports where it is not named is a rule drawn too broadly. All 35 are read as
+  rule that reports where it is not named is a rule drawn too broadly. All 87 are read as
   they should be. A layout names the rules its deliberate error breaks by the manual; the
   other rules it names are those both decks report on it, which have not each been read
   against the manual.
@@ -82,7 +82,9 @@ deck; with no shapes on those layers they report nothing.
   only, with the drift overlap, the gate-to-drain space and the gate end off; a
   high-resistance, a P+ and an N+ poly resistor; MIM capacitors on one plate;
   dummy-exclude areas; OTP gates either way; a well with two kinds of PMOS; a shape off
-  the grid and one with an acute corner). Where the two decks differed, the manual decided — its sentence and its figure (10.12.1
+  the grid and one with an acute corner; DNWELLs in their guard rings; every near-edge
+  implant rule just inside and just outside its value; butted COMP at and away from a
+  well edge; implants by a gate's poly extension). Where the two decks differed, the manual decided — its sentence and its figure (10.12.1
   LDNMOS, 10.12.2 LDPMOS, 7.6 Dualgate, 7.10 SAB) — and where the manual was not clear, what the
   rule is for in the process:
   - *this deck was wrong, and is corrected:* `DV.1` and 14 more "X must enclose Y" rules

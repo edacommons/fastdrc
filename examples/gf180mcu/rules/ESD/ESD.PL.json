@@ -1,6 +1,6 @@
 {
- "name": "ESD.pl",
- "desc": "ESD.pl : Minimum gate length of 5V/6V gate NMOS.",
+ "name": "ESD.PL",
+ "desc": "ESD.PL : Minimum gate length of 5V/6V gate NMOS.",
  "shapes": [
   {
    "name": "DG",

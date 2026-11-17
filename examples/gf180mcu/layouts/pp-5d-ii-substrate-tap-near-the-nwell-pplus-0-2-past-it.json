@@ -1,0 +1,33 @@
+{
+ "desc": "PP.5d(ii) substrate tap near the Nwell, Pplus 0.2 past it",
+ "shapes": [
+  {
+   "layer": "nwell",
+   "box": [
+    0,
+    0,
+    10,
+    10
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    10.5,
+    4,
+    11,
+    5
+   ]
+  },
+  {
+   "layer": "pplus",
+   "box": [
+    10.3,
+    3.8,
+    11.2,
+    5.2
+   ]
+  }
+ ],
+ "reports": []
+}

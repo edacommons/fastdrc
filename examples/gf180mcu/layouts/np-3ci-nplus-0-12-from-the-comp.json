@@ -1,0 +1,45 @@
+{
+ "desc": "NP.3ci: Nplus 0.12 from the COMP",
+ "shapes": [
+  {
+   "layer": "nwell",
+   "box": [
+    0,
+    0,
+    10,
+    10
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    10.3,
+    4,
+    11.1,
+    5
+   ]
+  },
+  {
+   "layer": "pplus",
+   "box": [
+    10.18,
+    2,
+    11.3,
+    7
+   ]
+  },
+  {
+   "layer": "nplus",
+   "box": [
+    8.68,
+    2,
+    10.18,
+    7
+   ]
+  }
+ ],
+ "reports": [
+  "NP.3ci",
+  "PP.5dii"
+ ]
+}

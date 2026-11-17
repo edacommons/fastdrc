@@ -166,13 +166,14 @@
   {
    "name": "S3i",
    "from": "n1_3",
-   "to": "p1_1"
+   "to": "p1_1",
+   "edges": true
   }
  ],
  "constraints": [
   {
    "kind": "match",
-   "expr": "ZONE.layer == near_nwell"
+   "expr": "ZONE.layer == nwell_halo"
   },
   {
    "kind": "match",
@@ -184,7 +185,10 @@
   },
   {
    "kind": "check",
-   "expr": "S3i >= 0.16"
+   "expr": "S3i >= 0.16 or S3i == 0"
   }
+ ],
+ "except": [
+  "dnwell"
  ]
 }

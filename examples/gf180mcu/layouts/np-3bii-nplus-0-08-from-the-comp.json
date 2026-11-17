@@ -1,0 +1,53 @@
+{
+ "desc": "NP.3bii: Nplus 0.08 from the COMP",
+ "shapes": [
+  {
+   "layer": "dnwell",
+   "box": [
+    -4,
+    -4,
+    24,
+    14
+   ]
+  },
+  {
+   "layer": "lvpwell",
+   "box": [
+    0,
+    0,
+    10,
+    10
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    4,
+    4,
+    5,
+    5
+   ]
+  },
+  {
+   "layer": "pplus",
+   "box": [
+    3.8,
+    2,
+    5.08,
+    7
+   ]
+  },
+  {
+   "layer": "nplus",
+   "box": [
+    5.08,
+    2,
+    6.58,
+    7
+   ]
+  }
+ ],
+ "reports": [
+  "DN.3"
+ ]
+}

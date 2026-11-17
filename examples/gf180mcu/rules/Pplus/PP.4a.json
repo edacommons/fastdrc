@@ -3,36 +3,36 @@
  "desc": "PP.4a : Space related to N-channel gate at a butting edge parallel to gate.",
  "shapes": [
   {
-   "name": "A",
+   "name": "G",
    "edges": [
     {
-     "id": "a_0",
+     "id": "g_0",
      "start": [
       0,
       0
      ],
      "end": [
-      6,
+      4,
       0
      ],
      "edge": false
     },
     {
-     "id": "a_1",
+     "id": "g_1",
      "start": [
-      6,
+      4,
       0
      ],
      "end": [
-      6,
+      4,
       6
      ],
      "edge": true
     },
     {
-     "id": "a_2",
+     "id": "g_2",
      "start": [
-      6,
+      4,
       6
      ],
      "end": [
@@ -42,7 +42,7 @@
      "edge": false
     },
     {
-     "id": "a_3",
+     "id": "g_3",
      "start": [
       0,
       6
@@ -56,52 +56,105 @@
    ]
   },
   {
-   "name": "B",
+   "name": "SD",
    "edges": [
     {
-     "id": "b_0",
+     "id": "sd_0",
      "start": [
-      11,
+      4,
       0
      ],
      "end": [
-      17,
+      10,
       0
      ],
      "edge": false
     },
     {
-     "id": "b_1",
+     "id": "sd_1",
      "start": [
-      17,
+      10,
       0
      ],
      "end": [
-      17,
+      10,
       6
      ],
      "edge": false
     },
     {
-     "id": "b_2",
+     "id": "sd_2",
      "start": [
-      17,
+      10,
       6
      ],
      "end": [
-      11,
+      4,
       6
      ],
      "edge": false
     },
     {
-     "id": "b_3",
+     "id": "sd_3",
      "start": [
-      11,
+      4,
       6
      ],
      "end": [
-      11,
+      4,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      10,
+      0
+     ],
+     "end": [
+      16,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      16,
+      0
+     ],
+     "end": [
+      16,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_2",
+     "start": [
+      16,
+      6
+     ],
+     "end": [
+      10,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      10,
+      6
+     ],
+     "end": [
+      10,
       0
      ],
      "edge": true
@@ -112,19 +165,24 @@
  "measures": [
   {
    "name": "S",
-   "from": "a_1",
-   "to": "b_3",
-   "metric": "projection"
+   "from": "a_3",
+   "to": "g_1",
+   "metric": "projection",
+   "edges": true
   }
  ],
  "constraints": [
   {
    "kind": "match",
-   "expr": "A.layer == pplus"
+   "expr": "G.layer == ngate"
   },
   {
    "kind": "match",
-   "expr": "B.layer == ngate"
+   "expr": "SD.layer == ncomp"
+  },
+  {
+   "kind": "match",
+   "expr": "A.layer == pplus"
   },
   {
    "kind": "check",

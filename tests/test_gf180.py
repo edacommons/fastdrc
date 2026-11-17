@@ -14,7 +14,7 @@ def test_every_rule_compiles(tmp_path):
     deck, text, n, notes = process.build(DECK, str(tmp_path))
     files = glob.glob(os.path.join(DECK, "rules", "*", "*.json"))
     grid = len(process.load(DECK)[0]["layers"])              # one grid check per layer
-    assert len(files) == 446 and n == 473 + 2 * grid == 683   # the default; the grid and the angle, per layer
+    assert len(files) == 447 and n == 474 + 2 * grid == 684   # the default; the grid and the angle, per layer
     assert notes == []                                    # no rule that checks nothing, no layer without a number
     said = open(text, encoding="utf-8").read()
     assert "(no checkable assertion found)" not in said
@@ -54,7 +54,7 @@ def test_part_of_it_behaves_as_drawn(tmp_path):
 @pytest.mark.skipif(not process.klayout_binary(), reason="KLayout is not installed")
 def test_its_layouts_are_read_as_they_should_be(tmp_path):
     # whole devices drawn by hand: every rule of the deck gets its say on each
-    assert len(process.deck_layouts(DECK)) == 35
+    assert len(process.deck_layouts(DECK)) == 87
     res = process.selftest(DECK, str(tmp_path), only=["LDNMOS,LDPMOS,HRES,PRES,LRES,Poly2,Pplus,Nplus,Dualgate,OTP,"
                                                       "DummyExclude,MIM-B,Grid,COMP,Wells,SAB,Contact"])
     assert [line for line in res["wrong"] if line.startswith("layout ")] == []

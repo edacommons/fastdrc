@@ -135,6 +135,7 @@
   "5V": 15
  },
  "except": [
+  "dnwell_only",
   "nwell"
  ]
 }
