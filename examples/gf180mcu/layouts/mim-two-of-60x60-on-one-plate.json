@@ -38,5 +38,12 @@
    ]
   }
  ],
- "reports": []
+ "reports": [],
+ "when": {
+  "switch": "mim",
+  "cases": {
+   "B": true
+  },
+  "default": false
+ }
 }

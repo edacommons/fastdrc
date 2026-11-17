@@ -54,7 +54,7 @@ def test_part_of_it_behaves_as_drawn(tmp_path):
 @pytest.mark.skipif(not process.klayout_binary(), reason="KLayout is not installed")
 def test_its_layouts_are_read_as_they_should_be(tmp_path):
     # whole devices drawn by hand: every rule of the deck gets its say on each
-    assert len(process.deck_layouts(DECK)) == 87
+    assert len(process.deck_layouts(DECK)) == 92
     res = process.selftest(DECK, str(tmp_path), only=["LDNMOS,LDPMOS,HRES,PRES,LRES,Poly2,Pplus,Nplus,Dualgate,OTP,"
                                                       "DummyExclude,MIM-B,Grid,COMP,Wells,SAB,Contact"])
     assert [line for line in res["wrong"] if line.startswith("layout ")] == []

@@ -419,6 +419,8 @@ class KLayoutBackend(Backend):
                 else:                                      # diff layers -> separation
                     a, b = dl(sf), dl(st)
                     wide_one = (sf if derivs[sf].get("wide") else st if derivs[st].get("wide") else None)
+                    # a PART of a layer (picked by a relation, or the part of it in a zone) against the layer
+                    narrowed = lambda sh: bool(derivs[sh].get("selections") or derivs[sh].get("ands"))   # noqa: E731
                     # (the layer itself: without what says WHICH of its shapes -- wide, of such an area)
                     whole = lambda sh: self._fmt_deriv(dict(derivs[sh], wide=None, area=None))   # noqa: E731
                     if wide_one and bool(derivs[sf].get("wide")) != bool(derivs[st].get("wide")) \
@@ -431,13 +433,14 @@ class KLayoutBackend(Backend):
                         core = f"{whole(sf)}.space({v}.um, {mt})"
                         touching = f".interacting({dl(wide_one)})"
                     elif (derivs[sf]["base"] == derivs[st]["base"] and not wide_one
-                          and not any(derivs[x].get(k) for x in (sf, st) for k in ("ands", "nots", "halo"))
-                          and bool(derivs[sf].get("selections")) != bool(derivs[st].get("selections"))):
+                          and not any(derivs[x].get(k) for x in (sf, st) for k in ("nots", "halo"))
+                          and narrowed(sf) != narrowed(st)
+                          and not (derivs[st if narrowed(sf) else sf].get("ands"))):
                         # "space from a SELECTED shape of a layer to the layer": every
                         # too-small space of the layer with a selected shape on one side.
                         # (Measured against the whole layer, the selected shape's own edge
                         # would stand in front of its neighbour and hide it.)
-                        picked, rest = (sf, st) if derivs[sf].get("selections") else (st, sf)
+                        picked, rest = (sf, st) if narrowed(sf) else (st, sf)
                         core = f"{dl(rest)}.space({v}.um, {mt})"
                         touching = f".interacting({dl(picked)})"
                     else:

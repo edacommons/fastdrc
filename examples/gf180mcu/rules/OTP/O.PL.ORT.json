@@ -180,5 +180,8 @@
    "kind": "check",
    "expr": "g_0.angle == 0"
   }
+ ],
+ "columns": [
+  "3.3V"
  ]
 }

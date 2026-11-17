@@ -529,11 +529,11 @@ def selftest(folder, out_dir=None, only=None, skip=None, optimise=True, backend=
     "notes": [...], "files": {...}}``."""
     deck, _, n, notes = build(folder, out_dir, extra=("cases",), only=only, skip=skip, optimise=optimise,
                               backend=backend, deep=deep, profile=profile, params=params)
-    _, sheets = load(folder, profile, params)
+    proc, sheets = load(folder, profile, params)
     whole = [r for _, data in sheets for r in rules_of(data)
              if any(w is None for _, _, _, w in Rule(r).density_bounds())]
     result = _run_selftest(deck, notes, backend, whole)
-    _run_layouts(folder, deck, backend, result, {r.get("name") for r in whole})
+    _run_layouts(folder, deck, backend, result, {r.get("name") for r in whole}, proc.get("_values") or {})
     return result
 
 
@@ -545,6 +545,7 @@ def deck_layouts(folder) -> list:
          "shapes": [{"layer": "comp", "box": [0, 0, 3, 10]},          µm: x0, y0, x1, y1
                     {"layer": "metal1", "points": [[0, 0], [8, 0], [8, 2]]}],
          "reports": ["MDN.17"],        the rules that must report it; every other rule must be silent
+         "when": {"switch": "mim", "cases": {"B": true}, "default": false},   optional: for which choice of the deck's parameters
          "not_judged": ["MDP.3c"]}     rules whose answer on this layout is not known
 
     A rule's own drawing shows the rule; a layout shows a whole device, where EVERY rule
@@ -559,7 +560,7 @@ def deck_layouts(folder) -> list:
     return out
 
 
-def _run_layouts(folder, deck, backend, result, whole=()):
+def _run_layouts(folder, deck, backend, result, whole=(), values=None):
     """Run the built deck on the deck's own layouts (`deck_layouts`) and add what it finds
     to a self-test's `result`: ``result["layouts"] = {name: "ok" | "wrong"}``, and a line
     in ``result["wrong"]`` for each rule that reports where it should not or does not
@@ -568,7 +569,9 @@ def _run_layouts(folder, deck, backend, result, whole=()):
     import subprocess
 
     from .backend import runner
-    layouts = deck_layouts(folder)
+    # a layout may say `"when"` it applies, as a rule does (a capacitor of one MIM option)
+    layouts = [(n, lay) for n, lay in deck_layouts(folder)
+               if "when" not in lay or _params.settle(lay["when"], values or {})]
     result["layouts"] = {}
     if not layouts:
         return

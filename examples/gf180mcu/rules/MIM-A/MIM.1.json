@@ -3,6 +3,59 @@
  "desc": "MIM.1 : Minimum MiM bottom plate spacing to the bottom plate metal (whether adjacent MiM or routing metal).",
  "shapes": [
   {
+   "name": "ZONE",
+   "edges": [
+    {
+     "id": "zone_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      22,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_1",
+     "start": [
+      22,
+      4
+     ],
+     "end": [
+      22,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_2",
+     "start": [
+      22,
+      18
+     ],
+     "end": [
+      4,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_3",
+     "start": [
+      4,
+      18
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
    "name": "PLATE",
    "edges": [
     {
@@ -12,7 +65,7 @@
       0
      ],
      "end": [
-      14,
+      18,
       0
      ],
      "edge": false
@@ -20,24 +73,24 @@
     {
      "id": "plate_1",
      "start": [
-      14,
+      18,
       0
      ],
      "end": [
-      14,
-      14
+      18,
+      22
      ],
      "edge": true
     },
     {
      "id": "plate_2",
      "start": [
-      14,
-      14
+      18,
+      22
      ],
      "end": [
       0,
-      14
+      22
      ],
      "edge": false
     },
@@ -45,7 +98,7 @@
      "id": "plate_3",
      "start": [
       0,
-      14
+      22
      ],
      "end": [
       0,
@@ -61,48 +114,48 @@
     {
      "id": "ft_0",
      "start": [
-      4,
-      4
+      8,
+      8
      ],
      "end": [
-      10,
-      4
+      14,
+      8
      ],
      "edge": false
     },
     {
      "id": "ft_1",
      "start": [
-      10,
-      4
+      14,
+      8
      ],
      "end": [
-      10,
-      10
+      14,
+      14
      ],
      "edge": false
     },
     {
      "id": "ft_2",
      "start": [
-      10,
-      10
+      14,
+      14
      ],
      "end": [
-      4,
-      10
+      8,
+      14
      ],
      "edge": false
     },
     {
      "id": "ft_3",
      "start": [
-      4,
-      10
+      8,
+      14
      ],
      "end": [
-      4,
-      4
+      8,
+      8
      ],
      "edge": false
     }
@@ -114,11 +167,11 @@
     {
      "id": "b_0",
      "start": [
-      19,
+      26,
       0
      ],
      "end": [
-      25,
+      32,
       0
      ],
      "edge": false
@@ -126,35 +179,35 @@
     {
      "id": "b_1",
      "start": [
-      25,
+      32,
       0
      ],
      "end": [
-      25,
-      14
+      32,
+      22
      ],
      "edge": false
     },
     {
      "id": "b_2",
      "start": [
-      25,
-      14
+      32,
+      22
      ],
      "end": [
-      19,
-      14
+      26,
+      22
      ],
      "edge": false
     },
     {
      "id": "b_3",
      "start": [
-      19,
-      14
+      26,
+      22
      ],
      "end": [
-      19,
+      26,
       0
      ],
      "edge": true
@@ -175,6 +228,10 @@
   }
  ],
  "constraints": [
+  {
+   "kind": "match",
+   "expr": "ZONE.layer == near_fusetop"
+  },
   {
    "kind": "match",
    "expr": "PLATE.layer == metal2"

@@ -1,0 +1,49 @@
+{
+ "desc": "MIM plate, other metal 0.8 from its tail far from the capacitor",
+ "shapes": [
+  {
+   "layer": "metal5",
+   "box": [
+    4,
+    4,
+    40,
+    16
+   ]
+  },
+  {
+   "layer": "fusetop",
+   "box": [
+    5,
+    5,
+    15,
+    15
+   ]
+  },
+  {
+   "layer": "cap_mk",
+   "box": [
+    3,
+    3,
+    17,
+    17
+   ]
+  },
+  {
+   "layer": "metal5",
+   "box": [
+    30,
+    1.2,
+    38,
+    3.2
+   ]
+  }
+ ],
+ "reports": [],
+ "when": {
+  "switch": "mim",
+  "cases": {
+   "B": true
+  },
+  "default": false
+ }
+}

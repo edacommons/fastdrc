@@ -1,0 +1,58 @@
+{
+ "desc": "MIM plate, a via beside the capacitor 0.4 from the plate's edge",
+ "shapes": [
+  {
+   "layer": "metal5",
+   "box": [
+    4,
+    4,
+    40,
+    16
+   ]
+  },
+  {
+   "layer": "fusetop",
+   "box": [
+    5,
+    5,
+    15,
+    15
+   ]
+  },
+  {
+   "layer": "cap_mk",
+   "box": [
+    3,
+    3,
+    17,
+    17
+   ]
+  },
+  {
+   "layer": "via5",
+   "box": [
+    15.5,
+    4.4,
+    15.76,
+    4.66
+   ]
+  },
+  {
+   "layer": "metaltop",
+   "box": [
+    15,
+    3.9,
+    16.3,
+    5.2
+   ]
+  }
+ ],
+ "reports": [],
+ "when": {
+  "switch": "mim",
+  "cases": {
+   "B": true
+  },
+  "default": false
+ }
+}

@@ -332,6 +332,11 @@ class CasesBackend(Backend):
         from .backend import get
         r = Rule(rule_dict)
         try:
+            for name in r.shapes:                          # a zone drawn beside the very shape it is grown from
+                zone = r.layer_defs.get(r.layer_of(name) or "")   # ("within 1.06 of the top plate", with the plate)
+                if isinstance(zone, dict) and zone.get("op") in ("+", "-") and any(
+                        r.layer_of(o) == zone["args"][0].get("ref") for o in r.shapes if o != name):
+                    raise _CannotBuild("a layer of the picture is defined in a way that cannot be drawn directly")
             for special in (self._orientation_cases, self._ring_count_cases, self._grid_cases, self._acute_cases, self._total_cases, self._form_cases, self._presence_cases, self._corner_cases, self._hole_cases, self._array_cases, self._share_cases,
                             self._density_cases, self._antenna_cases):
                 made = special(r, rule_dict)

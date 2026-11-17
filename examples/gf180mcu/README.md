@@ -54,12 +54,13 @@ deck; with no shapes on those layers they report nothing.
 
 - **Against its own drawings.** `fastdrc selftest examples/gf180mcu` builds test layouts
   from every rule's picture and runs the deck on them: of the default deck's 684 checks,
-  all 669 that are tested behave as drawn. 15 have no generated test: the rules that hold
-  in a zone along a well edge (`NP.3bi`, `NP.3ci`, `NP.5ci`, `NP.5cii`, `NP.5di`,
-  `PP.3bii`, `PP.3cii`, `PP.5cii`, `PP.5dii`, `NP.11`, `PP.11`) and near a gate's poly
-  extension (`NP.4b`, `PP.4b`, `NP.12`, `PP.12`) — a zone is a place in a layout, not a box on a layer, so
-  the generator does not draw it; every one of them is tested on the layouts below,
-  just inside and just outside its value.
+  all 666 that are tested behave as drawn. 18 have no generated test: the rules that hold
+  in a zone — along a well edge (`NP.3bi`, `NP.3bii`, `NP.3ci`, `NP.5ci`, `NP.5cii`,
+  `NP.5di`, `PP.3bii`, `PP.3cii`, `PP.5cii`, `PP.5dii`, `NP.11`, `PP.11`), near a gate's
+  poly extension (`NP.4b`, `PP.4b`, `NP.12`, `PP.12`), within 1.06 µm of a MIM top plate
+  (`MIMTM.1`, `MIMTM.2`). A zone is a place in a layout, not a box on a layer, so the
+  generator does not draw it; every one of them is tested on the layouts below, just
+  inside and just outside its value.
 - **Against the process's own KLayout deck**, on the same layouts and on the 7-track standard-cell
   library (one cell of each of its 69 types):
   - the cells as they are: the front-end rules are silent in both decks, but for `DF.13`
@@ -71,9 +72,9 @@ deck; with no shapes on those layers they report nothing.
     where the process's deck takes a whole Nplus shape that touches an LVPWELL anywhere
     and reports a tap of it that lies in an Nwell — `NP.5b` is for COMP inside LVPWELL or
     outside Nwell and DNWELL; that tap is `NP.5d`'s, which both decks report alike.
-- **On its own layouts.** `layouts/` holds 87 pieces of layout drawn by hand, each naming
+- **On its own layouts.** `layouts/` holds 92 pieces of layout drawn by hand, each naming
   the rules that must report on it; `fastdrc selftest` runs the whole deck on them, and a
-  rule that reports where it is not named is a rule drawn too broadly. All 87 are read as
+  rule that reports where it is not named is a rule drawn too broadly. All 92 are read as
   they should be. A layout names the rules its deliberate error breaks by the manual; the
   other rules it names are those both decks report on it, which have not each been read
   against the manual.
