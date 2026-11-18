@@ -187,5 +187,8 @@
    "kind": "check",
    "expr": "S7 >= 0.18"
   }
+ ],
+ "except": [
+  "neo_ee_mk"
  ]
 }

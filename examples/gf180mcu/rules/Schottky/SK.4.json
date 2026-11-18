@@ -1,0 +1,184 @@
+{
+ "name": "SK.4",
+ "desc": "SK.4 : Schottky diode shall need both cathode and anode: only Cathode COMP or only Anode COMP under Schottky_diode marking is not allowed; Schottky_diode without COMP is not allowed.",
+ "shapes": [
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      22,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      22,
+      0
+     ],
+     "end": [
+      22,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      22,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      8,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      8,
+      4
+     ],
+     "end": [
+      8,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_2",
+     "start": [
+      8,
+      10
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "C",
+   "edges": [
+    {
+     "id": "c_0",
+     "start": [
+      13,
+      4
+     ],
+     "end": [
+      18,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "c_1",
+     "start": [
+      18,
+      4
+     ],
+     "end": [
+      18,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "c_2",
+     "start": [
+      18,
+      10
+     ],
+     "end": [
+      13,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "c_3",
+     "start": [
+      13,
+      10
+     ],
+     "end": [
+      13,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MK.layer == schottky_diode"
+  },
+  {
+   "kind": "match",
+   "expr": "A.layer == sk_anode"
+  },
+  {
+   "kind": "match",
+   "expr": "C.layer == sk_cathode"
+  },
+  {
+   "kind": "check",
+   "expr": "Count(A) >= 1 and Count(C) >= 1"
+  }
+ ]
+}

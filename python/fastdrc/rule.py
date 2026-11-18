@@ -229,6 +229,18 @@ class Rule:
         sa, sb = self.shape_of_edge(m["from"]), self.shape_of_edge(m["to"])
         return (sa, sb) if sa is not None and sb is not None and sa != sb else None
 
+    def net_cross(self, mname):
+        """``(holder, a, b)`` when a CROSS is drawn between two shapes of one layer that a
+        constraint puts on DIFFERENT nets (``A.net != B.net``), both drawn inside one
+        other shape: "two of these at different potentials must not be in one holder"."""
+        rel = self.crossed_relation(mname)
+        if not rel or self.layer_of(rel[0]) != self.layer_of(rel[1]) or self.net_relation(*rel) != "ne":
+            return None
+        a, b = rel
+        holder = next((h for h in self.shapes if h not in rel and self.relation(a, h) == "inside"
+                       and self.relation(b, h) == "inside"), None)
+        return (holder, a, b) if holder else None
+
     def is_flagged(self, shape):
         """A drawn instance is FLAGGED (a positive example -- the violation, the
         default) or a not-flagged COUNTER-EXAMPLE: a same-layer instance drawn in
@@ -348,6 +360,49 @@ class Rule:
         return {e: (lo, hi) for e, _, form, lo, hi in self.length_facts() if form != "not"}
 
     LENGTH_STEP = 0.001   # µm: one database unit, the smallest step a length can differ by
+
+    def near_filters(self) -> dict:
+        """``{filter arrow: (narrowed shape, other shape, Bound)}``: a FILTER "closer than
+        v" on an arrow from a shape that a CHECK measures to a third shape the check does
+        not involve -- it says WHICH of those shapes the check is about ("an NCOMP less
+        than 1 um from an Nwell must have a tap within 20"). Not a rule of its own."""
+        ends = lambda k: (self.shape_of_edge(self.measures[k].get("from")), self.shape_of_edge(self.measures[k].get("to")))   # noqa: E731
+        straight = [k for k, m in self.measures.items() if m.get("from") and not m.get("crossed") and self.measure_is_straight(k)]
+        checked = {}
+        for b in self.bounds():
+            if b.kind == "check" and b.var in straight:
+                for sh in ends(b.var):
+                    checked.setdefault(sh, set()).update(ends(b.var))
+        out = {}
+        for b in self.bounds():
+            if b.kind == "check" or b.var not in straight or b.is_min or any(
+                    x.var == b.var and x.kind == "check" for x in self.bounds()):
+                continue
+            a, c = ends(b.var)
+            for mine, other in ((a, c), (c, a)):
+                if mine in checked and other not in checked[mine] and mine != other \
+                        and self.relation(mine, other) in ("disjoint", "outside"):
+                    out[b.var] = (mine, other, b)
+        return out
+
+    def faced_edge_filters(self) -> dict:
+        """``{edge: (lo, hi)}``: a length FILTER on the edge a maximum "measured on
+        edges" starts at -- which edges of the shape must have the other one facing them
+        ("the long sides of the anode": the edges longer than its width). Such a filter
+        is part of that rule, not a rule of its own."""
+        starts = {m["from"] for k, m in self.measures.items()
+                  if m.get("edges") and m.get("from") and any(b.var == k and b.is_max and b.kind == "check" for b in self.bounds())}
+        out = {}
+        for edge, kind, form, lo, hi in self.length_facts():
+            if kind != "check" and form == "range" and edge in starts:
+                # as KLayout takes a range (from lo, up to but not hi): `> lo` starts a step above
+                # lo, `<= hi` ends a step above hi
+                if lo is not None and self._length_ops.get((edge, kind, True)) == ">":
+                    lo = round(lo + self.LENGTH_STEP, 6)
+                if hi is not None and self._length_ops.get((edge, kind, False)) == "<=":
+                    hi = round(hi + self.LENGTH_STEP, 6)
+                out[edge] = (lo, hi)
+        return out
 
     def length_bounds(self) -> list:
         """The edges an edge-length constraint FLAGS, as ``(edge, sel, lo, hi)`` with
@@ -475,9 +530,65 @@ class Rule:
         else:
             self._anchors = {sf: self._just_inside(sf, a), st: self._just_inside(st, b)}
         try:
-            return self.check_derivations(sf, st)
+            df, dt, used = self.check_derivations(sf, st)
         finally:
             self._anchors, self._partners = {}, set()
+        # a LINK (a wavy arrow) drawn between the two measured shapes, beside the distance:
+        # the shape it starts at is one that lies OUTSIDE every shape of the other's layer
+        # ("NCOMP outside the drift": not the source that the drift itself reaches under)
+        if sf != st and self.relation(sf, st) in ("disjoint", "outside"):
+            for k, lm in self.measures.items():
+                if k == mname or lm.get("crossed") or self.measure_is_straight(k) or not lm.get("from"):
+                    continue
+                ends = (self.shape_of_edge(lm["from"]), self.shape_of_edge(lm["to"]))
+                if set(ends) != {sf, st}:
+                    continue
+                other = dict(df, base=self.layer_of(ends[1]), ands=[], nots=[], wide=None, form=None, area=None,
+                             array=None, nets=False, count=None, holes=False, pre_selections=[], selections=[], halo=0)
+                if ends[0] == sf:
+                    df = dict(df, selections=list(df["selections"]) + [("outside", other)])
+                else:
+                    dt = dict(dt, selections=list(dt["selections"]) + [("outside", other)])
+        # a FILTER "closer than v" from one of the two to a third shape: only those of it
+        # that have such a one that near (it overlaps the third one grown by v)
+        for k, (mine, third, b) in self.near_filters().items():
+            if k == mname or mine not in (sf, st):
+                continue
+            grown = dict(df, base=self.layer_of(third), ands=[], nots=[], wide=None, form=None, area=None, array=None,
+                         nets=False, count=None, holes=False, pre_selections=[], selections=[],
+                         halo=round(b.value + (self.LENGTH_STEP if b.op == "<=" else 0), 6))
+            if mine == sf:
+                df = dict(df, selections=list(df["selections"]) + [("overlapping", grown)])
+            else:
+                dt = dict(dt, selections=list(dt["selections"]) + [("overlapping", grown)])
+            used = used | {third}
+        return df, dt, used
+
+    def measure_shield(self, mname) -> list:
+        """Shapes a minimum-distance arrow passes right THROUGH on its way between two
+        shapes that are apart -- a third shape lying between them, apart from both: where
+        it lies across the whole way from one to the other, the rule is lifted (a guard
+        between a device and what it must keep away from)."""
+        m = self.measures.get(mname)
+        if not m or m.get("crossed") or not self.measure_is_straight(mname):
+            return []
+        sf, st = self.shape_of_edge(m["from"]), self.shape_of_edge(m["to"])
+        if sf is None or st is None or sf == st or self.relation(sf, st) not in ("disjoint", "outside"):
+            return []
+        a, b = self.measure_spots(mname)
+        out = []
+        for name in self.shapes:
+            if name in (sf, st) or not self.layer_of(name):
+                continue
+            if any(self.relation(name, x) not in ("disjoint", "outside") for x in (sf, st)):
+                continue
+            poly = self.polygon(name)
+            if topology.contains(poly, a) or topology.contains(poly, b):
+                continue
+            if any(topology.contains(poly, (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t))
+                   for t in (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)):
+                out.append(name)
+        return out
 
     def measure_through(self, mname):
         """The shape an arrow runs THROUGH on its way from one edge to the other -- it
@@ -835,6 +946,62 @@ class Rule:
                             out.append(other)
         return out
 
+    def marker_parts(self, consumed, primary) -> dict:
+        """What a scope MARKER (a shape that is neither measured nor combined into the
+        checked layers) is made of, beyond its layer: ``{marker: {"holds": [shapes],
+        "another": layer | None}}``.
+
+        ``holds`` -- other such shapes drawn INSIDE it with a link from it: the marker is
+        "one that holds these" (a DNWELL with an NCOMP tab in it), and they are not
+        markers of their own.  ``another`` -- the marker is drawn apart from the checked
+        shape but is of the layer of a shape that covers it (a second DNWELL beside the
+        one the device is in): it is ANOTHER one, one that does not touch the checked
+        layer; the name of that layer."""
+        free = [n for n in self.shapes if n not in consumed and self.layer_of(n)]
+        linked = {frozenset((self.shape_of_edge(m.get("from")), self.shape_of_edge(m.get("to"))))
+                  for m in self.measures.values() if m.get("from") and m.get("to") and not m.get("crossed")}
+        out, held = {}, set()
+        for n in free:
+            holds = [k for k in free if k != n and frozenset((n, k)) in linked and self.relation(k, n) == "inside"]
+            held |= set(holds)
+            own = any(c in consumed and c != primary and self.layer_of(c) == self.layer_of(n)
+                      and self.relation(primary, c) in ("inside", "overlap") for c in self.shapes)
+            another = self.layer_of(primary) if own and self.relation(primary, n) in ("disjoint", "outside") else None
+            out[n] = {"holds": holds, "another": another}
+        return {n: v for n, v in out.items() if n not in held}
+
+    def edge_angle_filter(self, shape) -> list:
+        """The directions a FILTER names for the straight edges of `shape`
+        (``match g.angle == 45 or g.angle == 135``: "the 45-degree edges"), as angles in
+        [0, 180); empty when no filter says so."""
+        out = []
+        for kind, ast in self.constraints:
+            if kind == "check":
+                continue
+            for ref, op, num in _attr_cmps(ast, ".angle"):
+                if op == "==" and self.shape_of_edge(ref) == shape and num % 180 not in out:
+                    out.append(num % 180)
+        return sorted(out)
+
+    def edge_shared_with(self, edge_id):
+        """The other shape (of another layer) whose edge lies ALONG this straight edge
+        -- two shapes drawn butting: a length on that edge is the length of the stretch
+        they share. None if the edge is not shared."""
+        mine = self.shape_of_edge(edge_id)
+        if mine is None or not self._edge_straight(edge_id):
+            return None
+        (ax, ay), (bx, by) = self._edge_ends(edge_id)
+        for other, sh in self.shapes.items():
+            if other == mine or self.layer_of(other) == self.layer_of(mine) or self.relation(mine, other) != "touch":
+                continue
+            for e in sh["edges"]:
+                (cx, cy), (dx, dy) = e["start"], e["end"]
+                if ax == bx == cx == dx and min(max(ay, by), max(cy, dy)) > max(min(ay, by), min(cy, dy)):
+                    return other
+                if ay == by == cy == dy and min(max(ax, bx), max(cx, dx)) > max(min(ax, bx), min(cx, dx)):
+                    return other
+        return None
+
     def edge_kinds(self, edge_id, but=()) -> list:
         """``[(other shape, crosses it)]`` for every other shape that tells the edges of
         this edge's shape APART: a straight edge of it crosses some of them and not
@@ -1059,6 +1226,7 @@ class Rule:
             w["size"] = next((lo for e, _, form, lo, _ in self.length_facts()
                               if e in edges and form == "exact"), None)
             w["gap"] = w["var"] = None
+            w["gap_incl"] = True           # by the checked spacing: at it or closer
             near = None                    # a filter on the same arrow: "closer than this"
             either = [x for e in self.either_bounds() for x in e[:2]]
             for b in self.bounds() + either:
@@ -1072,6 +1240,7 @@ class Rule:
                     w["gap"], w["var"] = b.value, b.var
                 elif b.kind != "check" and b.is_max:
                     near, near_var = b.value, b.var
+                    w["gap_incl"] = b.op == "<="
             if near is not None and w["gap"] is not None:
                 w["gap"] = near
             elif near is not None:         # no spacing is checked (a count of arrays): the filter alone
@@ -1289,6 +1458,23 @@ class Rule:
                  pre_selections=[x for x in d.get("pre_selections", []) if x[1]["base"] not in inner])
         return d, consumed | set(contents)
 
+    def count_chain(self, holder, counted) -> list:
+        """Which holders a count is about, said THROUGH what is counted: the counted
+        shape (drawn touching the holder) is linked on to a further shape that carries
+        a count FILTER of its own -- "a drain whose gate's source is shared by two
+        gates". ``[(counted shape, further shape, (what it counts, lo, hi))]``."""
+        filters, out = self.count_filters(), []
+        for m in self.measures.values():
+            if m.get("crossed") or not m.get("from") or not m.get("to"):
+                continue
+            ends = (self.shape_of_edge(m["from"]), self.shape_of_edge(m["to"]))
+            if counted not in ends:
+                continue
+            far = ends[1] if ends[0] == counted else ends[0]
+            if far != holder and far in filters:
+                out.append((counted, far, filters[far]))
+        return out
+
     def held_ratio_bounds(self) -> list:
         """``(held, holder, lo, hi)``: how much of a shape's area what it HOLDS takes up
         -- ``S.area >= 0.06 * P.area`` with S drawn inside P ("min. slit density of a
@@ -1487,22 +1673,88 @@ class Rule:
         sel, out = {}, []
         wide = self.wide_filters()
         arrayed = {w["var"] for w in self.array_filters().values()}
+        near = self.near_filters()
         for b in self.bounds():
             if not self.measure_is_straight(b.var):
                 continue
+            if b.kind != "check" and b.var in near:
+                continue                                 # says which shapes another arrow's check is about
             if b.kind != "check" and b.var in arrayed:
                 continue                                 # how close makes an array: a filter
             m = self.measures[b.var]
             if (b.kind != "check" and b.is_min and self.shape_of_edge(m["from"]) in wide
                     and self.shape_of_edge(m["from"]) == self.shape_of_edge(m["to"])):
                 continue                                 # a filter on an operand, not a rule
-            if b.kind == "check" and b.exact and b.is_min and b.value == 0:
-                continue                                 # `S == 0`: only "at most 0" says anything
+            if b.kind == "check" and b.exact and b.is_min and (b.value == 0 or self.exact_form(b.var)):
+                continue                                 # `S == 0`: only "at most 0" says anything;
+                                                         # an exact form is one check, not two
             if b.kind == "check":
                 out.append((b.var, b, None, False) if b.is_min else (b.var, None, b, False))
             else:
                 sel.setdefault(b.var, [None, None])[0 if b.is_min else 1] = b
         return out + [(v, lo, hi, True) for v, (lo, hi) in sel.items()]
+
+    def part_of(self, layer, whole) -> bool:
+        """Is the named combination `layer` a PART of the layer `whole` by its definition
+        (`cathode = efuse_poly and not ...`, `efuse_poly = poly2 and efuse_mk`: a part of
+        poly2)?"""
+        seen = set()
+        while layer in self.layer_defs and layer not in seen:
+            seen.add(layer)
+            d = self.layer_defs[layer]
+            if not (isinstance(d, dict) and d.get("op") == "and" and "ref" in d["args"][0]):
+                return False
+            layer = d["args"][0]["ref"]
+            if layer == whole:
+                return True
+        return False
+
+    def exact_form(self, var):
+        """What an EXACT value (`L == v`, a check) says when the arrow is not a plain
+        width, space or enclosure -- read from where the arrow is drawn:
+
+        ``{"kind": "span", "shape", "role"}`` -- from one end of a shape that is not a
+        box to its other end (the two outermost edges): the shape's whole extent, its
+        "long" or "short" one as drawn.
+
+        ``{"kind": "beside", "pad", "link"}`` -- two shapes that ABUT, the arrow between
+        their sides that run away from the shared edge: how far the wider one's edge
+        goes on beside the narrower one (the fuse link in the middle of its pad).
+
+        None for everything else."""
+        m = self.measures.get(var)
+        if not m or m.get("crossed") or not m.get("from") or not m.get("to"):
+            return None
+        if not any(b.var == var and b.exact and b.kind == "check" for b in self.bounds()):
+            return None
+        sf, st = self.shape_of_edge(m["from"]), self.shape_of_edge(m["to"])
+        geo = {e["id"]: e for n in (sf, st) if n in self.shapes for e in self.shapes[n]["edges"]}
+        ea, eb = geo.get(m["from"]), geo.get(m["to"])
+        if ea is None or eb is None:
+            return None
+        axis = lambda e: (0 if e["start"][0] == e["end"][0] else 1 if e["start"][1] == e["end"][1] else None)  # noqa: E731
+        if axis(ea) is None or axis(ea) != axis(eb):
+            return None                                  # parallel, along x or y
+        ax = axis(ea)                                    # the coordinate the arrow runs along
+        box = lambda n: [f([q[i] for e in self.shapes[n]["edges"] for q in (e["start"], e["end"])])  # noqa: E731
+                         for f in (min, max) for i in (0, 1)]          # x0, y0, x1, y1
+        if sf == st:
+            x0, y0, x1, y1 = box(sf)
+            if len(self.shapes[sf]["edges"]) <= 4:
+                return None                              # a box: its width, as ever
+            ends = sorted((ea["start"][ax], eb["start"][ax]))
+            if ends != [(x0, y0)[ax], (x1, y1)[ax]]:
+                return None
+            along, across = ((x1 - x0), (y1 - y0)) if ax == 0 else ((y1 - y0), (x1 - x0))
+            return {"kind": "span", "shape": sf, "role": "long" if along >= across else "short"}
+        if self.relation(sf, st) != "touch":
+            return None
+        bf, bt = box(sf), box(st)
+        other = 1 - ax                                   # the shared edge lies across the arrow
+        if not (bf[other] == bt[other + 2] or bt[other] == bf[other + 2]):
+            return None
+        wider = sf if (bf[ax + 2] - bf[ax]) > (bt[ax + 2] - bt[ax]) else st
+        return {"kind": "beside", "pad": wider, "link": st if wider == sf else sf}
 
     def in_hole(self, k, holder) -> bool:
         """Is shape `k` drawn in a drawn VOID of `holder` (in the hole of a ring, not on

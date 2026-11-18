@@ -1,51 +1,51 @@
 {
- "name": "MT30.8",
- "desc": "MT30.8 : There shall be minimum 2X2 array of vias (top vias) at one location connecting to 3um thick top metal.",
+ "name": "EE.SB.12",
+ "desc": "EE.SB.12 : Salicide Block overlap with Poly2 outside ESD_MK (inside NEO_EE_MK).",
  "shapes": [
   {
-   "name": "Mt",
+   "name": "MKR",
    "edges": [
     {
-     "id": "mt_0",
+     "id": "mkr_0",
      "start": [
       0,
       0
      ],
      "end": [
-      21,
+      24,
       0
      ],
      "edge": false
     },
     {
-     "id": "mt_1",
+     "id": "mkr_1",
      "start": [
-      21,
+      24,
       0
      ],
      "end": [
-      21,
-      12
+      24,
+      20
      ],
      "edge": false
     },
     {
-     "id": "mt_2",
+     "id": "mkr_2",
      "start": [
-      21,
-      12
+      24,
+      20
      ],
      "end": [
       0,
-      12
+      20
      ],
      "edge": false
     },
     {
-     "id": "mt_3",
+     "id": "mkr_3",
      "start": [
       0,
-      12
+      20
      ],
      "end": [
       0,
@@ -56,49 +56,49 @@
    ]
   },
   {
-   "name": "V",
+   "name": "SAB",
    "edges": [
     {
-     "id": "v_0",
+     "id": "sab_0",
      "start": [
       4,
       4
      ],
      "end": [
-      8,
+      14,
       4
      ],
      "edge": false
     },
     {
-     "id": "v_1",
+     "id": "sab_1",
      "start": [
-      8,
+      14,
       4
      ],
      "end": [
-      8,
-      8
+      14,
+      16
      ],
      "edge": true
     },
     {
-     "id": "v_2",
+     "id": "sab_2",
      "start": [
-      8,
-      8
+      14,
+      16
      ],
      "end": [
       4,
-      8
+      16
      ],
      "edge": false
     },
     {
-     "id": "v_3",
+     "id": "sab_3",
      "start": [
       4,
-      8
+      16
      ],
      "end": [
       4,
@@ -109,53 +109,53 @@
    ]
   },
   {
-   "name": "V2",
+   "name": "PX",
    "edges": [
     {
-     "id": "v2_0",
+     "id": "px_0",
      "start": [
-      12,
-      4
+      9,
+      8
      ],
      "end": [
-      16,
-      4
-     ],
-     "edge": false
-    },
-    {
-     "id": "v2_1",
-     "start": [
-      16,
-      4
-     ],
-     "end": [
-      16,
+      20,
       8
      ],
      "edge": false
     },
     {
-     "id": "v2_2",
+     "id": "px_1",
      "start": [
-      16,
+      20,
       8
      ],
      "end": [
-      12,
-      8
+      20,
+      12
      ],
      "edge": false
     },
     {
-     "id": "v2_3",
+     "id": "px_2",
      "start": [
-      12,
-      8
+      20,
+      12
      ],
      "end": [
-      12,
-      4
+      9,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "px_3",
+     "start": [
+      9,
+      12
+     ],
+     "end": [
+      9,
+      8
      ],
      "edge": true
     }
@@ -164,49 +164,31 @@
  ],
  "measures": [
   {
-   "name": "S",
-   "from": "v_1",
-   "to": "v2_3"
+   "name": "O",
+   "from": "px_3",
+   "to": "sab_1"
   }
  ],
  "constraints": [
   {
    "kind": "match",
-   "expr": "Mt.layer == under_top_metal"
+   "expr": "MKR.layer == neo_ee_mk"
   },
   {
    "kind": "match",
-   "expr": "V.layer == top_via"
+   "expr": "SAB.layer == sab"
   },
   {
    "kind": "match",
-   "expr": "V2.layer == top_via"
-  },
-  {
-   "kind": "match",
-   "expr": "V.rows >= 2 and V.columns >= 2"
-  },
-  {
-   "kind": "match",
-   "expr": "V2.rows >= 2 and V2.columns >= 2"
-  },
-  {
-   "kind": "match",
-   "expr": "S < 0.36"
+   "expr": "PX.layer == poly2"
   },
   {
    "kind": "check",
-   "expr": "Count(V) >= 1"
+   "expr": "O >= 0.21"
   }
  ],
- "when": {
-  "switch": "top_metal",
-  "cases": {
-   "30K": true
-  },
-  "default": false
- },
  "except": [
-  "guard_ring_mk"
+  "otp_mk",
+  "esd_mk"
  ]
 }

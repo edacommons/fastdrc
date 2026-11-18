@@ -125,6 +125,7 @@
   }
  ],
  "except": [
+  "neo_ee_mk",
   "ymtp_mk"
  ]
 }

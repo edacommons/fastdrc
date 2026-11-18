@@ -1,0 +1,190 @@
+{
+ "name": "EF.22a",
+ "desc": "EF.22a : Min./Max. Cathode Poly2 overlap with PLFUSE in width direction.",
+ "shapes": [
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      22,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      22,
+      0
+     ],
+     "end": [
+      22,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      22,
+      20
+     ],
+     "end": [
+      0,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      0,
+      20
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      18,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "b_1",
+     "start": [
+      18,
+      4
+     ],
+     "end": [
+      18,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "b_2",
+     "start": [
+      18,
+      10
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "b_3",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "F",
+   "edges": [
+    {
+     "id": "f_0",
+     "start": [
+      9,
+      10
+     ],
+     "end": [
+      13,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "f_1",
+     "start": [
+      13,
+      10
+     ],
+     "end": [
+      13,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "f_2",
+     "start": [
+      13,
+      16
+     ],
+     "end": [
+      9,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "f_3",
+     "start": [
+      9,
+      16
+     ],
+     "end": [
+      9,
+      10
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E",
+   "from": "f_3",
+   "to": "b_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MK.layer == efuse_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == cathode"
+  },
+  {
+   "kind": "match",
+   "expr": "F.layer == plfuse"
+  },
+  {
+   "kind": "check",
+   "expr": "E == 1.04"
+  }
+ ]
+}

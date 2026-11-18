@@ -60,7 +60,7 @@
  "constraints": [
   {
    "kind": "match",
-   "expr": "A.layer == metaltop"
+   "expr": "A.layer == top_metal_layer"
   },
   {
    "kind": "check",

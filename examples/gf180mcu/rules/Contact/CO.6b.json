@@ -134,5 +134,8 @@
    "kind": "check",
    "expr": "Ea >= 0.04 or Eb >= 0.06"
   }
+ ],
+ "except": [
+  "sram_lv"
  ]
 }

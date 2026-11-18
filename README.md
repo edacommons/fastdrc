@@ -51,7 +51,7 @@ what lies inside, across or beside what off the drawing and derives the operatio
 | ![PO.2](docs/img/demo/PO.2.svg) | ![V1.2](docs/img/demo/V1.2.svg) | ![LU.1](docs/img/demo/LU.1.svg) |
 |---|---|---|
 | `Xp >= 0.2` | `Ww >= 2` (which metal), `Count(VW) >= 2` | `Sl <= 20` |
-| *poly must extend at least 0.2 µm beyond diff* | *every met1 at least 2 µm wide must hold at least 2 via1* | *every part of pdiff combined with nwell must be within 20 µm of ndiff combined with nwell* |
+| *poly must extend at least 0.2 µm beyond diff* | *every met1 at least 2 µm wide must hold at least 2 via1* | *every part of pdiff combined with nwell must be within 20 µm of ndiff combined with nwell — one in the same piece of nwell* |
 | `poly.enclosing(diff, 0.2.um, euclidian)` | `met1.sized(-0.999.um).sized(0.999.um).not_interacting(via1, 2)` | `pdiff.and(nwell).not(ndiff.and(nwell).sized(20.um))` |
 
 Three rules of the example deck: the drawing, what is written on it, the sentence read
@@ -88,9 +88,9 @@ fastdrc pack mydeck             # -> mydeck.zip: the same deck in one file; ever
 > ([`examples/demo/`](examples/demo)): `fastdrc build examples/demo`.
 >
 > **A real process: [`examples/gf180mcu/`](examples/gf180mcu)** — the open GF180MCU
-> design rules drawn from the public manual, 447 rule files, with the metal stack, the
+> design rules drawn from the public manual, 492 rule files, with the metal stack, the
 > top metal and the MIM option as parameters; compared with the process's own KLayout
-> deck. Its README says what was checked and what is not drawn yet.
+> deck. Its README says how it was checked.
 >
 > **📐 [docs/drawing-model.md](docs/drawing-model.md)** is the reference: how each kind
 > of rule is drawn and what the compiler derives from it — widths, spacings,

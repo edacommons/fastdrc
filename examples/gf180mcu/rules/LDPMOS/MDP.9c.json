@@ -273,7 +273,8 @@
    "name": "E",
    "from": "cs_1",
    "to": "g_1",
-   "at": 21.0
+   "at": 21.0,
+   "edges": true
   }
  ],
  "constraints": [
@@ -299,7 +300,7 @@
   },
   {
    "kind": "check",
-   "expr": "E >= 0.2"
+   "expr": "E == 0.2"
   }
  ]
 }

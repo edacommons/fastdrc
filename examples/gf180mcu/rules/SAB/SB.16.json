@@ -128,8 +128,9 @@
   }
  ],
  "except": [
+  "esd_mk",
   "lvs_io",
-  "otp_mk",
-  "esd_mk"
+  "neo_ee_mk",
+  "otp_mk"
  ]
 }

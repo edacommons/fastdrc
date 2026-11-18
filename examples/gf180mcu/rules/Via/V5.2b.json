@@ -137,5 +137,15 @@
    "kind": "check",
    "expr": "S >= 0.36"
   }
- ]
+ ],
+ "when": {
+  "switch": "metal_stack",
+  "cases": {
+   "3LM": false,
+   "4LM": false,
+   "5LM": false,
+   "6LM": true
+  },
+  "default": false
+ }
 }

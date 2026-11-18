@@ -67,5 +67,15 @@
    "expr": "va_0.length == 0.26"
   }
  ],
- "extended": true
+ "extended": true,
+ "when": {
+  "switch": "metal_stack",
+  "cases": {
+   "3LM": false,
+   "4LM": false,
+   "5LM": true,
+   "6LM": true
+  },
+  "default": false
+ }
 }

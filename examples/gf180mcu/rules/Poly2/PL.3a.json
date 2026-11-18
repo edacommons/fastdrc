@@ -135,7 +135,10 @@
   "3.3V": 0.24,
   "5V": 0.24
  },
- "except": [
-  "otp_mk"
+ "scope": [
+  [
+   "not_overlapping",
+   "otp_on_comp"
+  ]
  ]
 }

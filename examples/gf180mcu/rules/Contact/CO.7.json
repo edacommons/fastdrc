@@ -187,5 +187,8 @@
    "kind": "check",
    "expr": "S7 >= 0.15"
   }
+ ],
+ "except": [
+  "otp_mk"
  ]
 }

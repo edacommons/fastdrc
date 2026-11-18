@@ -1,0 +1,248 @@
+{
+ "name": "LRES.9a",
+ "desc": "LRES.9a : Nplus Poly2 resistor shall be covered by RES_MK marking. RES_MK length shall be coincide with resistor length (Defined by SAB length) and width covering the width of Poly2.",
+ "shapes": [
+  {
+   "name": "IMP",
+   "edges": [
+    {
+     "id": "imp_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      32,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_1",
+     "start": [
+      32,
+      0
+     ],
+     "end": [
+      32,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_2",
+     "start": [
+      32,
+      28
+     ],
+     "end": [
+      0,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "imp_3",
+     "start": [
+      0,
+      28
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      9,
+      4
+     ],
+     "end": [
+      23,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      23,
+      4
+     ],
+     "end": [
+      23,
+      24
+     ],
+     "edge": true
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      23,
+      24
+     ],
+     "end": [
+      9,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      9,
+      24
+     ],
+     "end": [
+      9,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "SAB",
+   "edges": [
+    {
+     "id": "sab_0",
+     "start": [
+      13,
+      8
+     ],
+     "end": [
+      19,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_1",
+     "start": [
+      19,
+      8
+     ],
+     "end": [
+      19,
+      20
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab_2",
+     "start": [
+      19,
+      20
+     ],
+     "end": [
+      13,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_3",
+     "start": [
+      13,
+      20
+     ],
+     "end": [
+      13,
+      8
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "R",
+   "edges": [
+    {
+     "id": "r_0",
+     "start": [
+      4,
+      12
+     ],
+     "end": [
+      28,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "r_1",
+     "start": [
+      28,
+      12
+     ],
+     "end": [
+      28,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "r_2",
+     "start": [
+      28,
+      16
+     ],
+     "end": [
+      4,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "r_3",
+     "start": [
+      4,
+      16
+     ],
+     "end": [
+      4,
+      12
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E",
+   "from": "sab_1",
+   "to": "mk_1",
+   "at": 14.0
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "IMP.layer == nplus"
+  },
+  {
+   "kind": "match",
+   "expr": "MK.layer == res_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "SAB.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "R.layer == poly2"
+  },
+  {
+   "kind": "check",
+   "expr": "E == 0"
+  }
+ ]
+}

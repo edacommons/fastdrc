@@ -1,0 +1,191 @@
+{
+ "name": "NAT.6",
+ "desc": "NAT.6 : Two or more COMPs if connected to different potential are not allowed under same NAT layer.",
+ "shapes": [
+  {
+   "name": "NAT",
+   "edges": [
+    {
+     "id": "nat_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      26,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "nat_1",
+     "start": [
+      26,
+      0
+     ],
+     "end": [
+      26,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "nat_2",
+     "start": [
+      26,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "nat_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "CA",
+   "edges": [
+    {
+     "id": "ca_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "ca_1",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "ca_2",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "ca_3",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "CB",
+   "edges": [
+    {
+     "id": "cb_0",
+     "start": [
+      16,
+      4
+     ],
+     "end": [
+      22,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "cb_1",
+     "start": [
+      22,
+      4
+     ],
+     "end": [
+      22,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "cb_2",
+     "start": [
+      22,
+      10
+     ],
+     "end": [
+      16,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "cb_3",
+     "start": [
+      16,
+      10
+     ],
+     "end": [
+      16,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "X",
+   "from": "ca_1",
+   "to": "cb_3",
+   "crossed": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "NAT.layer == nat"
+  },
+  {
+   "kind": "match",
+   "expr": "CA.layer == ncomp"
+  },
+  {
+   "kind": "match",
+   "expr": "CB.layer == ncomp"
+  },
+  {
+   "kind": "match",
+   "expr": "CA.net != CB.net"
+  }
+ ]
+}

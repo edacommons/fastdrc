@@ -1,0 +1,55 @@
+{
+ "desc": "Schottky diode, a cathode on one side of the anode only",
+ "shapes": [
+  {
+   "layer": "dnwell",
+   "box": [
+    -4,
+    -4,
+    8,
+    10
+   ]
+  },
+  {
+   "layer": "schottky_diode",
+   "box": [
+    -1,
+    -1,
+    3.8,
+    7
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    0,
+    0,
+    1,
+    6
+   ]
+  },
+  {
+   "layer": "nplus",
+   "box": [
+    -0.1,
+    -0.1,
+    1.1,
+    6.1
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    1.28,
+    0,
+    1.9,
+    6
+   ]
+  }
+ ],
+ "reports": [
+  "DN.3",
+  "SK.14",
+  "SK.17"
+ ]
+}

@@ -136,6 +136,7 @@
   "3.3V": 0.28
  },
  "except": [
+  "neo_ee_mk",
   "otp_mk",
   "ymtp_mk"
  ]

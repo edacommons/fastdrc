@@ -1,0 +1,196 @@
+{
+ "name": "SK.14",
+ "desc": "SK.14 : a) Two anode COMP area must be separated by cathode COMP in the anode width direction (two anode comp can not exist side by side without having cathode COMP in between). b) Cathode COMP length cannot be shorter than that of anode COMP length.",
+ "shapes": [
+  {
+   "name": "C1",
+   "edges": [
+    {
+     "id": "c1_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      4,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "c1_1",
+     "start": [
+      4,
+      0
+     ],
+     "end": [
+      4,
+      6
+     ],
+     "edge": true
+    },
+    {
+     "id": "c1_2",
+     "start": [
+      4,
+      6
+     ],
+     "end": [
+      0,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "c1_3",
+     "start": [
+      0,
+      6
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      8,
+      0
+     ],
+     "end": [
+      12,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      12,
+      0
+     ],
+     "end": [
+      12,
+      6
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      12,
+      6
+     ],
+     "end": [
+      8,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      8,
+      6
+     ],
+     "end": [
+      8,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "C2",
+   "edges": [
+    {
+     "id": "c2_0",
+     "start": [
+      16,
+      0
+     ],
+     "end": [
+      20,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "c2_1",
+     "start": [
+      20,
+      0
+     ],
+     "end": [
+      20,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "c2_2",
+     "start": [
+      20,
+      6
+     ],
+     "end": [
+      16,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "c2_3",
+     "start": [
+      16,
+      6
+     ],
+     "end": [
+      16,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "a_1",
+   "to": "c2_3",
+   "edges": true,
+   "metric": "projection"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "C1.layer == sk_cathode"
+  },
+  {
+   "kind": "match",
+   "expr": "A.layer == sk_anode"
+  },
+  {
+   "kind": "match",
+   "expr": "C2.layer == sk_cathode"
+  },
+  {
+   "kind": "match",
+   "expr": "a_1.length > 0.62"
+  },
+  {
+   "kind": "check",
+   "expr": "S <= 0.28"
+  }
+ ]
+}

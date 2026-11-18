@@ -14,22 +14,27 @@ manual:
 
 ## What is in it
 
-447 rule files in 28 sections (a rule with a value per column — 3.3 V and 5 V/6 V — is
-one file and one check per column). The section `Grid` holds what the manual says once
-for every layer: the manufacturing grid, 0.005 µm (`"grid"` in `process.json`, one check
-per layer), and "no acute angle" (one drawing, `ANGLE`, on the family `every_layer`).
-Built as it is by default — six metals, 9K top metal, MIM option B — that is 684 checks,
-210 of them those two per layer.
+492 rule files in 30 sections — every rule of the manual that can be checked on a layout
+(a rule with a value per column — 3.3 V and 5 V/6 V — is one file and one check per
+column). The section `Grid` holds what the manual says once for every layer: the
+manufacturing grid, 0.005 µm (`"grid"` in `process.json`, one check per layer), and "no
+acute angle" (one drawing, `ANGLE`, on the family `every_layer`). Built as it is by
+default — six metals, 9K top metal, MIM option B — that is 731 checks, 210 of them those
+two per layer.
 
 | sections | the manual's chapter |
 |---|---|
 | `Wells`, `COMP`, `Dualgate`, `Poly2`, `Nplus`, `Pplus`, `SAB`, `ESD`, `Contact`, `Metal`, `Via`, `MetalTop30K`, `Mcell` | 7, layout rules |
-| `PRES`, `LRES`, `HRES`, `MIM-A`, `MIM-B`, `Native`, `BJT`, `DummyExclude`, `OTP`, `eFuse`, `LDNMOS`, `LDPMOS`, `MTP` | 10, devices |
+| `PRES`, `LRES`, `HRES`, `MIM-A`, `MIM-B`, `Native`, `BJT`, `DummyExclude`, `OTP`, `eFuse`, `LDNMOS`, `LDPMOS`, `MTP`, `Schottky`, `NeoEE` | 10, devices |
 | `SRAM` | 11, SRAM core cells |
 
 `process.json` holds the layer numbers, the names for combinations of layers (`ncomp`,
-`tgate`, the zones within 0.43 µm of a well edge, the parts of an eFuse), the two
-columns, and which layers connect.
+`tgate`, the zones within 0.43 µm of a well edge, the parts of an eFuse and of a Schottky
+diode), the columns, and which layers connect (through the whole metal stack).
+
+A device page that gives its own value for a rule (OTP, SRAM, MTP, NEO_EE) takes the
+cells of its marker out of the general rule, so each place is checked once, at the
+value the manual gives for it.
 
 ## The options of the process
 
@@ -37,106 +42,71 @@ They are parameters of the deck (`fastdrc parameters examples/gf180mcu`):
 
 | parameter | choices | what it decides |
 |---|---|---|
-| `metal_stack` | 3LM, 4LM, 5LM, **6LM** | which layers are the top metal, the one below it and the vias under them (`top_metal_layer`, `top_via`, `under_top_metal`, `under_top_via`) |
+| `metal_stack` | 3LM, 4LM, 5LM, **6LM** | which metal is the top metal ("for 4 metal layers process, Top Metal is Metal4"): the `MT.*` / `MT30.*` rules are on it, the metal and via rules (`Mn.*`, `Vn.*`) are there for the metals and vias below it only (`top_metal_layer`, `top_via`, `under_top_metal`, `under_top_via`) |
 | `top_metal` | 6K, **9K**, 11K, 30K | the values of `MT.1` and `MT.2a` (0.36 / 0.38 at 6K, 0.44 / 0.46 at 9K and 11K); with 30K the rules of the 3 µm metal, `MT30.*`, in their place |
 | `mim` | none, A, **B** | `MIM.*` (between Metal2 and Metal3), or `MIMTM.*` (under the top metal), or neither |
 
-The profiles are the variants of the open PDK: `gf180mcuA` (3LM, 30K), `gf180mcuB`
-(4LM, 11K), `gf180mcuC` (5LM, 9K), `gf180mcuD` (5LM, 11K), each with MIM option B.
+The profiles are the variants of the open PDK: `gf180mcuA` (3LM, 30K, MIM option A — the
+manual's option B "only supports 4 or more metal layers"), `gf180mcuB` (4LM, 11K),
+`gf180mcuC` (5LM, 9K), `gf180mcuD` (5LM, 11K), these three with MIM option B.
 
     fastdrc check chip.gds examples/gf180mcu --profile gf180mcuC
     fastdrc build examples/gf180mcu --set top_metal=30K,mim=none
 
-The stack does not yet take the rules of the metals a shorter stack lacks out of the
-deck; with no shapes on those layers they report nothing.
-
 ## How it was checked
 
+- **Against the manual.** Every section's rules were read beside the manual's sentence and
+  its figure; what was found and changed is in [`MANUAL_CHECK.md`](MANUAL_CHECK.md). Where
+  the manual was not clear, a rule is read by what it is for in the process, and that is
+  written there too.
 - **Against its own drawings.** `fastdrc selftest examples/gf180mcu` builds test layouts
-  from every rule's picture and runs the deck on them: of the default deck's 684 checks,
-  all 666 that are tested behave as drawn. 18 have no generated test: the rules that hold
-  in a zone — along a well edge (`NP.3bi`, `NP.3bii`, `NP.3ci`, `NP.5ci`, `NP.5cii`,
-  `NP.5di`, `PP.3bii`, `PP.3cii`, `PP.5cii`, `PP.5dii`, `NP.11`, `PP.11`), near a gate's
-  poly extension (`NP.4b`, `PP.4b`, `NP.12`, `PP.12`), within 1.06 µm of a MIM top plate
-  (`MIMTM.1`, `MIMTM.2`). A zone is a place in a layout, not a box on a layer, so the
-  generator does not draw it; every one of them is tested on the layouts below, just
-  inside and just outside its value.
-- **Against the process's own KLayout deck**, on the same layouts and on the 7-track standard-cell
-  library (one cell of each of its 69 types):
-  - the cells as they are: the front-end rules are silent in both decks, but for `DF.13`
-    and `DF.14` here — the tap distance, read for the device: a cell with no tap of its own
-    is reported until it stands beside its tap cells (the process's deck reads these two
-    from the tap's side and is silent);
-  - the cells with about 2800 random small errors put in: the rules that fire flag the same
-    places in both decks, but for `DF.13`, `DF.14` (above) and two markers of `NP.5b`,
+  from every rule's picture and runs the deck on them: of the default deck's 731 checks,
+  all 713 that are tested behave as drawn, and so do those of every profile. 18 have no
+  generated test: the rules that hold in a zone — along a well edge (`NP.3bi`, `NP.3bii`,
+  `NP.3ci`, `NP.5ci`, `NP.5cii`, `NP.5di`, `PP.3bii`, `PP.3cii`, `PP.5cii`, `PP.5dii`,
+  `NP.11`, `PP.11`), near a gate's poly extension (`NP.4b`, `PP.4b`, `NP.12`, `PP.12`),
+  within 1.06 µm of a MIM top plate (`MIMTM.1`, `MIMTM.2`). A zone is a place in a layout,
+  not a box on a layer, so the generator does not draw it; every one of them is tested on
+  the layouts below, just inside and just outside its value.
+- **On its own layouts.** `layouts/` holds 139 pieces of layout drawn by hand, each naming
+  the rules that must report on it; `fastdrc selftest` runs the whole deck on them, and a
+  rule that reports where it is not named is a rule drawn too broadly. All 139 are read as
+  they should be. Among them: LDNMOS and LDPMOS fingers with each of their values off,
+  rings open or missing, fingers in a row, the guard between an LDPMOS and an outside
+  NCOMP; resistors with the marker too long and too short; eFuses with each size off;
+  Schottky diodes; native devices on one and on two nets; MIM plates; OTP gates and poly;
+  near-edge implants just inside and just outside their values.
+- **Against the process's own KLayout deck**, on those layouts and on the 7-track
+  standard-cell library (one cell of each of its 69 types):
+  - the cells as they are: the rules are silent in both decks, but for `DF.13` and
+    `DF.14` here — the tap distance, read for the device: a cell with no tap of its own is
+    reported until it stands beside its tap cells (the process's deck reads these two from
+    the tap's side and is silent);
+  - the cells with about 2800 random small errors put in: the rules that fire flag the
+    same places in both decks, but for `DF.13`, `DF.14` (above) and one marker of `NP.5b`,
     where the process's deck takes a whole Nplus shape that touches an LVPWELL anywhere
     and reports a tap of it that lies in an Nwell — `NP.5b` is for COMP inside LVPWELL or
-    outside Nwell and DNWELL; that tap is `NP.5d`'s, which both decks report alike.
-- **On its own layouts.** `layouts/` holds 92 pieces of layout drawn by hand, each naming
-  the rules that must report on it; `fastdrc selftest` runs the whole deck on them, and a
-  rule that reports where it is not named is a rule drawn too broadly. All 92 are read as
-  they should be. A layout names the rules its deliberate error breaks by the manual; the
-  other rules it names are those both decks report on it, which have not each been read
-  against the manual.
-- **On those layouts against the process's deck**, each with deliberate errors (an LDNMOS
-  and an LDPMOS finger with and without its guard ring, with the ring open or on one side
-  only, with the drift overlap, the gate-to-drain space and the gate end off; a
-  high-resistance, a P+ and an N+ poly resistor; MIM capacitors on one plate;
-  dummy-exclude areas; OTP gates either way; a well with two kinds of PMOS; a shape off
-  the grid and one with an acute corner; DNWELLs in their guard rings; every near-edge
-  implant rule just inside and just outside its value; butted COMP at and away from a
-  well edge; implants by a gate's poly extension). Where the two decks differed, the manual decided — its sentence and its figure (10.12.1
-  LDNMOS, 10.12.2 LDPMOS, 7.6 Dualgate, 7.10 SAB) — and where the manual was not clear, what the
-  rule is for in the process:
-  - *this deck was wrong, and is corrected:* `DV.1` and 14 more "X must enclose Y" rules
-    missed a Y lying across X's edge (the figures draw Y wholly inside X; a well, a
-    diffusion or a contact half outside is a different structure); `MDP.11`, `MDN.10b`,
-    `MDP.9b` measured the side the manual leaves out; `MDN.4a`, `MDP.2`, `PRES.5`,
-    `LRES.5`, `HRES.4`, `MDP.9ei`, `MDN.10ei` reported devices they are not about;
-    6 V transistors were checked at the 5 V gate length (`PL.2`);
-  - *read by what the rule is for:* `PL.4` is the gate's **end cap**, so it is measured
-    past the diffusion edges that run out from under the gate — the LDMOS poly edge
-    towards the drain is not an end cap, and no exemption is needed. `PP.9`, `NP.9` ask
-    the implant to cover the sides of unsalicided poly by 0.18; they do not say such poly
-    may not leave the implant, as it does by design on the high-resistance resistor.
-    `MDN.5c`, `MDP.3c` are latch-up rules: every part of the device must be within 15 µm
-    of a tab;
-  - *the two decks still differ:* with no tab at all `MDN.5c` / `MDP.3c` report the
-    device here and the process's deck is silent; with a tab on one side of a small
-    LDPMOS the process's deck reports `MDP.3c` (it asks for the tab on four sides) and
-    this deck does not. `SB.7` reports salicide-block and diffusion edges that coincide;
-    the process's deck lets them pass there (both report them by `SB.6`);
-  - *not judged:* the two layouts with a drift region on both sides of the gate are not
-    devices, and the decks disagree on several rules there.
-  The end-of-line rules read "narrower than" as the manual writes it (`<`), and `MT30.6`
-  looks at line ends of the thick metal narrower than 2.5 µm; the process's deck uses 0.34 there.
-  On the real standard cells with 700 random edits `PL.4` still flags the same 141 places in
-  both decks.
-- **Not shown yet:** the LDMOS, eFuse, resistor and MIM rules behave as their own drawings
-  say, and the ones named above agree with the process's deck on a device made by hand;
-  the rest have not been compared with it on a device of that kind, and none on a device
-  from a real design. The process's deck
-  asks more of a guard ring than is drawn here (one well per ring, nothing else in it);
-  `NP.11` and `PP.11` have been tried on no layout that makes them fire.
-
-## Checked against the manual
-
-[`MANUAL_CHECK.md`](MANUAL_CHECK.md) lists every rule file with its row in the manual, whether its values are the
-manual's (compared by script for all but the 8 added since), and whether the manual's figure for it has been read (48 so far). A
-rule counts as checked only after that read.
+    outside Nwell and DNWELL; that tap is `NP.5d`'s, which both decks report alike;
+  - on the hand-made layouts, where the two decks read the manual differently, this deck
+    follows the manual's wording and the layout that shows it says so in its
+    description: `MDN.5c`, `MDP.3c` (every part of the device within 15 µm of a tab);
+    `DF.13`, `DF.14` (the device's tap, in its own well); `NP.11`, `PP.11` (the band on
+    both sides of the well edge); `NP.12`, `PP.12` (the implant over the gate's poly
+    extension); `SB.7` (coinciding edges); `MT30.6` (lines narrower than 2.5 µm);
+    `MDP.4` (an LDPMOS's DNWELL with no P+ ring at all); `MDP.17a` (no tabbed DNWELL
+    between the drift and an NCOMP 40 µm away); `PL.3a` (field poly in an OTP cell keeps
+    0.24); `EF.07` (a strip of the anode left out of LVS_Source is cathode).
+  - Schottky diodes (10.14) and NEO_EE cells (10.15) are not in the process's deck; they
+    were drawn and checked from the manual alone.
 
 ## Not drawn
 
-17 of the manual's rules that its KLayout deck checks:
-
-- guard rings with more to them than "surrounded by": `MDP.4`, `MDN.13d`, `MDP.17a`,
-  `MDP.17c`;
-- an exact length along one direction, or two edges that must coincide: `EF.05`, `EF.21`,
-  `EF.22a`, `EF.22b`, `DF.3b`, `PRES.9a`, `LRES.9a`, `HRES.12a` (of `MDN.10c` the minimum
-  half is drawn);
-- the order of things along a device: `MDN.13c`, `MDP.13c`, `MDP.3d`;
-- the rest: `DF.11`, `PL.7`, `NAT.6`.
-
-Also not here: the manual's chapters its own
-deck does not check either (antenna ratios are in `examples/demo` as a kind of rule;
-bond pads, dummy fill, latch-up, metal slots, the guard ring).
+What the manual itself says is not a check on a layout: rules with the value 0 under its
+note "Rules allowed minimum overlap and spacing are 0, so DRC deck will not check those
+rules" (`O.PL.5a`, `O.PL.5b`, `O.SB.5a`, `O.SB.12`, `O.SB.15b`, `EE.DF.16_LV`), rules
+whose value is "NA" (they take the general rule out, which is done), guidelines (`DE.1`,
+`PL.3b`), the potential a ring must be tied to (`DN.3`, `MDN.17`, `MDP.3` — a fact about
+the circuit, checked by LVS), and the pages that send the rest back to section 7
+(`MDN.16`, `MDP.14`). Also not here: the manual's chapters its own deck does not check
+either (antenna ratios are in `examples/demo` as a kind of rule; bond pads, dummy fill,
+latch-up guidelines, metal slots, the seal ring).

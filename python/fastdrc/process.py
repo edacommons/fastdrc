@@ -196,8 +196,9 @@ def settled_rule(data, values, gone=()):
     import re
     d = _params.settle(data, values)
     present = True
-    if "when" in d:
-        present = bool(d.pop("when"))
+    if "when" in d:                               # (several conditions: all of them)
+        w = d.pop("when")
+        present = all(w) if isinstance(w, list) else bool(w)
     single = [d.pop(k) for k in ("value",) if k in d]
     if "values" in d and not isinstance(d["values"], dict):   # a switch that gave one number
         single.append(d.pop("values"))
@@ -571,7 +572,8 @@ def _run_layouts(folder, deck, backend, result, whole=(), values=None):
     from .backend import runner
     # a layout may say `"when"` it applies, as a rule does (a capacitor of one MIM option)
     layouts = [(n, lay) for n, lay in deck_layouts(folder)
-               if "when" not in lay or _params.settle(lay["when"], values or {})]
+               if all(_params.settle(w, values or {})       # (several conditions: all of them)
+                      for w in (lay["when"] if isinstance(lay.get("when"), list) else [lay["when"]] if "when" in lay else []))]
     result["layouts"] = {}
     if not layouts:
         return

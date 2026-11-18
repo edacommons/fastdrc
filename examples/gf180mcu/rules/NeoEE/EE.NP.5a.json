@@ -1,0 +1,249 @@
+{
+ "name": "EE.NP.5a",
+ "desc": "EE.NP.5a : Nplus overlap of N-channel gate = 0 (inside NEO_EE_MK).",
+ "shapes": [
+  {
+   "name": "MKR",
+   "edges": [
+    {
+     "id": "mkr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      32,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_1",
+     "start": [
+      32,
+      0
+     ],
+     "end": [
+      32,
+      30
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_2",
+     "start": [
+      32,
+      30
+     ],
+     "end": [
+      0,
+      30
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_3",
+     "start": [
+      0,
+      30
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "COMP",
+   "edges": [
+    {
+     "id": "comp_0",
+     "start": [
+      8,
+      12
+     ],
+     "end": [
+      24,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_1",
+     "start": [
+      24,
+      12
+     ],
+     "end": [
+      24,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_2",
+     "start": [
+      24,
+      18
+     ],
+     "end": [
+      8,
+      18
+     ],
+     "edge": true
+    },
+    {
+     "id": "comp_3",
+     "start": [
+      8,
+      18
+     ],
+     "end": [
+      8,
+      12
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "GATE",
+   "edges": [
+    {
+     "id": "gate_0",
+     "start": [
+      14,
+      8
+     ],
+     "end": [
+      18,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "gate_1",
+     "start": [
+      18,
+      8
+     ],
+     "end": [
+      18,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "gate_2",
+     "start": [
+      18,
+      22
+     ],
+     "end": [
+      14,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "gate_3",
+     "start": [
+      14,
+      22
+     ],
+     "end": [
+      14,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "NG",
+   "edges": [
+    {
+     "id": "ng_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      28,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "ng_1",
+     "start": [
+      28,
+      4
+     ],
+     "end": [
+      28,
+      26
+     ],
+     "edge": false
+    },
+    {
+     "id": "ng_2",
+     "start": [
+      28,
+      26
+     ],
+     "end": [
+      4,
+      26
+     ],
+     "edge": true
+    },
+    {
+     "id": "ng_3",
+     "start": [
+      4,
+      26
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E5a",
+   "from": "comp_2",
+   "to": "ng_2",
+   "at": 16.0,
+   "within": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MKR.layer == neo_ee_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "COMP.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "GATE.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "NG.layer == nplus"
+  },
+  {
+   "kind": "check",
+   "expr": "E5a >= 0"
+  }
+ ]
+}

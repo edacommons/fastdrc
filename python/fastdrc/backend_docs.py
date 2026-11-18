@@ -113,10 +113,57 @@ class DocsBackend(Backend):
         eol = rule.eol_measures()               # an end-of-line is ONE rule: its measure and
         eol_vars = {v for v, _, _ in eol}       # the two qualifying edge lengths are not
         eol_edges = rule.eol_edges()            # separate assertions
+        for var, m in rule.measures.items():
+            several = rule.net_cross(var)
+            if several:
+                holder, a, _ = several
+                out.append(self._with_scope(
+                    f"no {self._name(rule.layer_of(holder))} may hold {self._name(rule.layer_of(a))} on different nets "
+                    f"(two or more at different potentials).", self._scope(rule, a, set(several))))
         for var, lo, hi, select in rule.distance_rules():
+            form = rule.exact_form(var) if hi is not None and hi.exact and not select else None
+            if form:
+                d = rule.measure_derivations(var)
+                m = rule.measures[var]
+                en = {rule.shape_of_edge(m["from"]): self._fmt_deriv_en(d[0]), rule.shape_of_edge(m["to"]): self._fmt_deriv_en(d[1])}
+                if form["kind"] == "span":
+                    text = (f"every {en[form['shape']]} must be exactly {_fmt(hi.value)} µm from end to end "
+                            f"(its {'longer' if form['role'] == 'long' else 'shorter'} extent).")
+                    scope = self._scope(rule, form["shape"], d[2])
+                else:
+                    text = (f"where {en[form['link']]} abuts {en[form['pad']]}, the edge of {en[form['pad']]} must go on "
+                            f"exactly {_fmt(hi.value)} µm beside it, on each side.")
+                    scope = self._scope(rule, form["pad"], d[2])
+                out.append(self._with_scope(text, scope))
+                continue
+            if (hi is not None and hi.exact and hi.value == 0 and not select
+                    and rule.relation(rule.shape_of_edge(rule.measures[var]["from"]),
+                                      rule.shape_of_edge(rule.measures[var]["to"])) in ("inside", "contains")):
+                d = rule.measure_derivations(var)
+                m = rule.measures[var]
+                sf, st = rule.shape_of_edge(m["from"]), rule.shape_of_edge(m["to"])
+                inner, outer = (d[0], d[1]) if rule.relation(sf, st) == "inside" else (d[1], d[0])
+                out.append(self._with_scope(
+                    f"the outlines of {self._fmt_deriv_en(outer)} and of the {self._fmt_deriv_en(inner)} it lies on must "
+                    f"coincide: neither may reach beyond the other.", self._scope(rule, sf, d[2])))
+                continue
             if var in eol_vars or (hi is not None and hi.exact and hi.value != 0 and not select):
                 continue                        # the maximum half of `E == v`: said with the minimum
             text = self._dim(rule, var, lo, hi, select)
+            shields = rule.measure_shield(var) if lo is not None and hi is None and not select else []
+            if shields:
+                mm = rule.measures[var]
+                sf_ = rule.shape_of_edge(mm["from"])
+                parts = rule.marker_parts(rule.measure_derivations(var)[2], sf_)
+                said = []
+                for g in [x for x in shields if x in parts]:
+                    what = self._name(rule.layer_of(g))
+                    if parts.get(g, {}).get("another"):
+                        what = f"another {what} (one without {self._name(parts[g]['another'])})"
+                    if parts.get(g, {}).get("holds"):
+                        what += " that holds " + _join([self._name(rule.layer_of(k)) for k in parts[g]["holds"]])
+                    said.append(what)
+                text = text[:-1] + " — unless " + _join(said) + " lies right across between them."
             if hi is not None and hi.exact and hi.value == 0 and not select:
                 text = text.replace(" must have ", " must abut ", 1).replace(" within 0 µm", "", 1)
             if lo is not None and lo.exact and not select:
@@ -146,6 +193,8 @@ class DocsBackend(Backend):
             out.append(f"every {subj} corner must be {_fmt(angle)}°." if others
                        else f"{subj} must have no {_fmt(angle)}° corner.")
         for edge, kind, form, lo, hi in rule.length_facts():
+            if edge in rule.faced_edge_filters():
+                continue                        # said with the rule it is part of
             if edge not in eol_edges and edge not in rule.array_edges() | rule.density_edges():
                 out.append(self._length(rule, edge, kind, form, lo, hi))
         for held, holder, lo, hi in rule.held_ratio_bounds():
@@ -167,7 +216,11 @@ class DocsBackend(Backend):
                        f"(shapes within {_fmt(arr['gap'])} µm of each other)") if arr else ""
             cd = None if arr else rule.counted_derivation(counted, holder)
             what = self._fmt_deriv_en(cd) if cd else self._name(rule.layer_of(counted))
-            out.append(f"every {self._fmt_deriv_en(rule.holder_derivation(holder, alike)[0])} must hold "
+            which = "".join(
+                f" that touches a {self._name(rule.layer_of(via))} whose {self._name(rule.layer_of(far))} holds "
+                f"{_how_many(flo, fhi)} {self._name(rule.layer_of(fk))}"
+                for via, far, (fk, flo, fhi) in rule.count_chain(holder, counted))
+            out.append(f"every {self._fmt_deriv_en(rule.holder_derivation(holder, alike)[0])}{which} must hold "
                        f"{_how_many(lo, hi)} {what}{arrayed}.")
         for collectors, gate, ratio, filters in rule.antenna_bounds():
             g = self._name(rule.layer_of(gate))
@@ -226,7 +279,7 @@ class DocsBackend(Backend):
                         "oblong": f"no {subj} shape may be a square.",
                         "rectangle": f"every {subj} shape must be a rectangle.",
                         "other": f"no {subj} shape may be a rectangle."}[form])
-        for var in [v for v, mm in rule.measures.items() if mm.get("crossed")]:
+        for var in [v for v, mm in rule.measures.items() if mm.get("crossed") and not rule.net_cross(v)]:
             out.append(self._presence(rule, var))
         for var, cap, side in eol:
             out.append(self._eol(rule, var, cap, side))
@@ -252,6 +305,12 @@ class DocsBackend(Backend):
             if kind == "check":
                 return f"the {side} side of every {subj} must be {rng}."
             return f"{subj} whose {side} side is {rng} are flagged."
+        shared = rule.edge_shared_with(edge)
+        if shared and kind == "check":        # two shapes butting: the stretch they share
+            rng = (f"exactly {_fmt(lo)} µm" if form == "exact"
+                   else f"between {_fmt(lo)} and {_fmt(hi)} µm" if lo is not None and hi is not None
+                   else f"at least {_fmt(lo)} µm" if lo is not None else f"at most {_fmt(hi)} µm")
+            return f"where {subj} butts {self._deriv_en(rule, shared)}, the edge they share must be {rng} long."
         if form == "range":
             rng = (f"between {_fmt(lo)} and {_fmt(hi)} µm" if lo is not None and hi is not None
                    else f"at least {_fmt(lo)} µm" if lo is not None else f"at most {_fmt(hi)} µm")
@@ -303,7 +362,20 @@ class DocsBackend(Backend):
         if m.get("edges") and sf != st and hi is not None and not select \
                 and rule.relation(sf, st) in ("disjoint", "outside", None):
             ds, dt, consumed = rule.measure_derivations(var)
-            return self._with_scope(f"every edge of {self._fmt_deriv_en(ds)} must have {self._fmt_deriv_en(dt)} "
+            only = next(((lo_, hi_) for e_, k_, f_, lo_, hi_ in rule.length_facts()
+                         if e_ == m["from"] and k_ != "check" and f_ == "range"), None) \
+                if m["from"] in rule.faced_edge_filters() else None
+            ops = (rule._length_ops.get((m["from"], "match", True)), rule._length_ops.get((m["from"], "match", False)))
+            lo_w = "longer than" if ops[0] == ">" else "at least"
+            hi_w = "shorter than" if ops[1] == "<" else "at most"
+            which = "" if not only else (f" that are {lo_w} {_fmt(only[0])} µm long" if only[1] is None else
+                                         f" that are {hi_w} {_fmt(only[1])} µm long" if only[0] is None else
+                                         f" that are {lo_w} {_fmt(only[0])} and {hi_w} {_fmt(only[1])} µm long")
+            if m.get("metric") == "projection":
+                return self._with_scope(f"every edge of {self._fmt_deriv_en(ds)}{which} must have {self._fmt_deriv_en(dt)} "
+                                        f"facing it within {_fmt(hi.value)} µm along all its length.",
+                                        self._scope(rule, sf, consumed))
+            return self._with_scope(f"every edge of {self._fmt_deriv_en(ds)}{which} must have {self._fmt_deriv_en(dt)} "
                                     f"facing it within {_fmt(hi.value)} µm.", self._scope(rule, sf, consumed))
         if m.get("edges") and sf != st and lo is not None and not select and rule.relation(sf, st) in ("inside", "contains"):
             o, i = (st, sf) if rule.relation(sf, st) == "inside" else (sf, st)
@@ -362,6 +434,13 @@ class DocsBackend(Backend):
                 if through:                         # measured to its far side
                     far, near = (subj, arg) if through == sf else (arg, subj)
                     core = f"every part of {far} must be within {v} µm of {near}"
+                    dn = rule.measure_derivations(var)[1 if through == sf else 0]   # the near one's region
+                    kept = [self._name(a) for a in dn.get("ands", [])] 
+                    cut = [self._name(n) for n in dn.get("nots", [])]
+                    if kept or cut:
+                        core += " — one in the same piece of " + _join(kept) if kept else " — one not parted from it by " + _join(cut)
+                        if kept and cut:
+                            core += ", not parted from it by " + _join(cut)
                 else:
                     core = f"every {subj} must have {arg} within {v} µm"
                 return self._with_scope(core + ".", scope)
@@ -386,6 +465,8 @@ class DocsBackend(Backend):
                 if rel in ("inside", "contains"):
                     outer, inner = (arg, subj) if rel == "inside" else (subj, arg)
                     core = f"{outer} must enclose {inner} by at least {v} µm"
+                    if m.get("within") and lo is not None and lo.value == 0:
+                        return self._with_scope(f"no {inner} may lie across the edge of {outer}.", scope)
                     if m.get("within"):
                         core += f", and no {inner} may lie across its edge"
                 elif subj == arg:                   # the SAME derived layer on both sides
@@ -514,20 +595,31 @@ class DocsBackend(Backend):
         on = rule.edges_lying_on(shape, {shape})
         if on:
             phrase += " where they butt " + _join([self._name(rule.layer_of(o)) for o in on])
+        angles = rule.edge_angle_filter(shape)
+        if angles:
+            phrase += " that run at " + " or ".join(f"{_fmt(a)}°" for a in angles)
         return phrase
 
     def _scope(self, rule, shape, consumed):
         out = []
+        parts = rule.marker_parts(consumed, shape)
+        across = {g for v in rule.measures for g in rule.measure_shield(v)}   # said with the distance itself
         for name in rule.shapes:
-            if name in consumed or not rule.layer_of(name):
+            if name in consumed or not rule.layer_of(name) or name not in parts or name in across:
                 continue
             # the same three readings the deck gets (KLayoutBackend._scope): apart,
             # touching, or -- any way of sharing area -- overlapping
             phrase = {"disjoint": "away from", "outside": "away from",
                       "touch": "touching"}.get(rule.relation(shape, name), "overlapping")
-            out.append((phrase, self._name(rule.layer_of(name))))
+            what = self._name(rule.layer_of(name))
+            if parts[name]["another"]:
+                what = f"another {what} (one without {self._name(parts[name]['another'])})"
+            if parts[name]["holds"]:
+                what += " that holds " + _join([self._name(rule.layer_of(k)) for k in parts[name]["holds"]])
+            out.append((phrase, what))
         words = {"not_interacting": "away from", "interacting": "touching", "inside": "inside",
-                 "outside": "outside"}
+                 "outside": "outside", "not_inside": "not wholly inside",
+                 "not_overlapping": "not over"}
         out += [(words.get(op, "overlapping"), self._name(layer))
                 for op, layer in rule.data.get("scope") or []]
         return out

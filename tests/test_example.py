@@ -23,7 +23,7 @@ def test_the_example_builds_without_a_warning(tmp_path):
     assert deck.count(".output(") == 18 and "nwell = polygons(1, 0)" in deck
     for line in ["nwell_nets = nwell.nets",                         # the nets are read once, with their connections
                  "nw_3_l1 = nwell_nets.space(2.um, euclidian, props_ne).polygons(0.001)",
-                 "lu_1_l1 = pdiff.and(nwell).not(ndiff.and(nwell).sized(20.um))",
+                 "lu_1_l1 = pdiff.and(nwell).not(ndiff_and_nwell.sized(20.um).and(nwell).interacting(ndiff_and_nwell))",
                  "v1_2_l1 = met1.sized(-0.999.um).sized(0.999.um).not_interacting(via1, 2)",
                  "an_1_l1 = antenna_check(gate, met1, 400.0)",
                  "dn_2_l1 = out_of_density.call(met1, 0.0 .. 0.9, chip, 100.0, 50.0)"]:
@@ -80,7 +80,7 @@ def test_the_example_reads_back_as_the_guide_says():
     for sentence in [
             "any two shapes of nwell must be at least 2 µm apart where the two are on different nets",
             "every met1 at least 2 µm wide must hold at least 2 via1.",
-            "every part of pdiff combined with nwell must be within 20 µm of ndiff combined with nwell.",
+            "every part of pdiff combined with nwell must be within 20 µm of ndiff combined with nwell — one in the same piece of nwell.",
             "met1 must enclose via1 by at least 0.1 µm on at least one of any two adjacent sides.",
             "met1 must cover at most 90 % of every 100 × 100 µm window (stepped by 50 µm) of chip.",
             "the area of met1 connected to gate must be at most 400 times the area of that gate"]:

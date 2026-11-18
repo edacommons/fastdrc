@@ -1,0 +1,248 @@
+{
+ "name": "EE.NP.7",
+ "desc": "EE.NP.7 : Nplus space to unsalicided Poly2 (inside NEO_EE_MK).",
+ "shapes": [
+  {
+   "name": "MKR",
+   "edges": [
+    {
+     "id": "mkr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      20,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_1",
+     "start": [
+      20,
+      0
+     ],
+     "end": [
+      20,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_2",
+     "start": [
+      20,
+      28
+     ],
+     "end": [
+      0,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_3",
+     "start": [
+      0,
+      28
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "RES",
+   "edges": [
+    {
+     "id": "res_0",
+     "start": [
+      4,
+      8
+     ],
+     "end": [
+      16,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "res_1",
+     "start": [
+      16,
+      8
+     ],
+     "end": [
+      16,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "res_2",
+     "start": [
+      16,
+      12
+     ],
+     "end": [
+      4,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "res_3",
+     "start": [
+      4,
+      12
+     ],
+     "end": [
+      4,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "SB",
+   "edges": [
+    {
+     "id": "sb_0",
+     "start": [
+      8,
+      4
+     ],
+     "end": [
+      12,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "sb_1",
+     "start": [
+      12,
+      4
+     ],
+     "end": [
+      12,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "sb_2",
+     "start": [
+      12,
+      16
+     ],
+     "end": [
+      8,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "sb_3",
+     "start": [
+      8,
+      16
+     ],
+     "end": [
+      8,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "NS",
+   "edges": [
+    {
+     "id": "ns_0",
+     "start": [
+      8,
+      20
+     ],
+     "end": [
+      12,
+      20
+     ],
+     "edge": true
+    },
+    {
+     "id": "ns_1",
+     "start": [
+      12,
+      20
+     ],
+     "end": [
+      12,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "ns_2",
+     "start": [
+      12,
+      24
+     ],
+     "end": [
+      8,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "ns_3",
+     "start": [
+      8,
+      24
+     ],
+     "end": [
+      8,
+      20
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S7",
+   "from": "ns_0",
+   "to": "res_2",
+   "at": 10.0
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MKR.layer == neo_ee_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "RES.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "SB.layer == sab"
+  },
+  {
+   "kind": "match",
+   "expr": "NS.layer == nplus"
+  },
+  {
+   "kind": "check",
+   "expr": "S7 >= 0.17"
+  }
+ ]
+}

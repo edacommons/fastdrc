@@ -1,0 +1,127 @@
+{
+ "name": "SK.8",
+ "desc": "SK.8 : Schottky diode outside DNWELL is not allowed.",
+ "shapes": [
+  {
+   "name": "DN",
+   "edges": [
+    {
+     "id": "dn_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      16,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_1",
+     "start": [
+      16,
+      0
+     ],
+     "end": [
+      16,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_2",
+     "start": [
+      16,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      5,
+      4
+     ],
+     "end": [
+      11,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      11,
+      4
+     ],
+     "end": [
+      11,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      11,
+      10
+     ],
+     "end": [
+      5,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      5,
+      10
+     ],
+     "end": [
+      5,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "DN.layer == dnwell"
+  },
+  {
+   "kind": "match",
+   "expr": "MK.layer == schottky_diode"
+  },
+  {
+   "kind": "check",
+   "expr": "MK in DN"
+  }
+ ]
+}

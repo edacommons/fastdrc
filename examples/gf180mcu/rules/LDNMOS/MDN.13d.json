@@ -1,0 +1,304 @@
+{
+ "name": "MDN.13d",
+ "desc": "MDN.13d : Every two poly fingers shall be surrounded by a P-sub guard ring. (Exclude the case when each LDNMOS transistor have full width butting to well tap).",
+ "shapes": [
+  {
+   "name": "R",
+   "edges": [
+    {
+     "id": "r_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      30,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "r_1",
+     "start": [
+      30,
+      0
+     ],
+     "end": [
+      30,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "r_2",
+     "start": [
+      30,
+      24
+     ],
+     "end": [
+      0,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "r_3",
+     "start": [
+      0,
+      24
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ],
+   "hole_loops": [
+    [
+     {
+      "id": "hg_0",
+      "start": [
+       4,
+       4
+      ],
+      "end": [
+       26,
+       4
+      ],
+      "edge": false
+     },
+     {
+      "id": "hg_1",
+      "start": [
+       26,
+       4
+      ],
+      "end": [
+       26,
+       20
+      ],
+      "edge": false
+     },
+     {
+      "id": "hg_2",
+      "start": [
+       26,
+       20
+      ],
+      "end": [
+       4,
+       20
+      ],
+      "edge": false
+     },
+     {
+      "id": "hg_3",
+      "start": [
+       4,
+       20
+      ],
+      "end": [
+       4,
+       4
+      ],
+      "edge": false
+     }
+    ]
+   ]
+  },
+  {
+   "name": "S",
+   "edges": [
+    {
+     "id": "s_0",
+     "start": [
+      7,
+      8
+     ],
+     "end": [
+      12,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "s_1",
+     "start": [
+      12,
+      8
+     ],
+     "end": [
+      12,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "s_2",
+     "start": [
+      12,
+      16
+     ],
+     "end": [
+      7,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "s_3",
+     "start": [
+      7,
+      16
+     ],
+     "end": [
+      7,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "G",
+   "edges": [
+    {
+     "id": "g_0",
+     "start": [
+      12,
+      8
+     ],
+     "end": [
+      16,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_1",
+     "start": [
+      16,
+      8
+     ],
+     "end": [
+      16,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_2",
+     "start": [
+      16,
+      16
+     ],
+     "end": [
+      12,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_3",
+     "start": [
+      12,
+      16
+     ],
+     "end": [
+      12,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "T",
+   "edges": [
+    {
+     "id": "t_0",
+     "start": [
+      19,
+      8
+     ],
+     "end": [
+      23,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "t_1",
+     "start": [
+      23,
+      8
+     ],
+     "end": [
+      23,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "t_2",
+     "start": [
+      23,
+      16
+     ],
+     "end": [
+      19,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "t_3",
+     "start": [
+      19,
+      16
+     ],
+     "end": [
+      19,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "LGS",
+   "from": "g_3",
+   "to": "s_1"
+  },
+  {
+   "name": "LST",
+   "from": "s_1",
+   "to": "t_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "R.layer == pcomp"
+  },
+  {
+   "kind": "match",
+   "expr": "S.layer == ldn_source"
+  },
+  {
+   "kind": "match",
+   "expr": "G.layer == ldn_gate"
+  },
+  {
+   "kind": "match",
+   "expr": "T.layer == pcomp_and_what_butts_it"
+  },
+  {
+   "kind": "check",
+   "expr": "Count(G) <= 2"
+  }
+ ]
+}

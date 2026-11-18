@@ -131,6 +131,7 @@
   }
  ],
  "except": [
+  "neo_ee_mk",
   "otp_mk"
  ]
 }

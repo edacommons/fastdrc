@@ -1,0 +1,74 @@
+{
+ "desc": "Schottky diode, the anode 0.7 wide. SK.14 and SK.17 report it too: the sides that must face a cathode are told from the ends by being longer than the anode's width of 0.62, and here the ends are",
+ "shapes": [
+  {
+   "layer": "dnwell",
+   "box": [
+    -4,
+    -4,
+    8,
+    10
+   ]
+  },
+  {
+   "layer": "schottky_diode",
+   "box": [
+    -1,
+    -1,
+    3.88,
+    7
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    0,
+    0,
+    1,
+    6
+   ]
+  },
+  {
+   "layer": "nplus",
+   "box": [
+    -0.1,
+    -0.1,
+    1.1,
+    6.1
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    1.28,
+    0,
+    1.98,
+    6
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    2.26,
+    0,
+    3.26,
+    6.0
+   ]
+  },
+  {
+   "layer": "nplus",
+   "box": [
+    2.16,
+    -0.1,
+    3.36,
+    6.1
+   ]
+  }
+ ],
+ "reports": [
+  "DN.3",
+  "SK.14",
+  "SK.16",
+  "SK.17"
+ ]
+}

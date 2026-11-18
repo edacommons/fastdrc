@@ -129,5 +129,8 @@
    "kind": "check",
    "expr": "E10 >= 0.22"
   }
+ ],
+ "except": [
+  "neo_ee_mk"
  ]
 }

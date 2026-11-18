@@ -1,0 +1,190 @@
+{
+ "name": "EE.SB.10",
+ "desc": "EE.SB.10 : Poly2 extension beyond related Salicide Block (inside NEO_EE_MK).",
+ "shapes": [
+  {
+   "name": "MKR",
+   "edges": [
+    {
+     "id": "mkr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      24,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_1",
+     "start": [
+      24,
+      0
+     ],
+     "end": [
+      24,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_2",
+     "start": [
+      24,
+      22
+     ],
+     "end": [
+      0,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_3",
+     "start": [
+      0,
+      22
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "POLY",
+   "edges": [
+    {
+     "id": "poly0",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      20,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "poly1",
+     "start": [
+      20,
+      10
+     ],
+     "end": [
+      20,
+      14
+     ],
+     "edge": true
+    },
+    {
+     "id": "poly2",
+     "start": [
+      20,
+      14
+     ],
+     "end": [
+      4,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "poly3",
+     "start": [
+      4,
+      14
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "SAB",
+   "edges": [
+    {
+     "id": "sab0",
+     "start": [
+      9,
+      4
+     ],
+     "end": [
+      15,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab1",
+     "start": [
+      15,
+      4
+     ],
+     "end": [
+      15,
+      18
+     ],
+     "edge": true
+    },
+    {
+     "id": "sab2",
+     "start": [
+      15,
+      18
+     ],
+     "end": [
+      9,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab3",
+     "start": [
+      9,
+      18
+     ],
+     "end": [
+      9,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E10",
+   "from": "sab1",
+   "to": "poly1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MKR.layer == neo_ee_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "POLY.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "SAB.layer == sab"
+  },
+  {
+   "kind": "check",
+   "expr": "E10 >= 0.14"
+  }
+ ]
+}

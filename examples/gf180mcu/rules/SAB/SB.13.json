@@ -66,5 +66,8 @@
    "kind": "check",
    "expr": "A.area >= 2"
   }
+ ],
+ "except": [
+  "otp_mk"
  ]
 }

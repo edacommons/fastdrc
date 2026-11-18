@@ -131,11 +131,11 @@
  "constraints": [
   {
    "kind": "match",
-   "expr": "WIDE.layer == metaltop"
+   "expr": "WIDE.layer == top_metal_layer"
   },
   {
    "kind": "match",
-   "expr": "NEAR.layer == metaltop"
+   "expr": "NEAR.layer == top_metal_layer"
   },
   {
    "kind": "match",

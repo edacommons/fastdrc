@@ -133,5 +133,10 @@
  "values": {
   "3.3V": 0.24,
   "5V": 0.4
- }
+ },
+ "except": [
+  "otp_mk",
+  "sram_mv",
+  "ymtp_mk"
+ ]
 }

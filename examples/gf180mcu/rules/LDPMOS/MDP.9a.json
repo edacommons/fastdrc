@@ -12,7 +12,7 @@
       0
      ],
      "end": [
-      21,
+      29,
       0
      ],
      "edge": false
@@ -20,24 +20,24 @@
     {
      "id": "ld_1",
      "start": [
-      21,
+      29,
       0
      ],
      "end": [
-      21,
-      22
+      29,
+      30
      ],
      "edge": false
     },
     {
      "id": "ld_2",
      "start": [
-      21,
-      22
+      29,
+      30
      ],
      "end": [
       0,
-      22
+      30
      ],
      "edge": false
     },
@@ -45,7 +45,7 @@
      "id": "ld_3",
      "start": [
       0,
-      22
+      30
      ],
      "end": [
       0,
@@ -65,7 +65,7 @@
       4
      ],
      "end": [
-      17,
+      25,
       4
      ],
      "edge": false
@@ -73,24 +73,24 @@
     {
      "id": "dg_1",
      "start": [
-      17,
+      25,
       4
      ],
      "end": [
-      17,
-      18
+      25,
+      26
      ],
      "edge": false
     },
     {
      "id": "dg_2",
      "start": [
-      17,
-      18
+      25,
+      26
      ],
      "end": [
       4,
-      18
+      26
      ],
      "edge": false
     },
@@ -98,11 +98,64 @@
      "id": "dg_3",
      "start": [
       4,
-      18
+      26
      ],
      "end": [
       4,
       4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DN",
+   "edges": [
+    {
+     "id": "dn_0",
+     "start": [
+      8,
+      8
+     ],
+     "end": [
+      21,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_1",
+     "start": [
+      21,
+      8
+     ],
+     "end": [
+      21,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_2",
+     "start": [
+      21,
+      22
+     ],
+     "end": [
+      8,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_3",
+     "start": [
+      8,
+      22
+     ],
+     "end": [
+      8,
+      8
      ],
      "edge": false
     }
@@ -114,48 +167,48 @@
     {
      "id": "a_0",
      "start": [
-      8,
-      8
+      12,
+      12
      ],
      "end": [
-      13,
-      8
+      17,
+      12
      ],
      "edge": false
     },
     {
      "id": "a_1",
      "start": [
-      13,
-      8
+      17,
+      12
      ],
      "end": [
-      13,
-      14
+      17,
+      18
      ],
      "edge": true
     },
     {
      "id": "a_2",
      "start": [
-      13,
-      14
+      17,
+      18
      ],
      "end": [
-      8,
-      14
+      12,
+      18
      ],
      "edge": false
     },
     {
      "id": "a_3",
      "start": [
-      8,
-      14
+      12,
+      18
      ],
      "end": [
-      8,
-      8
+      12,
+      12
      ],
      "edge": true
     }
@@ -177,6 +230,10 @@
   {
    "kind": "match",
    "expr": "DG.layer == dualgate"
+  },
+  {
+   "kind": "match",
+   "expr": "DN.layer == dnwell"
   },
   {
    "kind": "match",

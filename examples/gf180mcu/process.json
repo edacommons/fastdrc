@@ -496,7 +496,20 @@
   "ngate_ext": "poly2 and not comp and ngate_reach",
   "nwell_edge_zone": "(nwell_rim or nwell_halo) and not dnwell",
   "lvpwell_edge_zone": "(lvpwell_rim or lvpwell_halo) and dnwell",
-  "field_poly": "poly2 and not comp"
+  "field_poly": "poly2 and not comp",
+  "sram_lv": "sramcore and not v5_xtor",
+  "sram_mv": "sramcore and v5_xtor",
+  "efuse_pad": "efuse_poly and not plfuse",
+  "hres_body": "poly2 and not pplus",
+  "ncomp_without_metal": "ncomp and not metal1",
+  "pcomp_without_metal": "pcomp and not metal1",
+  "ncomp_in_psub": "ncomp and not nwell and not dnwell",
+  "ldn_source_and_tap": "comp and not poly2 and not mvsd",
+  "ldp_source_and_tap": "comp and not poly2 and not mvpsd",
+  "pcomp_and_what_butts_it": "pcomp + 0.005",
+  "sk_anode": "comp and schottky_diode and not nplus",
+  "sk_cathode": "ncomp and schottky_diode",
+  "otp_on_comp": "comp and otp_mk"
  },
  "columns": {
   "3.3V": [
@@ -568,6 +581,46 @@
   [
    "pcomp",
    "mvpsd"
+  ],
+  [
+   "metal1",
+   "via1"
+  ],
+  [
+   "via1",
+   "metal2"
+  ],
+  [
+   "metal2",
+   "via2"
+  ],
+  [
+   "via2",
+   "metal3"
+  ],
+  [
+   "metal3",
+   "via3"
+  ],
+  [
+   "via3",
+   "metal4"
+  ],
+  [
+   "metal4",
+   "via4"
+  ],
+  [
+   "via4",
+   "metal5"
+  ],
+  [
+   "under_top_metal",
+   "top_via"
+  ],
+  [
+   "top_via",
+   "top_metal_layer"
   ]
  ],
  "parameters": {
@@ -602,7 +655,7 @@
   "gf180mcuA": {
    "metal_stack": "3LM",
    "top_metal": "30K",
-   "mim": "B"
+   "mim": "A"
   },
   "gf180mcuB": {
    "metal_stack": "4LM",

@@ -72,5 +72,15 @@
    "kind": "check",
    "expr": "W >= 0.28"
   }
- ]
+ ],
+ "when": {
+  "switch": "metal_stack",
+  "cases": {
+   "3LM": false,
+   "4LM": false,
+   "5LM": true,
+   "6LM": true
+  },
+  "default": false
+ }
 }

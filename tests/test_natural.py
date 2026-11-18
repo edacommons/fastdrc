@@ -386,7 +386,7 @@ def test_spacing_inside_a_large_array():
 
 def test_an_array_without_a_stated_size_is_taken_by_count_and_the_checked_spacing():
     ops, _, deck = _array_rule(["A.rows > 4 and A.columns > 4", "B.rows > 4 and B.columns > 4"])
-    group = "cont.sized(0.14.um).sized(-0.14.um)"
+    group = "cont.or(cont.space(0.281.um, projection).polygons)"     # neighbours at the spacing or closer
     assert ops == ["cont_array_5x5.space(0.28.um, euclidian).polygons(0.001)"]
     assert f"cont_array_5x5 = cont.inside({group}.interacting(cont, 25))" in deck
 

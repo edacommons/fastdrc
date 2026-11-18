@@ -1,0 +1,62 @@
+{
+ "desc": "HRES, RES_MK 0.2 past the Pplus edges",
+ "shapes": [
+  {
+   "layer": "resistor",
+   "box": [
+    -2,
+    -2,
+    12,
+    3
+   ]
+  },
+  {
+   "layer": "res_mk",
+   "box": [
+    1.4,
+    -2,
+    8.6,
+    3
+   ]
+  },
+  {
+   "layer": "poly2",
+   "box": [
+    0,
+    0,
+    10,
+    1
+   ]
+  },
+  {
+   "layer": "sab",
+   "box": [
+    1.5,
+    -0.5,
+    8.5,
+    1.5
+   ]
+  },
+  {
+   "layer": "pplus",
+   "box": [
+    -0.5,
+    -0.5,
+    1.6,
+    1.5
+   ]
+  },
+  {
+   "layer": "pplus",
+   "box": [
+    8.4,
+    -0.5,
+    10.5,
+    1.5
+   ]
+  }
+ ],
+ "reports": [
+  "HRES.12a"
+ ]
+}

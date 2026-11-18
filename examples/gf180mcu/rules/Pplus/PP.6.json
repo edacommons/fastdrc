@@ -187,5 +187,8 @@
    "kind": "check",
    "expr": "E >= 0.22"
   }
+ ],
+ "except": [
+  "neo_ee_mk"
  ]
 }

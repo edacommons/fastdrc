@@ -107,7 +107,7 @@ sentence the compiler reads back:
 | ![PO.2](img/demo/PO.2.svg) | ![CO.4](img/demo/CO.4.svg) | ![V1.2](img/demo/V1.2.svg) | ![LU.1](img/demo/LU.1.svg) |
 |---|---|---|---|
 | **PO.2** `check Xp >= 0.2` | **CO.4** `match ka_0.length == ka_1.length`, `check Ek >= 0.1` | **V1.2** `match Ww >= 2`, `check Count(VW) >= 2` | **LU.1** `check Sl <= 20` |
-| *poly must extend at least 0.2 µm beyond diff* | *diff must enclose square cont by at least 0.1 µm* | *every met1 at least 2 µm wide must hold at least 2 via1* | *every part of pdiff combined with nwell must be within 20 µm of ndiff combined with nwell* |
+| *poly must extend at least 0.2 µm beyond diff* | *diff must enclose square cont by at least 0.1 µm* | *every met1 at least 2 µm wide must hold at least 2 via1* | *every part of pdiff combined with nwell must be within 20 µm of ndiff combined with nwell — one in the same piece of nwell* |
 
 The figures are made from the rule files by the `svg` backend
 (`fastdrc build examples/demo --with svg` writes one per rule).
@@ -128,7 +128,7 @@ the deck (`fastdrc rules examples/demo --to docs` prints the same):
     V1.2 — Vias on metal-1 wider than 2
       • every met1 at least 2 µm wide must hold at least 2 via1.
     LU.1 — P+ diffusion to the nearest well tap
-      • every part of pdiff combined with nwell must be within 20 µm of ndiff combined with nwell.
+      • every part of pdiff combined with nwell must be within 20 µm of ndiff combined with nwell — one in the same piece of nwell.
         where pdiff = diff and pimp
         where ndiff = diff and not pimp
 

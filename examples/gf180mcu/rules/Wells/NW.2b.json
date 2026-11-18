@@ -139,6 +139,7 @@
   "5V": 1.7
  },
  "except": [
-  "dnwell"
+  "dnwell",
+  "ymtp_mk"
  ]
 }

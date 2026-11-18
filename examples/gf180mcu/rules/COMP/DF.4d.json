@@ -136,6 +136,8 @@
   "5V": 0.16
  },
  "except": [
-  "dnwell"
+  "dnwell",
+  "neo_ee_mk",
+  "ymtp_mk"
  ]
 }

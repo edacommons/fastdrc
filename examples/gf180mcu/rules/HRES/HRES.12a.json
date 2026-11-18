@@ -1,0 +1,248 @@
+{
+ "name": "HRES.12a",
+ "desc": "HRES.12a : P type Poly2 resistor (high sheet rho) shall be covered by RES_MK marking. RES_MK length shall be coincide with resistor length (Defined by Pplus space) and width covering the width of Poly2.",
+ "shapes": [
+  {
+   "name": "HR",
+   "edges": [
+    {
+     "id": "hr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      32,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "hr_1",
+     "start": [
+      32,
+      0
+     ],
+     "end": [
+      32,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "hr_2",
+     "start": [
+      32,
+      22
+     ],
+     "end": [
+      0,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "hr_3",
+     "start": [
+      0,
+      22
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      9,
+      4
+     ],
+     "end": [
+      23,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      23,
+      4
+     ],
+     "end": [
+      23,
+      18
+     ],
+     "edge": true
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      23,
+      18
+     ],
+     "end": [
+      9,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      9,
+      18
+     ],
+     "end": [
+      9,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "R",
+   "edges": [
+    {
+     "id": "r_0",
+     "start": [
+      4,
+      8
+     ],
+     "end": [
+      28,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "r_1",
+     "start": [
+      28,
+      8
+     ],
+     "end": [
+      28,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "r_2",
+     "start": [
+      28,
+      14
+     ],
+     "end": [
+      4,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "r_3",
+     "start": [
+      4,
+      14
+     ],
+     "end": [
+      4,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      13,
+      8
+     ],
+     "end": [
+      19,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      19,
+      8
+     ],
+     "end": [
+      19,
+      14
+     ],
+     "edge": true
+    },
+    {
+     "id": "b_2",
+     "start": [
+      19,
+      14
+     ],
+     "end": [
+      13,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      13,
+      14
+     ],
+     "end": [
+      13,
+      8
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E",
+   "from": "b_1",
+   "to": "mk_1",
+   "at": 11.0
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "HR.layer == resistor"
+  },
+  {
+   "kind": "match",
+   "expr": "MK.layer == res_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "R.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == hres_body"
+  },
+  {
+   "kind": "check",
+   "expr": "E == 0"
+  }
+ ]
+}

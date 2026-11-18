@@ -1,0 +1,80 @@
+{
+ "desc": "PCOMP with no tap in its Nwell, one in the Nwell beside it. DF.13 reports it: the tap of a PCOMP is the NCOMP in its own Nwell (the process's own deck asks only that each tap has a PCOMP within reach)",
+ "shapes": [
+  {
+   "layer": "nwell",
+   "box": [
+    0,
+    0,
+    8,
+    6
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    2,
+    2,
+    4,
+    4
+   ]
+  },
+  {
+   "layer": "pplus",
+   "box": [
+    1.8,
+    1.8,
+    4.2,
+    4.2
+   ]
+  },
+  {
+   "layer": "nwell",
+   "box": [
+    10,
+    0,
+    16,
+    6
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    12,
+    2,
+    13,
+    4
+   ]
+  },
+  {
+   "layer": "nplus",
+   "box": [
+    11.8,
+    1.8,
+    13.2,
+    4.2
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    3,
+    -3,
+    13,
+    -2
+   ]
+  },
+  {
+   "layer": "pplus",
+   "box": [
+    2.8,
+    -3.2,
+    13.2,
+    -1.8
+   ]
+  }
+ ],
+ "reports": [
+  "DF.13"
+ ]
+}

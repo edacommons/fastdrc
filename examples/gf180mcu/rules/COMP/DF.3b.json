@@ -1,0 +1,187 @@
+{
+ "name": "DF.3b",
+ "desc": "DF.3b : Min./Max. NCOMP Space to PCOMP in the same well for butted COMP (MOSCAP butting is not allowed).",
+ "shapes": [
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      20,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      20,
+      0
+     ],
+     "end": [
+      20,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      20,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "NC",
+   "edges": [
+    {
+     "id": "nc_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "nc_1",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "nc_2",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "nc_3",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PC",
+   "edges": [
+    {
+     "id": "pc_0",
+     "start": [
+      10,
+      4
+     ],
+     "end": [
+      16,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "pc_1",
+     "start": [
+      16,
+      4
+     ],
+     "end": [
+      16,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "pc_2",
+     "start": [
+      16,
+      10
+     ],
+     "end": [
+      10,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "pc_3",
+     "start": [
+      10,
+      10
+     ],
+     "end": [
+      10,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "X",
+   "from": "nc_1",
+   "to": "pc_3",
+   "crossed": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MK.layer == mos_cap_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "NC.layer == ncomp"
+  },
+  {
+   "kind": "match",
+   "expr": "PC.layer == pcomp"
+  }
+ ]
+}

@@ -41,11 +41,20 @@
  "reports": [
   "MIMTM.11"
  ],
- "when": {
-  "switch": "mim",
-  "cases": {
-   "B": true
+ "when": [
+  {
+   "switch": "mim",
+   "cases": {
+    "B": true
+   },
+   "default": false
   },
-  "default": false
- }
+  {
+   "switch": "metal_stack",
+   "cases": {
+    "6LM": true
+   },
+   "default": false
+  }
+ ]
 }

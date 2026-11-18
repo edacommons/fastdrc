@@ -186,7 +186,7 @@
   },
   {
    "kind": "match",
-   "expr": "SRAM.layer == sramcore"
+   "expr": "SRAM.layer == sram_lv"
   },
   {
    "kind": "check",

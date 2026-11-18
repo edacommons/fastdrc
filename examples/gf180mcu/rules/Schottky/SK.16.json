@@ -1,0 +1,74 @@
+{
+ "name": "SK.16",
+ "desc": "SK.16 : Min/Max schottky diode anode width (shorter dimension of schottky diode anode COMP).",
+ "shapes": [
+  {
+   "name": "F",
+   "edges": [
+    {
+     "id": "f_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      4,
+      0
+     ],
+     "edge": true
+    },
+    {
+     "id": "f_1",
+     "start": [
+      4,
+      0
+     ],
+     "end": [
+      4,
+      6
+     ],
+     "edge": true
+    },
+    {
+     "id": "f_2",
+     "start": [
+      4,
+      6
+     ],
+     "end": [
+      0,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "f_3",
+     "start": [
+      0,
+      6
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "F.layer == sk_anode"
+  },
+  {
+   "kind": "match",
+   "expr": "f_1.length > f_0.length"
+  },
+  {
+   "kind": "check",
+   "expr": "f_0.length == 0.62"
+  }
+ ]
+}

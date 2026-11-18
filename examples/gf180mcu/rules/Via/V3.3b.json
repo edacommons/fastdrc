@@ -133,5 +133,15 @@
    "kind": "check",
    "expr": "VA in MM"
   }
- ]
+ ],
+ "when": {
+  "switch": "metal_stack",
+  "cases": {
+   "3LM": false,
+   "4LM": true,
+   "5LM": true,
+   "6LM": true
+  },
+  "default": false
+ }
 }

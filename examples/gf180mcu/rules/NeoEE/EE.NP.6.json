@@ -1,0 +1,248 @@
+{
+ "name": "EE.NP.6",
+ "desc": "EE.NP.6 : Nplus overlap with NCOMP butted PCOMP (inside NEO_EE_MK).",
+ "shapes": [
+  {
+   "name": "MKR",
+   "edges": [
+    {
+     "id": "mkr_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      26,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_1",
+     "start": [
+      26,
+      0
+     ],
+     "end": [
+      26,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_2",
+     "start": [
+      26,
+      20
+     ],
+     "end": [
+      0,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "mkr_3",
+     "start": [
+      0,
+      20
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "BC",
+   "edges": [
+    {
+     "id": "bc_0",
+     "start": [
+      8,
+      8
+     ],
+     "end": [
+      18,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "bc_1",
+     "start": [
+      18,
+      8
+     ],
+     "end": [
+      18,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "bc_2",
+     "start": [
+      18,
+      12
+     ],
+     "end": [
+      8,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "bc_3",
+     "start": [
+      8,
+      12
+     ],
+     "end": [
+      8,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "BP",
+   "edges": [
+    {
+     "id": "bp_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      12,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "bp_1",
+     "start": [
+      12,
+      4
+     ],
+     "end": [
+      12,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "bp_2",
+     "start": [
+      12,
+      16
+     ],
+     "end": [
+      4,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "bp_3",
+     "start": [
+      4,
+      16
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "BN",
+   "edges": [
+    {
+     "id": "bn_0",
+     "start": [
+      12,
+      4
+     ],
+     "end": [
+      22,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "bn_1",
+     "start": [
+      22,
+      4
+     ],
+     "end": [
+      22,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "bn_2",
+     "start": [
+      22,
+      16
+     ],
+     "end": [
+      12,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "bn_3",
+     "start": [
+      12,
+      16
+     ],
+     "end": [
+      12,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E6",
+   "from": "bp_1",
+   "to": "bc_1",
+   "metric": "projection"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MKR.layer == neo_ee_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "BC.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "BP.layer == pplus"
+  },
+  {
+   "kind": "match",
+   "expr": "BN.layer == nplus"
+  },
+  {
+   "kind": "check",
+   "expr": "E6 >= 0.14"
+  }
+ ]
+}

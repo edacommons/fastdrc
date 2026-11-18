@@ -136,9 +136,10 @@
   "5V": 0.3
  },
  "except": [
-  "otp_mk",
-  "ymtp_mk",
+  "mvpsd",
   "mvsd",
-  "mvpsd"
+  "otp_mk",
+  "sram_mv",
+  "ymtp_mk"
  ]
 }

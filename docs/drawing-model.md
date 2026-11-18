@@ -156,6 +156,10 @@ the matching inner edge (the margin).
 
 (When the inner one only *crosses* the outer, see *Extension / overhang / end cap*.)
 
+With the arrow set to **within** ("… [Outside Not Allowed]") a margin of `E >= 0` says only
+that the inner one must not lie across the outer one's edge:
+→ `inner.overlapping(outer).not_inside(outer)`.
+
 ### Extension / overhang / end cap (one layer crossing another)
 
 ![PO.2](img/demo/PO.2.svg)
@@ -283,7 +287,7 @@ set is the union of its layers (`.not_interacting(dualgate.or(v5_xtor))`).
 
 ![4-link](img/edges/4-link.svg)
 
-`docs/figures`, 4-link — `W >= 0.4` and the link `IN`: *diff that lies inside well must be at least 0.4 µm wide.*
+`docs/figures`, 4-link — `W >= 0.4` and a link from the diff to the well: *diff that lies inside well must be at least 0.4 µm wide.*
 
 Draw a **context shape** of that other layer and a **link** from the subject to it:
 a measure drawn to a wavy edge. A link is not a distance, so it needs **no
@@ -313,6 +317,16 @@ is inside `Y`, but the link is what tells them apart. Apply the link to
 **each** subject shape (both rects of a space rule), and you can chain several
 (`X.inside(A).inside(B)`). The separation **argument** can be selected the same
 way: a link from `B` to its context → `X.separation(Y.outside(Z))`.
+
+**A link between the two measured shapes.** A space arrow between A and B, and beside it
+a link (to a wavy edge) from A to B: A is one that lies **outside** every B — "the drift
+region to an NCOMP *outside* the drift", which leaves out the source the drift itself
+reaches under: → `mvsd.separation(ncomp.outside(mvsd), 4)`.
+
+**A filter on a second arrow.** An arrow from the checked shape to a third shape that the
+check does not measure, with a filter `Y < 1.0` on it: the rule is about those of the
+checked shape that have such a third one that near — "where the Nwell is less than 1 µm
+from the NCOMP, a tap within 20": → `ncomp.overlapping(nwell.sized(1)).not(tap.sized(20))`.
 
 ### A selected marker (the context has its own selection)
 The context shape itself can be a *selected* thing —
@@ -377,6 +391,18 @@ separate). The compiler derives the scope op from the relation:
 > and a **selection** (it restricts which *shapes* are checked: `outside` keeps
 > touching). The link is the signal, and the editor shows each shape's role.
 
+**A marker that holds something.** A marker with a shape drawn inside it and a link from
+the marker to that shape is a marker *that holds one*: "a DNWELL with its NCOMP tab" →
+`dnwell.covering(ncomp)`. A marker of the same layer as one the measured shape is drawn in,
+but drawn apart from it, is **another** one: `….not_interacting(<the measured layer>)`.
+
+**A guard between the two.** A minimum distance whose arrow passes right **through** a
+third shape lying apart from both: where that shape lies across the whole way between
+the two, the rule is lifted — "a DNWELL guard ring is needed between the LDPMOS drift and an
+NCOMP less than 40 µm away": → `drift.separation(ncomp, 40).polygons.not(dnwell.covering(ncomp)…)`.
+The generated self-test also draws the guard too short to part all of the one from all
+of the other, which must report.
+
 ### Acute angle
 "No acute angles" is a rule about **corners**: two **straight** edges meeting at a
 sharp corner. Draw such a corner and write the check on it — what must hold:
@@ -428,6 +454,11 @@ As a **`match`** (a filter — the edges that *satisfy* it are selected):
 
 A length filter usually qualifies another rule (an end-of-line, below). A rule that
 has only filters and no check flags what the filters select.
+
+**The edge two shapes share.** A length on a straight edge drawn ON an edge of another
+shape (two shapes of different layers butting) is the length of the stretch they share:
+"minimum length of a butting edge" is NCOMP and PCOMP drawn butting and
+`nc_1.length >= 0.3` → `ncomp.edges.and(pcomp.edges).with_length(nil, 0.3)`.
 
 ### End-of-line (a wire end)
 
@@ -529,6 +560,12 @@ the rules.
 A well with no tap at all is a net of its own. `fastdrc rules` warns if a rule speaks
 of nets and no `connect` list is given.
 
+**Two at different potentials in one holder.** Two shapes of a layer drawn inside one
+other shape, the filter `A.net != B.net` and a **cross** on the arrow between them:
+"two or more COMPs connected to different potential are not allowed under the same NAT"
+— every holder whose shapes of that layer are on more than one net is reported, with
+all of them (the deck looks the nets up per holder; no distance is involved).
+
 ### Counts — "must contain exactly n"
 
 ![V1.2](img/demo/V1.2.svg)
@@ -557,7 +594,15 @@ array), `Count(V) >= 1` reads "must hold a 2 × 2 array of vias".
 of a guard ring G is "every hole of G must hold exactly one D" (→ `G.holes.not_interacting(D, 1, 1)`). A filter
 `match Count(D) >= 1` makes it the holes that hold a D at all. A counted shape is narrowed by the links drawn
 FROM it to the other shapes held: an Nwell linked as drawn apart from the DNWELL counts the Nwells outside it.
-`Count(K) == 0` is "must hold none" (→ `.interacting(K)`).
+`Count(K) == 0` is "must hold none" (→ `.interacting(K)`). The holders can be named **through what is
+counted**: a counted shape drawn touching the holder and linked on to a shape that carries a count filter of its
+own — `match Count(G2) == 2` on the source between two gates — makes the check "a drain next to a gate whose source
+is shared by two gates must lie between two gates" (→ `mvsd.interacting(gate.interacting(source.interacting(gate,
+2, 2))).not_interacting(gate, 2, 2)`). Counted in a ring's hole, a counted shape linked to a neighbour that is
+linked to a layer **grown** a little (`pcomp + 0.005`) counts only those whose neighbour does not butt that layer:
+"every two fingers in a guard ring, unless each source butts a tap". A filter `match Count(K) >= 1` on a plain
+holder narrows it the same way: with the check `Count(V) >= 1` on arrayed vias it is "metal that carries a via
+must carry a 2 × 2 array of them" (→ `metal.interacting(via, 1).not_interacting(via_array_2x2, 1)`).
 
 `Area(K)` is its companion: how much **area** of K's layer the shape holds, all of it
 together, in µm². "The MIM capacitors on one bottom plate may be 10000 µm² in all" is
@@ -676,7 +721,9 @@ is wider than N−1 elements could ever span inside a group, so the parts of the
 that wide in both directions are the large array, and the shapes inside it are checked:
 → `K.inside(K.sized(g/2).sized(-g/2).sized(-t/2).sized(t/2)).space(v)`
 with `g` the grouping distance and `t = (N−1)·size + (N−2)·g`. Rows and columns may
-differ (rows are counted along y).
+differ (rows are counted along y). Taken by count (no element size), the group is the
+shapes joined by what lies between two of them facing each other closer than `g`:
+→ `K.inside(K.or(K.space(g, projection).polygons).interacting(K, rows·columns))`
 
 ### The whole layer, although something lies under it in the picture
 A shape normally means "this layer *here*": whatever is drawn under the spot where
@@ -741,6 +788,12 @@ shapes drawn apart: every edge of the shape the arrow starts at must have the ot
 facing it within 15 — "the tab at most 15 µm from the device's edge" holds on each side:
 → `A.edges.not_in(A.separation(B, 15.001, projection, whole_edges).first_edges)`
 
+A length **filter** on that starting edge says which edges: `match a_1.length > 0.62` —
+"each long side of the anode must have a cathode facing it" (the ends are not long sides).
+With the metric `projection` on the arrow, **all** of each such edge must be faced (a
+cathode shorter than the anode leaves a stretch unfaced): → `A.edges.with_length(0.621, nil)
+.not(A.separation(B, 0.281, projection).first_edges)`.
+
 **At a butting edge.** An arrow measured on edges whose starting edge is drawn ON an edge of another shape (an
 implant edge drawn on a diffusion's edge) starts at the shared edge only: "Nplus space to the P-gate at a butting
 edge" → `nplus.edges.and(pcomp.edges).separation(pgate.edges, 0.32, projection)`.
@@ -748,6 +801,11 @@ edge" → `nplus.edges.and(pcomp.edges).separation(pgate.edges, 0.32, projection
 **Which way a gate runs.** A check on a straight edge's direction — `g.angle == 0`,
 "must run along x" (90: along y) — flags the gate edges that run any other way:
 → `poly2.edges.and(tgate.edges).without_angle(0)`
+
+As a **filter** the direction says which edges an edge width or space is about:
+`match g.angle == 45 or g.angle == 135` with `W >= 0.3` between the two slanted edges of
+a gate is "45-degree bent gate width" → `(gate_edges.with_angle(45) +
+gate_edges.with_angle(-45)).width(0.3)`.
 
 ### Maximum bounds and narrow-region selectors (`.drc`)
 A bound on a distance reads by its **kind**, like every constraint.
@@ -761,6 +819,7 @@ As a **`check`** (what must hold — where it fails is flagged):
 | `W >= 0.28 and W <= 5` | both | the two checks above |
 | `S <= 20`, the arrow between the two **facing** edges of A and B | every A with no B within 20 — "must have a tap within 20 µm" | `A.not_interacting(B.sized(20))` |
 | `S <= 20`, the arrow from B **through** A to its far side | every part of A farther than 20 from any B — "any portion within 20 µm of a tap" | `A.not(B.sized(20))` |
+| the same, B combined with a layer it lies in (`ncomp and nwell`) | the reach stays in that **same piece** of it: a tap in the next well does not count | `A.not(B.sized(20).and(nwell).interacting(B))` |
 | `E <= 6` (inner inside outer) | the parts of the outer reaching more than 6 beyond the inner | `outer.not(inner.sized(6))` |
 
 **Exactly** — a manual's "Min/Max" on one arrow — is `E == 0.1`: the minimum and the
@@ -768,6 +827,19 @@ maximum together, each read as in the table. On the depth two layers **overlap**
 maximum flags an overlap deeper than the value (`A.and(B)` with half the value taken off
 every side, and what is left grown back). `S == 0` between two shapes drawn apart says
 they must **abut**.
+
+Where the arrow is drawn says what is exact:
+
+| the picture | says | compiles to |
+|---|---|---|
+| `L == 5.53`, the arrow from one end of a shape that is not a box to its other end | the shape is exactly that long from end to end | `layer.without_bbox_max(5.53)` (`_min` if the arrow runs across its shorter extent) |
+| `E == 1.04`, two shapes drawn **abutting**, the arrow between their sides that run away from the shared edge | the wider one's edge goes on exactly that far beside the narrower one, on each side (a fuse link in the middle of its pad) | `pad.edges.interacting(link).not(link.edges).without_length(1.04)` |
+| `E == 0`, one shape drawn inside the other | the two outlines **coincide**: neither reaches beyond the other | `outer.not(inner).or(inner.overlapping(outer).not(outer))` |
+| `E == 0.2` on an extension measured on **edges**, from an edge that lies under the outer layer | the outer layer ends exactly that far past that edge, straight out from it | the minimum, and `edge.extended_out(0.201).not(edge.extended_out(0.2)).and(outer)` |
+
+What covers the measured edges combines as always: a marker's edge and a salicide block's
+edge both measured where they cross a poly line are those of `res_mk and poly2` and
+`sab and poly2` — "RES_MK is exactly as long as the resistor".
 
 A maximum between two shapes is read by **where the arrow ends**. Between the facing
 edges it says the shape needs a partner within reach; the arrow starts at the shape
@@ -1127,7 +1199,10 @@ piece of layout and the rules that must report on it:
 Coordinates are µm, layers the process's own. `selftest` runs the **whole** deck on
 every layout: a rule named in `reports` must report it, and every other rule must be
 silent (but those in `not_judged`, where the answer is not known). A clean device with
-`"reports": []` is the plainest test a deck can have. The layouts are also written as
+`"reports": []` is the plainest test a deck can have. A layout drawn for one option of
+the process says so as a rule does, `"when": {"switch": "mim", "cases": {"B": true},
+"default": false}` (or a list of such, all of which must hold); built with other options
+it is left out. The layouts are also written as
 one layout file (the last line `selftest` prints), ready for another deck to be run on
 it — the foundry's own, say — and `tools/compare_reports.py` to set the two reports
 side by side.

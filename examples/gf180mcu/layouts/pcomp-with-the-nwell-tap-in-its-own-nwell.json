@@ -1,0 +1,69 @@
+{
+ "desc": "PCOMP with the Nwell tap in its own Nwell",
+ "shapes": [
+  {
+   "layer": "nwell",
+   "box": [
+    0,
+    0,
+    8,
+    6
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    2,
+    2,
+    4,
+    4
+   ]
+  },
+  {
+   "layer": "pplus",
+   "box": [
+    1.8,
+    1.8,
+    4.2,
+    4.2
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    5.5,
+    2,
+    6.5,
+    4
+   ]
+  },
+  {
+   "layer": "nplus",
+   "box": [
+    5.3,
+    1.8,
+    6.7,
+    4.2
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    3,
+    -3,
+    13,
+    -2
+   ]
+  },
+  {
+   "layer": "pplus",
+   "box": [
+    2.8,
+    -3.2,
+    13.2,
+    -1.8
+   ]
+  }
+ ],
+ "reports": []
+}

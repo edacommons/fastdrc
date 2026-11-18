@@ -134,5 +134,15 @@
    "kind": "check",
    "expr": "Ea >= 0.04 or Eb >= 0.06"
   }
- ]
+ ],
+ "when": {
+  "switch": "metal_stack",
+  "cases": {
+   "3LM": false,
+   "4LM": false,
+   "5LM": true,
+   "6LM": true
+  },
+  "default": false
+ }
 }

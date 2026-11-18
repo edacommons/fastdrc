@@ -14,7 +14,7 @@ def test_every_rule_compiles(tmp_path):
     deck, text, n, notes = process.build(DECK, str(tmp_path))
     files = glob.glob(os.path.join(DECK, "rules", "*", "*.json"))
     grid = len(process.load(DECK)[0]["layers"])              # one grid check per layer
-    assert len(files) == 447 and n == 474 + 2 * grid == 684   # the default; the grid and the angle, per layer
+    assert len(files) == 492 and n == 521 + 2 * grid == 731   # the default; the grid and the angle, per layer
     assert notes == []                                    # no rule that checks nothing, no layer without a number
     said = open(text, encoding="utf-8").read()
     assert "(no checkable assertion found)" not in said
@@ -34,11 +34,13 @@ def test_one_file_is_one_rule():
 def test_the_options_of_the_process_are_parameters(tmp_path):
     read = lambda **kw: open(process.build(DECK, str(tmp_path), optimise=False, **kw)[0]).read()   # noqa: E731
     a = read(profile="gf180mcuA")                         # three metals, the 3 um top metal
-    assert "built for metal_stack = 3LM, top_metal = 30K, mim = B" in a
+    assert "built for metal_stack = 3LM, top_metal = 30K, mim = A" in a   # option B needs four metals or more
     assert "top_via = via2" in a and "under_top_metal = metal2" in a
     assert '.output("MT30.1a"' in a and '.output("MT.1"' not in a
+    assert "top_metal_layer = metal3" in a and "top_metal_layer.width(1.8.um" in a   # the top metal of three
+    assert not any(f'.output("{x}' in a for x in ("M3.1", "M4.1", "M5.1", "V3.1", "V4.1", "V5.1"))
     thin = read(params=["top_metal=6K", "mim=A"])
-    assert "metaltop.width(0.36.um" in thin and '.output("MIM.1"' in thin and '.output("MIMTM.1"' not in thin
+    assert "top_metal_layer.width(0.36.um" in thin and '.output("M5.1"' in thin and '.output("V5.1"' in thin and '.output("MIM.1"' in thin and '.output("MIMTM.1"' not in thin
     assert '.output("MIM' not in read(params=["mim=none"])
     for name in process.load(DECK)[0]["profiles"]:        # every profile builds, with nothing to remark
         assert process.build(DECK, str(tmp_path), profile=name)[3] == []
@@ -54,7 +56,7 @@ def test_part_of_it_behaves_as_drawn(tmp_path):
 @pytest.mark.skipif(not process.klayout_binary(), reason="KLayout is not installed")
 def test_its_layouts_are_read_as_they_should_be(tmp_path):
     # whole devices drawn by hand: every rule of the deck gets its say on each
-    assert len(process.deck_layouts(DECK)) == 92
+    assert len(process.deck_layouts(DECK)) == 139
     res = process.selftest(DECK, str(tmp_path), only=["LDNMOS,LDPMOS,HRES,PRES,LRES,Poly2,Pplus,Nplus,Dualgate,OTP,"
                                                       "DummyExclude,MIM-B,Grid,COMP,Wells,SAB,Contact"])
     assert [line for line in res["wrong"] if line.startswith("layout ")] == []

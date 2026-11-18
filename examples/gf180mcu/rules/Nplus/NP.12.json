@@ -120,5 +120,8 @@
    "kind": "match",
    "expr": "EXT.layer == pgate_ext"
   }
+ ],
+ "except": [
+  "neo_ee_mk"
  ]
 }

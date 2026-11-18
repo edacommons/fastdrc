@@ -188,5 +188,8 @@
    "kind": "check",
    "expr": "E5a >= 0.23"
   }
+ ],
+ "except": [
+  "neo_ee_mk"
  ]
 }

@@ -1,0 +1,71 @@
+{
+ "desc": "OTP cell, two poly lines on field 0.2 apart. PL.3a reports it: O.PL.3a gives the OTP value only on COMP, so poly on field keeps the general 0.24 (the process's own deck leaves all poly in OTP_MK out of PL.3a)",
+ "shapes": [
+  {
+   "layer": "otp_mk",
+   "box": [
+    -3,
+    -3,
+    9,
+    13
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    2,
+    0,
+    4,
+    10
+   ]
+  },
+  {
+   "layer": "nplus",
+   "box": [
+    1.5,
+    -0.5,
+    4.5,
+    10.5
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    12,
+    0,
+    13,
+    10
+   ]
+  },
+  {
+   "layer": "pplus",
+   "box": [
+    11.5,
+    -0.5,
+    13.5,
+    10.5
+   ]
+  },
+  {
+   "layer": "poly2",
+   "box": [
+    -2,
+    11,
+    8,
+    11.3
+   ]
+  },
+  {
+   "layer": "poly2",
+   "box": [
+    -2,
+    11.5,
+    8,
+    11.8
+   ]
+  }
+ ],
+ "reports": [
+  "PL.3a"
+ ]
+}

@@ -1,0 +1,146 @@
+{
+ "name": "PL.7",
+ "desc": "PL.7 : 45 deg bent gate width.",
+ "shapes": [
+  {
+   "name": "COMP",
+   "edges": [
+    {
+     "id": "comp_0",
+     "start": [
+      0,
+      2
+     ],
+     "end": [
+      24,
+      2
+     ],
+     "edge": true
+    },
+    {
+     "id": "comp_1",
+     "start": [
+      24,
+      2
+     ],
+     "end": [
+      24,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "comp_2",
+     "start": [
+      24,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": true
+    },
+    {
+     "id": "comp_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      2
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "G",
+   "edges": [
+    {
+     "id": "g_0",
+     "start": [
+      4,
+      0
+     ],
+     "end": [
+      8,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_1",
+     "start": [
+      8,
+      0
+     ],
+     "end": [
+      24,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "g_2",
+     "start": [
+      24,
+      16
+     ],
+     "end": [
+      20,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_3",
+     "start": [
+      20,
+      16
+     ],
+     "end": [
+      4,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "W",
+   "from": "g_3",
+   "to": "g_1",
+   "edges": true
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "COMP.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "G.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "g_1.angle == 45 or g_1.angle == 135"
+  },
+  {
+   "kind": "check",
+   "expr": "W >= ?"
+  }
+ ],
+ "values": {
+  "3.3V": 0.3,
+  "5V": 0.7
+ },
+ "except": [
+  "otp_mk",
+  "ymtp_mk"
+ ]
+}

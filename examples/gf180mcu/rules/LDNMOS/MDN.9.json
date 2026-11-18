@@ -220,6 +220,11 @@
    "name": "S",
    "from": "a_1",
    "to": "b_3"
+  },
+  {
+   "name": "LB",
+   "from": "b_0",
+   "to": "a_0"
   }
  ],
  "constraints": [

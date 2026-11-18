@@ -1,0 +1,291 @@
+{
+ "name": "EF.21",
+ "desc": "EF.21 : Min./Max. eFUSE Poly2 length.",
+ "shapes": [
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      20,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      20,
+      0
+     ],
+     "end": [
+      20,
+      30
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      20,
+      30
+     ],
+     "end": [
+      0,
+      30
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      0,
+      30
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "P",
+   "edges": [
+    {
+     "id": "p_0",
+     "start": [
+      4,
+      2
+     ],
+     "end": [
+      16,
+      2
+     ],
+     "edge": true
+    },
+    {
+     "id": "p_1",
+     "start": [
+      16,
+      2
+     ],
+     "end": [
+      16,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "p_2",
+     "start": [
+      16,
+      10
+     ],
+     "end": [
+      11,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "p_3",
+     "start": [
+      11,
+      10
+     ],
+     "end": [
+      11,
+      18
+     ],
+     "edge": true
+    },
+    {
+     "id": "p_4",
+     "start": [
+      11,
+      18
+     ],
+     "end": [
+      14,
+      18
+     ],
+     "edge": true
+    },
+    {
+     "id": "p_5",
+     "start": [
+      14,
+      18
+     ],
+     "end": [
+      14,
+      28
+     ],
+     "edge": true
+    },
+    {
+     "id": "p_6",
+     "start": [
+      14,
+      28
+     ],
+     "end": [
+      6,
+      28
+     ],
+     "edge": true
+    },
+    {
+     "id": "p_7",
+     "start": [
+      6,
+      28
+     ],
+     "end": [
+      6,
+      18
+     ],
+     "edge": true
+    },
+    {
+     "id": "p_8",
+     "start": [
+      6,
+      18
+     ],
+     "end": [
+      9,
+      18
+     ],
+     "edge": true
+    },
+    {
+     "id": "p_9",
+     "start": [
+      9,
+      18
+     ],
+     "end": [
+      9,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "p_10",
+     "start": [
+      9,
+      10
+     ],
+     "end": [
+      4,
+      10
+     ],
+     "edge": true
+    },
+    {
+     "id": "p_11",
+     "start": [
+      4,
+      10
+     ],
+     "end": [
+      4,
+      2
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "F",
+   "edges": [
+    {
+     "id": "f_0",
+     "start": [
+      9,
+      10
+     ],
+     "end": [
+      11,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "f_1",
+     "start": [
+      11,
+      10
+     ],
+     "end": [
+      11,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "f_2",
+     "start": [
+      11,
+      18
+     ],
+     "end": [
+      9,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "f_3",
+     "start": [
+      9,
+      18
+     ],
+     "end": [
+      9,
+      10
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "L",
+   "from": "p_0",
+   "to": "p_6"
+  },
+  {
+   "name": "LF",
+   "from": "p_0",
+   "to": "f_0"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MK.layer == efuse_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "P.layer == poly2"
+  },
+  {
+   "kind": "match",
+   "expr": "F.layer == plfuse"
+  },
+  {
+   "kind": "check",
+   "expr": "L == 5.53"
+  }
+ ]
+}

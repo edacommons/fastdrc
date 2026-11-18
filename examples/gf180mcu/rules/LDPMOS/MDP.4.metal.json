@@ -1,0 +1,191 @@
+{
+ "name": "MDP.4.metal",
+ "desc": "MDP.4 : The metal connection for the Pplus guard ring recommended to be continuous, The maximum gap between this metal if broken.",
+ "shapes": [
+  {
+   "name": "LD",
+   "edges": [
+    {
+     "id": "ld_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      26,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_1",
+     "start": [
+      26,
+      0
+     ],
+     "end": [
+      26,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_2",
+     "start": [
+      26,
+      20
+     ],
+     "end": [
+      0,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "ld_3",
+     "start": [
+      0,
+      20
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DG",
+   "edges": [
+    {
+     "id": "dg_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      22,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_1",
+     "start": [
+      22,
+      4
+     ],
+     "end": [
+      22,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_2",
+     "start": [
+      22,
+      16
+     ],
+     "end": [
+      4,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "dg_3",
+     "start": [
+      4,
+      16
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "GAP",
+   "edges": [
+    {
+     "id": "gap_0",
+     "start": [
+      10,
+      8
+     ],
+     "end": [
+      16,
+      8
+     ],
+     "edge": true
+    },
+    {
+     "id": "gap_1",
+     "start": [
+      16,
+      8
+     ],
+     "end": [
+      16,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "gap_2",
+     "start": [
+      16,
+      12
+     ],
+     "end": [
+      10,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "gap_3",
+     "start": [
+      10,
+      12
+     ],
+     "end": [
+      10,
+      8
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "LD.layer == ldmos_xtor"
+  },
+  {
+   "kind": "match",
+   "expr": "DG.layer == dualgate"
+  },
+  {
+   "kind": "match",
+   "expr": "GAP.layer == pcomp_without_metal"
+  },
+  {
+   "kind": "match",
+   "expr": "gap_0.length >= gap_1.length"
+  },
+  {
+   "kind": "check",
+   "expr": "gap_0.length <= 10"
+  }
+ ],
+ "except": [
+  "dnwell"
+ ]
+}

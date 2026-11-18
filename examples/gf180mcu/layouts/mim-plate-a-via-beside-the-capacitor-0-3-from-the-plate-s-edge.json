@@ -38,23 +38,59 @@
    ]
   },
   {
+   "layer": "via5",
+   "box": [
+    15.5,
+    4.82,
+    15.76,
+    5.08
+   ]
+  },
+  {
+   "layer": "via5",
+   "box": [
+    16.02,
+    4.3,
+    16.28,
+    4.56
+   ]
+  },
+  {
+   "layer": "via5",
+   "box": [
+    16.02,
+    4.82,
+    16.28,
+    5.08
+   ]
+  },
+  {
    "layer": "metaltop",
    "box": [
     15,
     3.8,
-    16.3,
-    5.1
+    16.8,
+    5.6
    ]
   }
  ],
  "reports": [
   "MIMTM.2"
  ],
- "when": {
-  "switch": "mim",
-  "cases": {
-   "B": true
+ "when": [
+  {
+   "switch": "mim",
+   "cases": {
+    "B": true
+   },
+   "default": false
   },
-  "default": false
- }
+  {
+   "switch": "metal_stack",
+   "cases": {
+    "6LM": true
+   },
+   "default": false
+  }
+ ]
 }

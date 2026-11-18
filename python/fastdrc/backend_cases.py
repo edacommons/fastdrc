@@ -36,6 +36,7 @@ must flag it.
 from __future__ import annotations
 
 import json
+import re
 
 from .backend import Backend, register
 from .constraint import parse
@@ -134,6 +135,33 @@ class _Picture:
                 m["at"] = nm(m["at"])
         self.where = {e["id"]: (s, i) for s in self.data["shapes"] for i, e in enumerate(s["edges"])}
         self.measures = {m["name"]: m for m in self.data.get("measures", [])}
+        # an edge that must go on exactly so far BESIDE a shape sitting on it does so on both
+        # sides: the arrow drawn on one side has a twin on the other, set with it
+        self.twins = {}
+        for name, m in list(self.measures.items()):
+            form = rule.exact_form(name)
+            if form and form["kind"] == "beside" and all(self.rectangle(n) for n in (form["pad"], form["link"])):
+                opp = lambda eid: (lambda s, i: s["edges"][(i + 2) % 4]["id"])(*self.where[eid])   # noqa: E731
+                self.measures[name + "~"] = {"name": name + "~", "from": opp(m["from"]), "to": opp(m["to"])}
+                self.twins[name] = [name + "~"]
+        for b in rule.bounds():                        # outlines that must COINCIDE do so on every side
+            m = self.measures.get(b.var)
+            if not (m and b.kind == "check" and b.exact and b.value == 0 and not b.is_min and b.var not in self.twins):
+                continue
+            sf, st = rule.shape_of_edge(m.get("from")), rule.shape_of_edge(m.get("to"))
+            if sf == st or rule.relation(sf, st) not in ("inside", "contains") or not all(self.rectangle(n) for n in (sf, st)):
+                continue
+
+            def side(shape, ax, far):                  # the edge of a box on that side
+                es = [e for e in self.rectangle(shape) if self._axis(e) == ax]
+                return (max if far else min)(es, key=lambda e: e["start"][ax])["id"]
+            for ax in (0, 1):
+                for far in (False, True):
+                    pair = (side(sf, ax, far), side(st, ax, far))
+                    if set(pair) != {m["from"], m["to"]}:
+                        twin = f"{b.var}~{ax}{int(far)}"
+                        self.measures[twin] = {"name": twin, "from": pair[0], "to": pair[1]}
+                        self.twins.setdefault(b.var, []).append(twin)
         self.sign = {}                                 # quantity -> the side its far edge started on
         self.copies = {}                               # shape -> how many of it are drawn (default: one)
 
@@ -208,6 +236,12 @@ class _Picture:
         return abs(e["end"][ax] - e["start"][ax])
 
     def set(self, q, target):
+        ok = self._set(q, target)
+        for twin in (self.twins.get(q[1], ()) if ok and q[0] == "arrow" else ()):
+            ok = ok and self._set(("arrow", twin), target)
+        return ok
+
+    def _set(self, q, target):
         """Give an arrow or a side the length `target` by squeezing (or stretching) the
         stretch of the axis between its two ends -- for the WHOLE picture: whatever
         lies beyond moves along, whatever lies in between is squeezed in proportion.
@@ -332,12 +366,15 @@ class CasesBackend(Backend):
         from .backend import get
         r = Rule(rule_dict)
         try:
+            made = self._unbutted_count_cases(r, rule_dict)       # (it draws the grown layer's source itself)
+            if made is not None:
+                return made, None
             for name in r.shapes:                          # a zone drawn beside the very shape it is grown from
                 zone = r.layer_defs.get(r.layer_of(name) or "")   # ("within 1.06 of the top plate", with the plate)
                 if isinstance(zone, dict) and zone.get("op") in ("+", "-") and any(
                         r.layer_of(o) == zone["args"][0].get("ref") for o in r.shapes if o != name):
                     raise _CannotBuild("a layer of the picture is defined in a way that cannot be drawn directly")
-            for special in (self._orientation_cases, self._ring_count_cases, self._grid_cases, self._acute_cases, self._total_cases, self._form_cases, self._presence_cases, self._corner_cases, self._hole_cases, self._array_cases, self._share_cases,
+            for special in (self._no_straddle_cases, self._faced_edge_cases, self._count_chain_cases, self._shielded_cases, self._slanted_cases, self._net_cross_cases, self._exact_cases, self._orientation_cases, self._ring_count_cases, self._grid_cases, self._acute_cases, self._total_cases, self._form_cases, self._presence_cases, self._corner_cases, self._hole_cases, self._held_array_cases, self._array_cases, self._share_cases,
                             self._density_cases, self._antenna_cases):
                 made = special(r, rule_dict)
                 if made is not None:
@@ -349,6 +386,10 @@ class CasesBackend(Backend):
                 constraints = [(k, e, self._or_zero(r, a) if k == "check" else a) for k, e, a in constraints]
             numbers = [abs(n) for _, _, ast in constraints for n in self._lengths(ast) if n]
             unit_nm = ROOM * round(max(numbers) * 1000) if numbers else 1000
+            # one very large value (a line "longer than 1000 um") must not blow the whole
+            # picture up: the quantity it is about is stretched to it on its own
+            extent = max((abs(c) for sh in rule_dict["shapes"] for e in sh["edges"] for c in e["start"]), default=1) or 1
+            unit_nm = max(1000, min(unit_nm, 5_000_000 // int(extent + 1)))
             self._presets = []                             # sizes fixed before anything is stepped
             self._optional = set()                         # alternatives of an "or" beyond its first
             probe = _Picture(r, rule_dict, unit_nm)
@@ -867,6 +908,336 @@ class CasesBackend(Backend):
         return [self._case(r, rule_dict, tag, "a rectangle", form != "rectangle", box),
                 self._case(r, rule_dict, tag, "an L shape", form == "rectangle", ell)]
 
+    def _no_straddle_cases(self, r, rule_dict):
+        """"Enclose by at least 0" with the inner one not to lie across the edge: the
+        picture as drawn (quiet), the outer one's measured edge moved into the inner one
+        so the inner one lies across it (reported), the outer one taken away (quiet)."""
+        dist = [d for d in r.distance_rules() if not d[3] and d[1] is not None and d[1].value == 0]
+        if len(dist) != 1 or not r.measures[dist[0][0]].get("within"):
+            return None
+        var = dist[0][0]
+        m = r.measures[var]
+        sf, st = r.shape_of_edge(m["from"]), r.shape_of_edge(m["to"])
+        outer_edge = m["to"] if r.relation(sf, st) == "inside" else m["from"]
+        inner_edge = m["from"] if outer_edge == m["to"] else m["to"]
+        outer = r.shape_of_edge(outer_edge)
+        check = "check " + next(c["expr"] for c in rule_dict["constraints"] if c.get("kind", "check") == "check")
+        pic = _Picture(r, rule_dict, 1000)
+        eo, ei = pic._edge(outer_edge), pic._edge(inner_edge)
+        ax = 1 - pic._axis(eo) if pic._axis(eo) is not None else None
+        if ax is None or pic._axis(ei) != pic._axis(eo):
+            raise _CannotBuild("a no-straddle rule on edges this generator does not arrange yet")
+        ax = pic._axis(eo)
+        co, ci = eo["start"][ax], ei["start"][ax]
+        drawn = pic.outlines()
+        pic._move(outer_edge, ax, ci - (co - ci) // 2 if co != ci else ci + 1000)
+        across = pic.outlines()
+
+        def case(what, expect, shapes):
+            layers = self._real_layers(r, shapes)
+            if layers is None:
+                raise _CannotBuild("a layer of the picture is defined in a way that cannot be drawn directly")
+            return {"rule": r.name, "testing": check, "case": what, "expect": expect, "shapes": layers,
+                    "markers": [lay for op, lay in (rule_dict.get("scope") or []) if op in _INSIDE_OPS]}
+        return [case("wholly inside, as drawn", False, drawn),
+                case("lying across the edge", True, across),
+                case(f"the same without {outer}", False, [(n, q) for n, q in drawn if n != outer])]
+
+    def _faced_edge_cases(self, r, rule_dict):
+        """"Its long sides must each have the other facing them within v": the shape
+        between two of the other at the distance (quiet), one of them a step too far and
+        one of them gone (reported), one of them shorter than the shape (reported only
+        if ALL of the edge must be faced), and a shape with no edge that long (quiet)."""
+        filters = r.faced_edge_filters()
+        if not filters:
+            return None
+        if len(filters) != 1 or len([c for c in rule_dict["constraints"] if c.get("kind", "check") == "check"]) != 1:
+            raise _CannotBuild("a faced-edge rule with further conditions is not built yet")
+        edge, (lo, hi) = next(iter(filters.items()))
+        var = next(k for k, m in r.measures.items() if m.get("from") == edge and m.get("edges"))
+        bound = next((d[2] for d in r.distance_rules() if d[0] == var and d[2] is not None and not d[3]), None)
+        if lo is None or hi is not None or bound is None:
+            raise _CannotBuild("a faced-edge rule this generator does not arrange yet")
+        m = r.measures[var]
+        a, b = r.shape_of_edge(m["from"]), r.shape_of_edge(m["to"])
+        every_part = m.get("metric") == "projection"
+        v, w = round(bound.value * 1000), round(lo * 1000) - 1      # (the filter's own value: not such an edge)
+        long_, bw = 4 * w, 1000
+        check = "check " + next(c["expr"] for c in rule_dict["constraints"] if c.get("kind", "check") == "check")
+        which = "match " + next(c["expr"] for c in rule_dict["constraints"] if ".length" in c["expr"])
+
+        def row(left, right, right_len=None, a_len=long_):
+            boxes = [(a, 0, 0, w, a_len)]
+            if left is not None:
+                boxes.append((b, -left - bw, 0, -left, long_))
+            if right is not None:
+                boxes.append((b, w + right, 0, w + right + bw, right_len or long_))
+            return boxes
+        return [self._case(r, rule_dict, check, "one on each side at the distance", False, row(v, v)),
+                self._case(r, rule_dict, check, "one of them a step too far", True, row(v, v + STEP_NM)),
+                self._case(r, rule_dict, check, "one on one side only", True, row(v, None)),
+                self._case(r, rule_dict, check, "one of them only half as long as the shape", every_part, row(v, v, long_ // 2)),
+                self._case(r, rule_dict, which, "a shape with no edge that long, alone", False, row(None, None, a_len=w))]
+
+    def _unbutted_count_cases(self, r, rule_dict):
+        """"A ring's hole may hold so many -- not counting those whose neighbour butts
+        a tap": the counted shape is linked to a neighbour, and that to a shape whose
+        layer is another layer GROWN a little (what butts it overlaps the grown one).
+        Rows of neighbour | counted in a ring: the allowed number (quiet), one more
+        (reported), one more with every neighbour butted (quiet), and one more with
+        just one of them butted (quiet: it is not counted)."""
+        counts = r.count_bounds()
+        if len(counts) != 1:
+            return None
+        holder, counted, lo, hi = counts[0]
+        if not r.in_hole(counted, holder) or hi is None or lo not in (None, 0):
+            return None
+        link = lambda a: [r.shape_of_edge(m["to"]) for m in r.measures.values()                 # noqa: E731
+                          if not m.get("crossed") and m.get("from") and r.shape_of_edge(m["from"]) == a]
+        near = link(counted)
+        far = link(near[0]) if len(near) == 1 else []
+        zone = r.layer_defs.get(r.layer_of(far[0])) if len(far) == 1 else None
+        if not (isinstance(zone, dict) and zone.get("op") == "+" and "ref" in zone["args"][0]):
+            return None
+        tap = _expand(zone["args"][0]["ref"], r.layer_defs)
+        if not tap or any(not isinstance(x, str) for x in tap):
+            raise _CannotBuild("a layer of the picture is defined in a way that cannot be drawn directly")
+        tag = "check " + next(c["expr"] for c in rule_dict["constraints"] if c.get("kind", "check") == "check")
+        w, h, pitch = 2000, 6000, 8000
+
+        def case(what, expect, n, butted):
+            boxes, raw = [], []
+            for i in range(n):
+                x = i * pitch
+                boxes += [(near[0], x, 0, x + w, h), (counted, x + w, 0, x + w + 1000, h)]
+                if i in butted:
+                    raw += [{"layer": lay, "points": [[x - 600, 0], [x, 0], [x, h], [x - 600, h]]} for lay in tap]
+            x1 = n * pitch
+            boxes += [(holder, -4000, -4000, x1 + 2000, -3000), (holder, -4000, h + 3000, x1 + 2000, h + 4000),
+                      (holder, -4000, -3000, -3000, h + 3000), (holder, x1 + 1000, -3000, x1 + 2000, h + 3000)]
+            c = self._case(r, rule_dict, tag, what, expect, boxes)
+            c["shapes"] += raw
+            return c
+        return [case(f"{hi} in the ring", False, hi, ()),
+                case(f"{hi + 1} in the ring", True, hi + 1, ()),
+                case(f"{hi + 1} in the ring, each with its neighbour butted", False, hi + 1, tuple(range(hi + 1))),
+                case(f"{hi + 1} in the ring, one of them with its neighbour butted", False, hi + 1, (0,))]
+
+    def _count_chain_cases(self, r, rule_dict):
+        """A count whose holders are named through what is counted (a drain whose gate's
+        source is shared by two gates must lie between two gates): rows of the three
+        kinds of shape, side by side, in the orders that matter -- every holder between
+        two of the counted (quiet), a single holder | counted | neighbour (quiet: its
+        neighbour is not shared), and rows ending in a holder next to a shared neighbour
+        (reported)."""
+        found = [(h, k, lo, hi, r.count_chain(h, k)) for h, k, lo, hi in r.count_bounds() if r.count_chain(h, k)]
+        if not found:
+            return None
+        if len(found) != 1 or len(found[0][4]) != 1 or (found[0][2], found[0][3]) != (2, 2) \
+                or found[0][4][0][2][1:] != (2, 2):
+            raise _CannotBuild("a chained count this generator does not arrange yet")
+        holder, counted, _, _, [(_, far, _)] = found[0]
+        tag = "check " + next(c["expr"] for c in rule_dict["constraints"] if c.get("kind", "check") == "check")
+        name = {"H": holder, "C": counted, "F": far}
+        w, h = 2000, 6000
+
+        def row(order):
+            return [(name[ch], i * w, 0, (i + 1) * w, h) for i, ch in enumerate(order)]
+        said = lambda o: " | ".join({"H": r.layer_of(holder), "C": r.layer_of(counted), "F": r.layer_of(far)}[ch] for ch in o)   # noqa: E731
+        return [self._case(r, rule_dict, tag, said(o), bad, row(o))
+                for o, bad in (("FCHCF", False), ("FCH", False), ("FCHCFCHCF", False), ("HCFCH", True), ("FCHCFCH", True))]
+
+    def _shielded_cases(self, r, rule_dict):
+        """A distance that a third shape lying between lifts: the rule is tested as a
+        plain distance on the picture WITHOUT that shape, and then with it -- the two
+        too close with the shape right across between them (quiet), and with the shape
+        too short to stand between all of the one and all of the other (reported)."""
+        found = [(v, r.measure_shield(v)) for v in r.measures if r.measure_shield(v)]
+        if not found:
+            return None
+        if len(found) != 1:
+            raise _CannotBuild("several shielded distances in one picture are not built yet")
+        var, shields = found[0]
+        lo = next((d[1] for d in r.distance_rules() if d[0] == var and d[1] is not None and not d[3]), None)
+        if lo is None:
+            raise _CannotBuild("a shielded distance that is not a minimum is not built yet")
+        gone = set(shields)
+        plain = json.loads(json.dumps(rule_dict))
+        plain["shapes"] = [sh for sh in plain["shapes"] if sh["name"] not in gone]
+        ids = {e["id"] for sh in rule_dict["shapes"] if sh["name"] in gone for e in sh["edges"]}
+        plain["measures"] = [m for m in plain.get("measures", []) if m.get("from") not in ids and m.get("to") not in ids]
+        plain["constraints"] = [c for c in plain["constraints"]
+                                if not any(re.match(rf"\s*{re.escape(g)}\.", c["expr"]) for g in gone)]
+        cases, why = self.cases_of(plain)
+        if why:
+            raise _CannotBuild(why)
+        check = next(c["expr"] for c in rule_dict["constraints"] if c.get("kind", "check") == "check")
+        scaled = self._scaled_to(r, rule_dict, r.measures[var], round(lo.value * 1000) - STEP_NM)
+        if scaled is None:
+            raise _CannotBuild("the picture cannot be scaled to the value")
+
+        def case(what, expect, shapes):
+            layers = self._real_layers(r, shapes)
+            if layers is None:
+                raise _CannotBuild("a layer of the picture is defined in a way that cannot be drawn directly")
+            return {"rule": r.name, "testing": f"check {check}", "case": what, "expect": expect, "shapes": layers,
+                    "markers": [lay for op, lay in (rule_dict.get("scope") or []) if op in _INSIDE_OPS]}
+        drawn = scaled[0]
+        m = r.measures[var]
+        (a0, a1) = r._edge_ends(m["from"])
+        along = 1 if a0[0] == a1[0] else 0                 # the coordinate the two measured edges run along
+        ends = [q[along] for n in (r.shape_of_edge(m["from"]), r.shape_of_edge(m["to"])) for q in drawn[n]]
+        mid, span = (min(ends) + max(ends)) // 2, max(ends) - min(ends)
+
+        def short(pts):                                    # squeezed to a quarter of the facing stretch, in its middle
+            lo_, hi_ = min(q[along] for q in pts), max(q[along] for q in pts)
+            f = lambda c: mid + round((c - (lo_ + hi_) / 2) * (span / 4) / max(hi_ - lo_, 1))   # noqa: E731
+            return [((q[0], f(q[1])) if along == 1 else (f(q[0]), q[1])) for q in pts]
+        held = {k for g in gone for k in r.shapes if k != g and r.relation(k, g) == "inside"}
+        return cases + [
+            case("too close, with the shape right across between them", False, drawn),
+            case("too close, the shape between them too short to part them", True,
+                 {n: (short(q) if n in gone | held else q) for n, q in drawn.items()})]
+
+    def _slanted_cases(self, r, rule_dict):
+        """A width between edges that run at an ANGLE the rule names ("45 degree bent
+        gate"): a slanted strip clearly narrower than the value (reported) and clearly
+        wider (quiet), each way the filter names -- and a straight strip that narrow
+        (quiet: not an edge of that direction)."""
+        dist = [d for d in r.distance_rules() if not d[3] and d[1] is not None]
+        if len(dist) != 1:
+            return None
+        var, lo = dist[0][0], dist[0][1]
+        m = r.measures[var]
+        shape = r.shape_of_edge(m["from"])
+        angles = r.edge_angle_filter(shape)
+        if not angles or shape != r.shape_of_edge(m["to"]):
+            return None
+        others = [n for n in r.shapes if n != shape]
+        if any(a not in (45, 135) for a in angles) or len(rule_dict.get("constraints", [])) != len(r.shapes) + 2:
+            raise _CannotBuild("an angle rule this generator does not arrange yet")
+        check = next(c["expr"] for c in rule_dict["constraints"] if c.get("kind", "check") == "check")
+        which = next(c["expr"] for c in rule_dict["constraints"] if ".angle" in c["expr"])
+        v, off = round(lo.value * 1000), 10                       # clearly on either side: 10 nm
+        L = 8 * v
+
+        def case(tag, what, expect, across, way):
+            # a strip `across` wide measured along x; slanted, its width is across / sqrt(2)
+            pts = {45: [(0, 0), (across, 0), (across + L, L), (L, L)],
+                   135: [(L, 0), (L + across, 0), (across, L), (0, L)],
+                   0: [(0, 0), (across, 0), (across, L), (0, L)]}[way]
+            shapes = [(shape, pts)] + [(o, [(-L, L // 4), (3 * L, L // 4), (3 * L, 3 * L // 4), (-L, 3 * L // 4)]) for o in others]
+            layers = self._real_layers(r, shapes)
+            if layers is None:
+                raise _CannotBuild("a layer of the picture is defined in a way that cannot be drawn directly")
+            return {"rule": r.name, "testing": tag, "case": what, "expect": expect, "shapes": layers,
+                    "markers": [lay for op, lay in (rule_dict.get("scope") or []) if op in _INSIDE_OPS]}
+        narrow, wide = int((v - off) * 2 ** 0.5), int((v + off) * 2 ** 0.5) + 1
+        out = []
+        for a in angles:
+            out += [case(f"check {check}", f"a strip at {a} degrees, clearly narrower", True, narrow, a),
+                    case(f"check {check}", f"a strip at {a} degrees, clearly wider", False, wide, a)]
+        out.append(case(f"match {which}", "a straight strip that narrow", False, v - off, 0))
+        return out
+
+    def _net_cross_cases(self, r, rule_dict):
+        """"Two at different potentials must not be in one holder": the picture as drawn
+        (two, not tied: reported); the two tied together by a strap of the layers that
+        connect them (quiet); only one of them (quiet); each in a holder of its own (quiet)."""
+        found = [(v, r.net_cross(v)) for v in r.measures if r.net_cross(v)]
+        if not found:
+            return None
+        if len(found) != 1 or len(rule_dict.get("constraints", [])) != len(r.shapes) + 1:
+            raise _CannotBuild("a rule on nets with further conditions is not built yet")
+        (holder, a, b) = found[0][1]
+        layer, pairs = r.layer_of(a), [tuple(p) for p in r.connections()]
+        via = next((x for p in pairs if layer in p for x in p if x != layer
+                    and any(x in q and q != p and layer not in q for q in pairs)), None)
+        strap = next((y for q in pairs if via in q and layer not in q for y in q if y != via), None) if via else None
+        if not strap:
+            raise _CannotBuild("nothing in the process's connections can tie the two together")
+        tag = "match " + next(c["expr"] for c in rule_dict["constraints"] if ".net" in c["expr"])
+        A, B, H, gap = (4000, 4000, 6000, 8000), (10000, 4000, 12000, 8000), (0, 0, 16000, 12000), 4000
+
+        def case(what, expect, boxes, tie=()):
+            c = self._case(r, rule_dict, tag, what, expect, boxes)
+            for lay, x0, y0, x1, y1 in tie:
+                c["shapes"].append({"layer": lay, "points": [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]})
+            return c
+        cut = lambda q: (via, q[0] + 800, q[1] + 1800, q[0] + 1200, q[1] + 2200)   # noqa: E731
+        both = [(holder, *H), (a, *A), (b, *B)]
+        apart = [(holder, 0, 0, 8000, 12000), (holder, 8000 + gap, 0, 16000 + gap, 12000), (a, *A),
+                 (b, B[0] + gap, B[1], B[2] + gap, B[3])]
+        return [case("two, not connected to each other", True, both),
+                case("the two tied together", False, both, [cut(A), cut(B), (strap, A[0] + 600, A[1] + 1600, B[0] + 1400, B[1] + 2400)]),
+                case("only one", False, [(holder, *H), (a, *A)]),
+                case("each in one of its own", False, apart)]
+
+    def _exact_cases(self, r, rule_dict):
+        """One exact value that no single edge can be moved to: a shape's length FROM END
+        TO END (the whole picture is scaled until the arrow has it), and two outlines that
+        must COINCIDE (drawn one inside the other; the outer one is put onto the inner).
+        At the value: quiet. A step off it, either way: reported."""
+        checks = [c["expr"] for c in rule_dict.get("constraints", []) if c.get("kind", "check") == "check"]
+        dist = [d for d in r.distance_rules() if not d[3]]
+        if len(checks) != 1 or len(dist) != 1 or dist[0][2] is None or not dist[0][2].exact:
+            return None
+        var, hi, tag = dist[0][0], dist[0][2], "check " + checks[0]
+        m = r.measures[var]
+        sf, st = r.shape_of_edge(m["from"]), r.shape_of_edge(m["to"])
+        form = r.exact_form(var)
+
+        def case(what, expect, shapes):
+            layers = self._real_layers(r, shapes)
+            if layers is None:
+                raise _CannotBuild("a layer of the picture is defined in a way that cannot be drawn directly")
+            return {"rule": r.name, "testing": tag, "case": what, "expect": expect, "shapes": layers,
+                    "markers": [lay for op, lay in (rule_dict.get("scope") or []) if op in _INSIDE_OPS]}
+        if form and form["kind"] == "span":
+            v, out = round(hi.value * 1000), []
+            for what, target, expect in ((f"{var} exactly {hi.value:g}", v, False), (f"{var} just longer", v + STEP_NM, True),
+                                         (f"{var} just shorter", v - STEP_NM, True)):
+                scaled = self._scaled_to(r, rule_dict, m, target)
+                if scaled is None:
+                    raise _CannotBuild("the picture cannot be scaled to the value")
+                out.append(case(what, expect, scaled[0]))
+            return out
+        if hi.value == 0 and sf != st and r.relation(sf, st) in ("inside", "contains"):
+            pic = _Picture(r, rule_dict, 1000)
+            inner, outer = (sf, st) if r.relation(sf, st) == "inside" else (st, sf)
+            if not (pic.rectangle(inner) and pic.rectangle(outer)):
+                raise _CannotBuild("outlines that must coincide are tested on boxes only")
+            drawn = dict(pic.outlines())
+            xs, ys = [q[0] for q in drawn[inner]], [q[1] for q in drawn[inner]]
+            x0, y0, x1, y1 = min(xs), min(ys), max(xs), max(ys)
+            box = lambda d0, d1: [(x0 - d0, y0), (x1 + d1, y0), (x1 + d1, y1), (x0 - d0, y1)]   # noqa: E731
+            # the inner one is "this layer where that one is NOT" (poly without implant), drawn
+            # on a longer shape of the layer: the rest of that shape carries what is not there
+            rest, zone = [], r.layer_defs.get(r.layer_of(inner))
+            if (isinstance(zone, dict) and zone.get("op") == "and" and len(zone["args"]) == 2 and "ref" in zone["args"][0]
+                    and isinstance(zone["args"][1], dict) and zone["args"][1].get("op") == "not"
+                    and "ref" in zone["args"][1]["args"][0]):
+                base, gone = zone["args"][0]["ref"], zone["args"][1]["args"][0]["ref"]
+                for n, q in drawn.items():
+                    if n != inner and r.layer_of(n) == base:
+                        bx, by = [p[0] for p in q], [p[1] for p in q]
+                        for a, b in ((min(bx) - 1000, x0), (x1, max(bx) + 1000)):
+                            if b > a:
+                                rest.append({"layer": gone, "points": [[a, min(by) - 1000], [b, min(by) - 1000],
+                                                                       [b, max(by) + 1000], [a, max(by) + 1000]]})
+            _case = case
+
+            def case(what, expect, shapes):                # noqa: F811
+                c = _case(what, expect, shapes)
+                c["shapes"] += [dict(x) for x in rest]
+                return c
+            put = lambda pts: [(n, pts if n == outer else q) for n, q in drawn.items()]       # noqa: E731
+            return [case("the two outlines coincide", False, put(box(0, 0))),
+                    case(f"{outer} a step beyond {inner} on one side", True, put(box(STEP_NM, 0))),
+                    case(f"{outer} a step short of {inner} on one side", True, put(box(0, -STEP_NM))),
+                    case(f"the same without {outer}", False, [(n, q) for n, q in drawn.items() if n != outer])]
+        return None
+
     def _orientation_cases(self, r, rule_dict):
         """"Must run along x": the picture as drawn, and the same picture turned a quarter
         round (every x and y swapped) -- the edge then runs the other way."""
@@ -1224,6 +1595,41 @@ class CasesBackend(Backend):
     def _holders(r, shape):
         """The shapes `shape` is drawn inside (the diffusion a contact sits on ...)."""
         return [n for n in r.shapes if n != shape and r.relation(shape, n) == "inside"]
+
+    def _held_array_cases(self, r, rule_dict):
+        """"Must hold an array of R x C": the holder with such an array (quiet), with one
+        row or one column fewer, with a single one, and with the array pulled apart
+        (reported) -- and with an array AND a single one elsewhere on it (quiet). With
+        nothing on it at all it is quiet if the rule is about holders that hold one."""
+        arrays, counts = r.array_filters(), r.count_bounds()
+        if not arrays or len(counts) != 1 or counts[0][1] not in arrays or counts[0][2] != 1 or counts[0][3] is not None:
+            return None
+        holder, member = counts[0][0], counts[0][1]
+        spec = arrays[member]
+        if spec.get("gap") is None or r.distance_rules() and any(not d[3] for d in r.distance_rules()):
+            raise _CannotBuild("an array rule this generator does not arrange yet")
+        gap = round(spec["gap"] * 1000)
+        size = round(spec["size"] * 1000) if spec["size"] else gap
+        rows, cols = spec["rows"], spec["columns"]
+        only_with_one = holder in r.count_filters()
+        tag = "check " + next(c["expr"] for c in rule_dict["constraints"]
+                              if c.get("kind", "check") == "check" and "Count(" in c["expr"])
+        room = (max(rows, cols) + 6) * (size + gap)
+
+        def grid(n_rows, n_cols, g, lone=False):
+            boxes = [(member, i * (size + g), j * (size + g), i * (size + g) + size, j * (size + g) + size)
+                     for i in range(n_cols) for j in range(n_rows)]
+            if lone:
+                boxes.append((member, room - 2 * size, 0, room - size, size))
+            return boxes + [(holder, -size, -size, room, room)]
+        near = gap - STEP_NM
+        return [self._case(r, rule_dict, tag, f"an array of {rows} x {cols}", False, grid(rows, cols, near)),
+                self._case(r, rule_dict, tag, f"an array of {rows} x {cols} and a single one elsewhere", False, grid(rows, cols, near, True)),
+                self._case(r, rule_dict, tag, "a single one", True, grid(1, 1, near)),
+                self._case(r, rule_dict, tag, f"one row fewer ({rows - 1} x {cols})", True, grid(rows - 1, cols, near)),
+                self._case(r, rule_dict, tag, f"one column fewer ({rows} x {cols - 1})", True, grid(rows, cols - 1, near)),
+                self._case(r, rule_dict, tag, f"{rows} x {cols}, too far apart to be an array", True, grid(rows, cols, gap)),
+                self._case(r, rule_dict, tag, "nothing on it at all", not only_with_one, grid(0, 0, near))]
 
     def _array_cases(self, r, rule_dict):
         """"In an array of R x C or more": the two neighbours of the picture stand for

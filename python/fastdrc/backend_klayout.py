@@ -164,7 +164,7 @@ class KLayoutBackend(Backend):
         areas = rule.area_bounds()                       # both min (>=) and max (<=)
         angles = rule.angle_bounds() + rule.corner_ranges()   # both -> with_angle(lo .. hi)
         corners = rule.corner_bounds()
-        claimed = eol_edges | rule.array_edges() | rule.density_edges()   # ... sizes, not rules
+        claimed = eol_edges | rule.array_edges() | rule.density_edges() | set(rule.faced_edge_filters())   # ... sizes, not rules
         lengths = [lb for lb in rule.length_bounds() if lb[0] not in claimed]
         crosses = [v for v, mm in rule.measures.items() if mm.get("crossed")]  # presence
         insides = rule.inside_checks()                   # `K in M`: must lie inside
@@ -246,7 +246,24 @@ class KLayoutBackend(Backend):
             cd = rule.counted_derivation(counted, holder)  # ... or as drawn against what else it holds
             if cd and not arr:
                 what = self._fmt_deriv(cd)
-            expr = self._fmt_deriv(d) + self._holding(rule.layer_of(counted), lo, hi, select=False, expr=what)
+                # what narrows the counted shape, and what narrows that, is said with it
+                seen, todo = {counted}, [counted]
+                while todo:
+                    cur = todo.pop()
+                    for mm in rule.measures.values():
+                        if (not mm.get("crossed") and mm.get("from") and rule.shape_of_edge(mm["from"]) == cur
+                                and rule.shape_of_edge(mm["to"]) not in seen | {holder}):
+                            seen.add(rule.shape_of_edge(mm["to"]))
+                            todo.append(rule.shape_of_edge(mm["to"]))
+                consumed = consumed | seen
+            expr = self._fmt_deriv(d)
+            for via, far, (fk, flo, fhi) in rule.count_chain(holder, counted):
+                # only the holders that touch one of the counted whose own neighbour
+                # holds so many ("a drain whose gate's source is shared by two gates")
+                far_expr = self._layer_var(rule.layer_of(far)) + self._holding(rule.layer_of(fk), flo, fhi, select=True)
+                expr += f".interacting({self._layer_var(rule.layer_of(via))}.interacting({far_expr}))"
+                consumed = consumed | {via, far, fk}
+            expr += self._holding(rule.layer_of(counted), lo, hi, select=False, expr=what)
             expr += "".join(f".{op}({mk})" for op, mk in self._scope(rule, consumed, holder))
             self._emit(rule, expr, off + k, total, rule.name or f"Count({counted})")
         off += len(counts)
@@ -322,6 +339,29 @@ class KLayoutBackend(Backend):
         def edge_dl(shape):
             return self._edge_dl(rule, shape, measured)
 
+        several = rule.net_cross(var)
+        if several:
+            # two of a layer at different potentials in one holder: the nets of what each
+            # holder holds are looked up; where there is more than one, all it holds is shown
+            holder, a, _ = several
+            self._helpers["on_several_nets"] = self._SEVERAL_NETS
+            body = f"on_several_nets.call({self._layer_var(rule.layer_of(holder))}, {self._layer_var(rule.layer_of(a))}.nets)"
+            return body + "".join(f".{op}({mk})" for op, mk in self._scope(rule, set(several), a))
+        form = None if select or hi is None or not hi.exact else rule.exact_form(var)
+        if form:
+            hv = self._fmt(hi.value)
+            if form["kind"] == "span":
+                # from end to end of a shape: its whole extent that way
+                body, v_scope = f"{dl(sf)}.without_bbox_{'max' if form['role'] == 'long' else 'min'}({hv}.um)", hv
+            else:
+                # the wider shape's edge that the narrower one sits on, less the part
+                # under it: each piece left beside it must be exactly this long
+                pad, link = form["pad"], form["link"]
+                body, v_scope = (f"{dl(pad)}.edges.interacting({dl(link)}).not({dl(link)}.edges)"
+                                 f".without_length({hv}.um).extended({self.EDGE_EXTEND})"), hv
+                scope_from = pad
+            suffix = "".join(f".{op}({mk})" for op, mk in self._scope(rule, consumed, scope_from))
+            return body + suffix
         if m.get("crossed"):                               # a CROSS: the derived REGION is
             # itself the violation (presence) -- output it, no measure/threshold. The
             # crossed config's RELATION picks the op, exactly like a selection (a cross
@@ -443,6 +483,15 @@ class KLayoutBackend(Backend):
                         picked, rest = (sf, st) if narrowed(sf) else (st, sf)
                         core = f"{dl(rest)}.space({v}.um, {mt})"
                         touching = f".interacting({dl(picked)})"
+                    elif not wide_one and any(
+                            rule.part_of(derivs[a]["base"], derivs[b]["base"])
+                            and not any(derivs[b].get(k) for k in ("ands", "nots", "selections", "halo"))
+                            and not derivs[a].get("halo") for a, b in ((sf, st), (st, sf))):
+                        # the same when the part has a NAME of its own (the cathode, a part
+                        # of poly2, to poly2)
+                        picked, rest = (sf, st) if rule.part_of(derivs[sf]["base"], derivs[st]["base"]) else (st, sf)
+                        core = f"{dl(rest)}.space({v}.um, {mt})"
+                        touching = f".interacting({dl(picked)})"
                     else:
                         if derivs[sf].get("wide") and not derivs[st].get("wide"):
                             a, b = b, a
@@ -478,9 +527,27 @@ class KLayoutBackend(Backend):
             if ".separation(" in core and not over and rule.cut_apart(derivs[sf], derivs[st]):
                 bare = True      # one is the rest of a layer after cutting the other out
             body, v_scope = f"{core}.polygons{'' if bare else '(0.001)'}{touching}", v
+            shields = rule.measure_shield(var)
+            if shields:
+                # the arrow is drawn THROUGH a third shape: where that lies right across
+                # between the two, the rule is lifted -- what is left of a marker after
+                # taking it out no longer reaches from the one to the other
+                parts = rule.marker_parts(consumed, sf)
+                for g in [x for x in shields if x in parts]:   # (what a shield holds is part of it)
+                    mk = self._layer_var(rule.layer_of(g))
+                    for k in parts.get(g, {}).get("holds", []):
+                        mk += f".covering({self._layer_var(rule.layer_of(k))})"
+                        consumed = consumed | {k}
+                    if parts.get(g, {}).get("another"):
+                        mk += f".not_interacting({self._layer_var(parts[g]['another'])})"
+                    body += f".not({mk})"
+                    consumed = consumed | {g}
+                body += f".interacting({dl(sf)}).interacting({dl(st)})"
             for more in each_more:
                 body += f".or({more}.polygons(0.001))"
-            if within:
+            if within and lo.value == 0:
+                body = within                              # "within by 0": only that it does not stick out
+            elif within:
                 # "G within H by v": the margin, AND a G lying across H's edge has none
                 body += f".or({within})"
         elif not select and (rule.overlap_reading(var) or {}).get("kind") == "overlap":
@@ -491,15 +558,38 @@ class KLayoutBackend(Backend):
             a, b = self._fmt_deriv(over["outer"]), self._fmt_deriv(over["inner"])
             hv, half = self._fmt(hi.value), self._fmt(hi.value / 2)
             body, v_scope = f"{a}.and({b}).sized(-{half}.um).sized({half}.um)", hv
+        elif (not select and m.get("edges") and sf != st and (rule.overlap_reading(var) or {}).get("kind") == "extension"
+              and rule.edge_crosses(m["from"] if rule.shape_of_edge(m["from"]) == rule.overlap_reading(var)["inner_shape"]
+                                    else m["to"], rule.overlap_reading(var)["outer_shape"]) == "inside"):
+            # a maximum on how far the outer layer reaches past those edges of the inner
+            # one that lie under it: just beyond the value from such an edge, straight
+            # out from it, there must be none of the outer layer left
+            over = rule.overlap_reading(var)
+            consumed, scope_from = over["consumed"], over["outer_shape"]
+            a, b = self._fmt_deriv(over["outer"]), self._fmt_deriv(over["inner"])
+            under = f"{b}.edges.not_interacting({a}.edges)"
+            hv, past = self._fmt(hi.value), self._fmt(round(hi.value + 0.001, 6))
+            body, v_scope = f"{under}.extended_out({past}.um).not({under}.extended_out({hv}.um)).and({a})", hv
         elif not select and m.get("edges") and sf != st and rule.relation(sf, st) in ("disjoint", "outside", None):
             # a maximum measured on EDGES: every edge of the shape the arrow starts at
             # must have the other one facing it within reach -- the edges with none are
             # the violation ("the tab at most 15 from the device's edge": from each edge)
             hv = self._fmt(round(hi.value + 0.001, 6))
-            # straight across only: an edge beside the other shape's corner does not face it
-            near = f"{dl(sf)}.separation({dl(st)}, {hv}.um, projection, whole_edges).first_edges"
-            # (the very edges: one that only meets such an edge at a corner has none itself)
-            body, v_scope = f"{dl(sf)}.edges.not_in({near}).extended({self.EDGE_EXTEND})", self._fmt(hi.value)
+            mine = f"{dl(sf)}.edges"
+            only = rule.faced_edge_filters().get(m["from"])      # which of its edges: by their length
+            if only:
+                nm = lambda x: "nil" if x is None else f"{self._fmt(x)}.um"   # noqa: E731
+                mine += f".with_length({nm(only[0])}, {nm(only[1])})"
+            if m.get("metric") == "projection":
+                # measured straight across at every point: ALL of the edge must be faced --
+                # what is left of it beside the faced stretch is the violation
+                near = f"{dl(sf)}.separation({dl(st)}, {hv}.um, projection).first_edges"
+                body, v_scope = f"{mine}.not({near}).extended({self.EDGE_EXTEND})", self._fmt(hi.value)
+            else:
+                # straight across only: an edge beside the other shape's corner does not face it
+                near = f"{dl(sf)}.separation({dl(st)}, {hv}.um, projection, whole_edges).first_edges"
+                # (the very edges: one that only meets such an edge at a corner has none itself)
+                body, v_scope = f"{mine}.not_in({near}).extended({self.EDGE_EXTEND})", self._fmt(hi.value)
         elif not select:                                   # MAX check -> flag what exceeds it
             subject, pred = self._drc_predicate(rule, sf, st, dl)
             if subject is None:
@@ -526,10 +616,23 @@ class KLayoutBackend(Backend):
                 if rel in ("inside", "contains"):
                     far, near = (st, sf) if rel == "inside" else (sf, st)
                     body = f"{dl(far)}.not({dl(near)}.sized({hv}.um))"
+                    if hi.exact and not hi.value:
+                        # "exactly 0": the two outlines coincide -- nor may the inner
+                        # one, where it meets the outer, lie beyond it
+                        body = f"{dl(far)}.not({dl(near)}).or({dl(near)}.overlapping({dl(far)}).not({dl(far)}))"
                 elif through:
                     # the arrow ends on the FAR side of a shape: every part of it
                     far, near = through, (st if through == sf else sf)
-                    body = f"{dl(far)}.not({dl(near)}.sized({hv}.um))"
+                    reach = f"{dl(near)}.sized({hv}.um)"
+                    # ... within the SAME piece of what the two are drawn in (the same well),
+                    # not across what they are cut out of: the reach is kept to the region
+                    # the near shape itself lies in
+                    fence = [self._layer_var(a) for a in derivs[near].get("ands", [])]
+                    walls = [self._layer_var(n) for n in derivs[near].get("nots", [])]
+                    if fence or walls:
+                        reach = (f"{reach}" + "".join(f".and({a})" for a in fence) + "".join(f".not({n})" for n in walls)
+                                 + f".interacting({dl(near)})")
+                    body = f"{dl(far)}.not({reach})"
                 else:
                     # facing edges: the shape (the one the arrow starts at) needs one
                     # within reach -- the others are those with none at all
@@ -586,6 +689,12 @@ class KLayoutBackend(Backend):
             core += f".and({f})"
         for o in rule.edges_lying_on(shape, measured):   # the edge shared with another shape (butting)
             core += f".and({self._layer_var(rule.layer_of(o))}.edges)"
+        angles = rule.edge_angle_filter(shape)           # only the edges running that way
+        if angles:
+            ka = [self._fmt(a if a <= 90 else a - 180) for a in angles]     # KLayout counts -90 .. 90
+            core = " + ".join(f"{core}.with_angle({a})" for a in ka)
+            if len(ka) > 1:
+                core = f"({core})"
         return core
 
     @staticmethod
@@ -730,16 +839,24 @@ class KLayoutBackend(Backend):
             suffix = "".join(f".{op}({mk})" for op, mk in self._scope(rule, {shape}, shape))
             self._emit(rule, f"{layer}.{fn}({args}){suffix}", idx, total, rule.name or f"{edge}.length")
             return
+        edges, scoped = f"{layer}.edges", {shape}
+        shared = rule.edge_shared_with(edge)
+        if shared:
+            # an edge drawn ON an edge of another shape (two shapes butting): the length
+            # is that of the stretch the two share
+            edges, scoped = f"{layer}.edges.and({self._shape_layer(rule, shared)}.edges)", {shape, shared}
         if kind == "without":
             args = nm(lo) if lo == hi else f"{nm(lo)}, {nm(hi)}"
-            core = f"{layer}.edges.without_length({args})"
+            core = f"{edges}.without_length({args})"
         elif lo is not None and lo == hi:
-            core = f"{layer}.edges.with_length({nm(lo)})"      # exact length
+            core = f"{edges}.with_length({nm(lo)})"      # exact length
         else:
-            core = f"{layer}.edges.with_length({nm(lo)}, {nm(hi)})"
+            core = f"{edges}.with_length({nm(lo)}, {nm(hi)})"
+        if shared:
+            core += f".extended({self.EDGE_EXTEND})"
         if rule.data.get("extended"):          # edge-SIZE: render the flagged edges as thin
             core += f".extended({self.EDGE_EXTEND})"   # polygons (a fixed output convention)
-        suffix = "".join(f".{op}({mk})" for op, mk in self._scope(rule, {shape}, shape))
+        suffix = "".join(f".{op}({mk})" for op, mk in self._scope(rule, scoped, shape))
         rid = rule.name or f"{edge}.length"
         desc = rule.desc or rid
         var = self._result_var(rid, idx, total)
@@ -806,6 +923,11 @@ class KLayoutBackend(Backend):
         stem = re.sub(r"\W+", "_", layer).strip("_") + f"_array_{arr['rows']}x{arr['columns']}"
         if arr["size"] is None:
             n = arr["rows"] * arr["columns"]
+            # by count: neighbours are joined by what lies between two of them that face
+            # each other closer than the gap -- exactly "closer than" (a closing by half
+            # the gap would also join two that are just the gap apart)
+            reach = self._fmt(round(arr["gap"] + (0.001 if arr.get("gap_incl") else 0), 6))
+            group = f"{layer}.or({layer}.space({reach}.um, projection).polygons)"
             return self._name_it(stem, f"{layer}.inside({group}.interacting({layer}, {n}))")
         span = lambda n: max(0.0, (n - 1) * arr["size"] + (n - 2) * arr["gap"]) if n > 1 else 0.0
         tx, ty = (self._fmt(round(span(arr[k]) / 2, 6)) for k in ("columns", "rows"))
@@ -819,6 +941,27 @@ class KLayoutBackend(Backend):
     # (KLayout places its tiles by their centre, hence the origin; the windows at the
     # far edges -- and all of them when the area is only one window wide or tall --
     # are measured directly.)
+    # The parts of `held` (given with its nets: KLayout tags net shapes with a property)
+    # in each shape of `holder`; where one holder has parts on more than one
+    # net, all its parts are the result.
+    _SEVERAL_NETS = """on_several_nets = lambda do |holder, held|
+  holders = holder.data.merged.each.to_a
+  nets = Hash.new { |h, k| h[k] = {} }
+  parts = Hash.new { |h, k| h[k] = [] }
+  held.and(holder, props_copy).data.each do |q|
+    at = q.each_point_hull.first
+    i = holders.index { |h| h.bbox.contains?(at) && h.inside?(at) }
+    next unless i
+    plain = RBA::Polygon::new(q.each_point_hull.to_a, true)
+    q.holes.times { |n| plain.insert_hole(q.each_point_hole(n).to_a, true) }
+    nets[i][q.respond_to?(:properties) ? q.properties : plain.to_s] = true
+    parts[i] << plain
+  end
+  found = RBA::Region::new
+  parts.each { |i, list| list.each { |q| found.insert(q) } if nets[i].size > 1 }
+  DRC::DRCLayer::new(self, found)
+end"""
+
     _WINDOWS = """out_of_density = lambda do |layer, range, area, size, step|
   b = area.bbox
   nx = [1 + ((b.width - size) / step).floor, 1].max
@@ -1069,10 +1212,15 @@ end"""
         into a derived layer) are markers. Their topology to the checked geometry
         (`primary`) picks the error-selection op. Sorted (the ops commute)."""
         out = []
+        parts = rule.marker_parts(consumed, primary)
         for name in rule.shapes:
-            if name in consumed:
-                continue
+            if name in consumed or (rule.layer_of(name) and name not in parts):
+                continue                             # (held by another marker: part of that one)
             mk = self._layer_var(rule.layer_of(name) or f"_{name}")
+            for k in parts.get(name, {}).get("holds", []):       # a marker that holds something
+                mk += f".covering({self._layer_var(rule.layer_of(k))})"
+            if parts.get(name, {}).get("another"):               # another one than the checked shape's own
+                mk += f".not_interacting({self._layer_var(parts[name]['another'])})"
             rel = rule.relation(primary, name)
             if rel in ("disjoint", "outside"):
                 op = "not_interacting"

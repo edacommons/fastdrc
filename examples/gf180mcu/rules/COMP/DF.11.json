@@ -1,0 +1,131 @@
+{
+ "name": "DF.11",
+ "desc": "DF.11 : Min. Length of butting COMP edge.",
+ "shapes": [
+  {
+   "name": "NC",
+   "edges": [
+    {
+     "id": "nc_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      6,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "nc_1",
+     "start": [
+      6,
+      0
+     ],
+     "end": [
+      6,
+      6
+     ],
+     "edge": true
+    },
+    {
+     "id": "nc_2",
+     "start": [
+      6,
+      6
+     ],
+     "end": [
+      0,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "nc_3",
+     "start": [
+      0,
+      6
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PC",
+   "edges": [
+    {
+     "id": "pc_0",
+     "start": [
+      6,
+      0
+     ],
+     "end": [
+      12,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "pc_1",
+     "start": [
+      12,
+      0
+     ],
+     "end": [
+      12,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "pc_2",
+     "start": [
+      12,
+      6
+     ],
+     "end": [
+      6,
+      6
+     ],
+     "edge": false
+    },
+    {
+     "id": "pc_3",
+     "start": [
+      6,
+      6
+     ],
+     "end": [
+      6,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "NC.layer == ncomp"
+  },
+  {
+   "kind": "match",
+   "expr": "PC.layer == pcomp"
+  },
+  {
+   "kind": "check",
+   "expr": "nc_1.length >= ?"
+  }
+ ],
+ "values": {
+  "3.3V": 0.3,
+  "5V": 0.3
+ }
+}
