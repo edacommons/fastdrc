@@ -1,0 +1,141 @@
+{
+ "name": "MSLOT.7.M5",
+ "desc": "MSLOT.7.M5 : Minimum space from via-n to metal-n slot (via5, metal5_slot).",
+ "shapes": [
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      6,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      6,
+      0
+     ],
+     "end": [
+      6,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      6,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      11,
+      0
+     ],
+     "end": [
+      17,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      17,
+      0
+     ],
+     "end": [
+      17,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_2",
+     "start": [
+      17,
+      12
+     ],
+     "end": [
+      11,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      11,
+      12
+     ],
+     "end": [
+      11,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "a_1",
+   "to": "b_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "A.layer == via5"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == metal5_slot"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 0.2"
+  }
+ ],
+ "when": {
+  "switch": "metal_stack",
+  "cases": {
+   "5LM": true,
+   "6LM": true
+  },
+  "default": false
+ }
+}

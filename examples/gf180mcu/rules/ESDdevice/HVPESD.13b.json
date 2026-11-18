@@ -1,0 +1,195 @@
+{
+ "name": "HVPESD.13b",
+ "desc": "HVPESD.13b : Max. of at least one or nearest source contact to gate edge space (SCGS) when SAB cover drain-source over poly gate.",
+ "shapes": [
+  {
+   "name": "SB",
+   "edges": [
+    {
+     "id": "sb_0",
+     "start": [
+      -4,
+      -4
+     ],
+     "end": [
+      9,
+      -4
+     ],
+     "edge": false
+    },
+    {
+     "id": "sb_1",
+     "start": [
+      9,
+      -4
+     ],
+     "end": [
+      9,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "sb_2",
+     "start": [
+      9,
+      16
+     ],
+     "end": [
+      -4,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "sb_3",
+     "start": [
+      -4,
+      16
+     ],
+     "end": [
+      -4,
+      -4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      6,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      6,
+      0
+     ],
+     "end": [
+      6,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      6,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      11,
+      4
+     ],
+     "end": [
+      15,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      15,
+      4
+     ],
+     "end": [
+      15,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_2",
+     "start": [
+      15,
+      8
+     ],
+     "end": [
+      11,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      11,
+      8
+     ],
+     "end": [
+      11,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "LS",
+   "from": "a_0",
+   "to": "sb_0"
+  },
+  {
+   "name": "S",
+   "from": "a_1",
+   "to": "b_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "SB.layer == esd_sab"
+  },
+  {
+   "kind": "match",
+   "expr": "A.layer == hvp_esd_gate"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == hvp_esd_source_co"
+  },
+  {
+   "kind": "check",
+   "expr": "S <= 1"
+  }
+ ]
+}

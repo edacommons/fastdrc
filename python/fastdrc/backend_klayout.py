@@ -283,6 +283,7 @@ class KLayoutBackend(Backend):
         named = [f"{name} = {expr}" for expr, name in self._named.items()]
         top = self._decls + [f"{name} = {defn}" for name, defn in self.regions.items()] + named
         checks = self._checks
+
         self.shared, self.graph = {}, None
         if self.optimise:                         # the rules as ONE graph, optimised, written back (ir.py)
             from .ir import Deck, ParseError
@@ -293,6 +294,8 @@ class KLayoutBackend(Backend):
                 graph.optimise()
                 top, checks, self.shared = graph.lines()
                 self.graph = graph
+                if any("off_the_nets.call(" in line for line in checks):
+                    self._helpers["off_the_nets"] = self._OFF_THE_NETS
             except ParseError as ex:           # a statement the graph cannot read: the deck as written
                 self.problems.append(f"not optimised ({ex})")
                 top = self._decls + [f"{name} = {defn}" for name, defn in self.regions.items()] + named
@@ -451,6 +454,8 @@ class KLayoutBackend(Backend):
                 rel = rule.relation(sf, st)
                 if rel in ("inside", "contains"):          # one encloses the other
                     o, i = (dl(st), dl(sf)) if rel == "inside" else (dl(sf), dl(st))
+                    if rule.from_outer_edge(var):          # a ring measured from its OUTER edge: its hole filled
+                        o = f"{o}.hulls"
                     core = f"{o}.enclosing({i}, {v}.um, {mt})"
                     if m.get("within"):                    # ... and the inner must not stick out
                         within = f"{i}.overlapping({o}).not_inside({o})"
@@ -962,6 +967,27 @@ class KLayoutBackend(Backend):
   DRC::DRCLayer::new(self, found)
 end"""
 
+    # What was read off the nets, kept as plain shapes: the nets are gone as soon as a later
+    # rule starts the connections over, and a layer still standing on them cannot be reported.
+    _OFF_THE_NETS = """off_the_nets = lambda do |layer|
+  data = layer.data
+  if data.is_a?(RBA::Region)
+    found = RBA::Region::new
+    data.each do |q|
+      plain = RBA::Polygon::new(q.each_point_hull.to_a, true)
+      q.holes.times { |n| plain.insert_hole(q.each_point_hole(n).to_a, true) }
+      found.insert(plain)
+    end
+  elsif data.is_a?(RBA::EdgePairs)
+    found = RBA::EdgePairs::new
+    data.each { |q| found.insert(RBA::EdgePair::new(q.first, q.second)) }
+  else
+    found = RBA::Edges::new
+    data.each { |q| found.insert(RBA::Edge::new(q.p1, q.p2)) }
+  end
+  DRC::DRCLayer::new(self, found)
+end"""
+
     _WINDOWS = """out_of_density = lambda do |layer, range, area, size, step|
   b = area.bbox
   nx = [1 + ((b.width - size) / step).floor, 1].max
@@ -1085,14 +1111,28 @@ end"""
         lay = lambda sh: self._derived(rule, sh, set(collectors) | {gate})
         glayer = rule.layer_of(gate)
         stage = lambda sh: rule.connections_up_to(glayer, rule.layer_of(sh))
-        if len(collectors) == 1 and not filters:
+        weights, extra = rule.antenna_extras(collectors, gate)
+        if len(collectors) == 1 and not filters and not weights and not extra:
             self._use_connections(stage(collectors[0]))
             return f"antenna_check({g}, {lay(collectors[0])}, {float(ratio)!r})"
         parts = []
         for i, sh in enumerate(sorted(collectors, key=lambda x: len(stage(x))), 1):
             self._use_connections(stage(sh))
-            self._checks.append(f"{stem}_t{i} = evaluate_nets({g}, {{ \"x\" => {lay(sh)} }}, "
-                                f"\"put('t{i}', area(x) / area)\")")
+            # the side wall of a collector: its perimeter times its thickness; the gate helped by
+            # what else the net holds AT THIS STAGE (a diode: its area times a factor)
+            got = f"perimeter(x) * {self._fmt(weights[sh])}" if sh in weights else "area(x)"
+            here = {p for pair in stage(sh) for p in pair}
+            more = [(d, f) for d, f in extra if rule.layer_of(d) in here]
+            layers = "".join(f", \"d{k}\" => {self._layer_var(rule.layer_of(d))}" for k, (d, f) in enumerate(more, 1))
+            under = "area" + "".join(f" + {self._fmt(f)} * area(d{k})" for k, (d, f) in enumerate(more, 1))
+            ev = (f"evaluate_nets({g}, {{ \"x\" => {lay(sh)}{layers} }}, "
+                  f"\"put('t{i}', {got} / {'(' + under + ')' if more else under})\")")
+            if len(collectors) == 1 and not filters:
+                # one collector: judged where its stage of the stack stands, and kept as plain
+                # shapes -- the nets it was read from are gone once a later rule starts the
+                # connections over
+                return f"{ev}.selected_if(\"value('t{i}') > {self._fmt(ratio)}\")"
+            self._checks.append(f"{stem}_t{i} = {ev}")
             parts.append(f"t{i}")
         conds = []
         if filters:
@@ -1237,6 +1277,8 @@ end"""
         if layer and "|" in layer:            # a layer SET: the union of its members
             first, *more = [self._layer_var(l) for l in layer.split("|")]
             return first + "".join(f".or({v})" for v in more)
+        if layer == "extent":                 # the layout's own extent (the die): KLayout's `extent`
+            return "extent"
         if layer not in self._layers:
             base = var = self._var(layer)
             k = 2

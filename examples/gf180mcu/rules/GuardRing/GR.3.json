@@ -1,0 +1,184 @@
+{
+ "name": "GR.3",
+ "desc": "GR.3 : Minimum Pplus overlap of PCOMP inside guard ring.",
+ "shapes": [
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      24,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      24,
+      0
+     ],
+     "end": [
+      24,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      24,
+      22
+     ],
+     "end": [
+      0,
+      22
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      0,
+      22
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "OUT",
+   "edges": [
+    {
+     "id": "out_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      20,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "out_1",
+     "start": [
+      20,
+      4
+     ],
+     "end": [
+      20,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "out_2",
+     "start": [
+      20,
+      18
+     ],
+     "end": [
+      4,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "out_3",
+     "start": [
+      4,
+      18
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "IN",
+   "edges": [
+    {
+     "id": "in_0",
+     "start": [
+      8,
+      7
+     ],
+     "end": [
+      16,
+      7
+     ],
+     "edge": false
+    },
+    {
+     "id": "in_1",
+     "start": [
+      16,
+      7
+     ],
+     "end": [
+      16,
+      15
+     ],
+     "edge": false
+    },
+    {
+     "id": "in_2",
+     "start": [
+      16,
+      15
+     ],
+     "end": [
+      8,
+      15
+     ],
+     "edge": false
+    },
+    {
+     "id": "in_3",
+     "start": [
+      8,
+      15
+     ],
+     "end": [
+      8,
+      7
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MK.layer == guard_ring_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "OUT.layer == pplus"
+  },
+  {
+   "kind": "match",
+   "expr": "IN.layer == comp"
+  },
+  {
+   "kind": "check",
+   "expr": "IN in OUT"
+  }
+ ]
+}

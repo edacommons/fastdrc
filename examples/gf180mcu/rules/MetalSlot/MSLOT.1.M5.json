@@ -1,0 +1,87 @@
+{
+ "name": "MSLOT.1.M5",
+ "desc": "MSLOT.1.M5 : Maximum metal width without slotting.",
+ "shapes": [
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      5,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      5,
+      0
+     ],
+     "end": [
+      5,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      5,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "W",
+   "from": "a_3",
+   "to": "a_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "A.layer == metal5_solid"
+  },
+  {
+   "kind": "check",
+   "expr": "W <= 30"
+  }
+ ],
+ "except": [
+  "near_slot_free"
+ ],
+ "when": {
+  "switch": "metal_stack",
+  "cases": {
+   "5LM": true,
+   "6LM": true
+  },
+  "default": false
+ }
+}

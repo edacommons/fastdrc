@@ -84,10 +84,13 @@ def test_nets_are_read_once_for_each_set_of_connections():
     d = deck(rules)
     pre, body, shared = d.lines()
     assert d.names["a"] != d.names["b"] and shared == {}
+    # ... and where the connections are started over, what was read off the nets is computed while
+    # they stand and kept as plain shapes: by the time it is reported, those nets are gone
     assert body == ["connect(cont, met1)", "met1_nets = met1.nets",
+                    "a = met1_nets.space(1.um, euclidian, props_ne)", "met1_nets.forget", "a = off_the_nets.call(a)",
                     "clear_connections", "connect(cont, diff)", "met1_nets_2 = met1.nets",
-                    "a = met1_nets.space(1.um, euclidian, props_ne)", "met1_nets.forget", 'a.output("A", "")', "a.forget",
-                    "b = met1_nets_2.space(1.um, euclidian, props_ne)", "met1_nets_2.forget", 'b.output("B", "")', "b.forget"]
+                    "b = met1_nets_2.space(1.um, euclidian, props_ne)", "met1_nets_2.forget", "b = off_the_nets.call(b)",
+                    'a.output("A", "")', "a.forget", 'b.output("B", "")', "b.forget"]
     assert (d.stats["nets_written"], d.stats["nets"]) == (2, 2)
     # ... and under the SAME connections, declared again for another rule, the same one:
     # the stack is declared once, a longer stack is built on the shorter, and the nets
@@ -103,9 +106,10 @@ def test_nets_are_read_once_for_each_set_of_connections():
                       'c.output("C", "")', "c.forget"])
     d = deck(rules)
     body = d.lines()[1]
-    assert body[:6] == one + ['a1 = evaluate_nets(gate, { "x" => met1 }, "put(\'t\', area(x))")'] + two[2:] + [
+    # (what is made from a reading is computed while its connections stand, so it may sit between them)
+    nets = [ln for ln in body if ln.startswith(("connect", "clear_connections")) or "evaluate_nets" in ln]
+    assert nets == one + ['a1 = evaluate_nets(gate, { "x" => met1 }, "put(\'t\', area(x))")'] + two[2:] + [
         'a2 = evaluate_nets(gate, { "x" => met2 }, "put(\'t\', area(x))")']
-    assert not any(ln.startswith(("connect", "clear_connections")) or "evaluate_nets" in ln for ln in body[6:])
     assert (d.stats["nets_written"], d.stats["nets"]) == (4, 2)
     # a layer that a connection holds is never released
     rules = ["g = diff.and(met1)", "connect(g, cont)", "x = antenna_check(g, met1, 400.0)", 'x.output("AN", "")', "x.forget"]

@@ -14,7 +14,7 @@ def test_every_rule_compiles(tmp_path):
     deck, text, n, notes = process.build(DECK, str(tmp_path))
     files = glob.glob(os.path.join(DECK, "rules", "*", "*.json"))
     grid = len(process.load(DECK)[0]["layers"])              # one grid check per layer
-    assert len(files) == 492 and n == 521 + 2 * grid == 731   # the default; the grid and the angle, per layer
+    assert len(files) == 766 and n == 829 + 2 * grid == 1039  # the default; the grid and the angle, per layer
     assert notes == []                                    # no rule that checks nothing, no layer without a number
     said = open(text, encoding="utf-8").read()
     assert "(no checkable assertion found)" not in said
@@ -44,6 +44,19 @@ def test_the_options_of_the_process_are_parameters(tmp_path):
     assert '.output("MIM' not in read(params=["mim=none"])
     for name in process.load(DECK)[0]["profiles"]:        # every profile builds, with nothing to remark
         assert process.build(DECK, str(tmp_path), profile=name)[3] == []
+    wedge = read()                                        # the bond pad: wedge by default, no circuit under it
+    assert '.output("PAD.17"' in wedge and '.output("CUP.5"' not in wedge and '.output("TM.6"' not in wedge
+    ball = read(params=["bond_pad=ball"])
+    assert '.output("CUP.5"' in ball and '.output("PAD.17"' not in ball
+    bump = read(params=["bond_pad=solder_bump"])
+    assert '.output("TM.6"' in bump and '.output("GR.5' in bump and '.output("PAD.1"' not in bump
+
+
+def test_the_antenna_rules_count_the_side_wall_and_the_diode(tmp_path):
+    deck = open(process.build(DECK, str(tmp_path), only=["ANT.2,ANT.9,ANT.14"], optimise=False)[0]).read()
+    assert "perimeter(x) * 0.54 / (area + 2 * area(d1) + 2 * area(d2))" in deck      # metal1: side wall, gate + 2 x COMP
+    assert "area(x) / (area + 2 * area(d1) + 2 * area(d2))" in deck                  # via1: its area
+    assert 'evaluate_nets(fusetop, { "x" => top_metal_layer }' in deck               # the MIM top plate as the gate
 
 
 @pytest.mark.skipif(not process.klayout_binary(), reason="KLayout is not installed")
@@ -56,7 +69,7 @@ def test_part_of_it_behaves_as_drawn(tmp_path):
 @pytest.mark.skipif(not process.klayout_binary(), reason="KLayout is not installed")
 def test_its_layouts_are_read_as_they_should_be(tmp_path):
     # whole devices drawn by hand: every rule of the deck gets its say on each
-    assert len(process.deck_layouts(DECK)) == 139
+    assert len(process.deck_layouts(DECK)) == 147
     res = process.selftest(DECK, str(tmp_path), only=["LDNMOS,LDPMOS,HRES,PRES,LRES,Poly2,Pplus,Nplus,Dualgate,OTP,"
                                                       "DummyExclude,MIM-B,Grid,COMP,Wells,SAB,Contact"])
     assert [line for line in res["wrong"] if line.startswith("layout ")] == []

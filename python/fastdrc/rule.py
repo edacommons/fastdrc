@@ -383,6 +383,15 @@ class Rule:
                 if mine in checked and other not in checked[mine] and mine != other \
                         and self.relation(mine, other) in ("disjoint", "outside"):
                     out[b.var] = (mine, other, b)
+            if b.var in out:
+                continue
+            # ... or from what HOLDS a measured shape (its well) to a third shape outside it:
+            # "the devices in a well that is closer than v to ..."
+            for mine, other in ((a, c), (c, a)):
+                held = [s for s in checked if s != mine and self.relation(mine, s) == "contains"]
+                if mine not in checked and other not in checked and held and mine != other \
+                        and self.relation(mine, other) in ("disjoint", "outside"):
+                    out[b.var] = (mine, other, b)
         return out
 
     def faced_edge_filters(self) -> dict:
@@ -552,14 +561,24 @@ class Rule:
         # a FILTER "closer than v" from one of the two to a third shape: only those of it
         # that have such a one that near (it overlaps the third one grown by v)
         for k, (mine, third, b) in self.near_filters().items():
-            if k == mname or mine not in (sf, st):
+            if k == mname:
                 continue
             grown = dict(df, base=self.layer_of(third), ands=[], nots=[], wide=None, form=None, area=None, array=None,
                          nets=False, count=None, holes=False, pre_selections=[], selections=[],
                          halo=round(b.value + (self.LENGTH_STEP if b.op == "<=" else 0), 6))
+            if mine not in (sf, st):                 # the filter is on what holds them: those lying in such a one
+                if not any(self.relation(mine, s) == "contains" for s in (sf, st)):
+                    continue
+                holder = dict(grown, base=self.layer_of(mine), halo=0, selections=[("overlapping", grown)])
+                if self.relation(mine, sf) == "contains":
+                    df = dict(df, selections=list(df["selections"]) + [("inside", holder)])
+                if st != sf and self.relation(mine, st) == "contains":
+                    dt = dict(dt, selections=list(dt["selections"]) + [("inside", holder)])
+                used = used | {third}
+                continue
             if mine == sf:
                 df = dict(df, selections=list(df["selections"]) + [("overlapping", grown)])
-            else:
+            if mine == st:                           # (a width: the one shape is both ends)
                 dt = dict(dt, selections=list(dt["selections"]) + [("overlapping", grown)])
             used = used | {third}
         return df, dt, used
@@ -1311,13 +1330,48 @@ class Rule:
         """Whether the halo grows with ROUNDED corners (vs square). A drawn tick."""
         return bool(self.shapes.get(shape, {}).get("rounded"))
 
+    def on_extent(self) -> bool:
+        """Is a shape of this rule drawn on the layout's own EXTENT (the die: the name
+        ``extent``, or a legend name built on it)?  Such a rule speaks of the whole die --
+        "no open field wider than ..." -- and says nothing of one device."""
+        def refs(node, seen):
+            if isinstance(node, str):
+                node = {"ref": node}
+            if not isinstance(node, dict):
+                return False
+            if "ref" in node:
+                name = node["ref"]
+                if name == "extent":
+                    return True
+                if name in seen:
+                    return False
+                return refs(self.layer_defs.get(name), seen | {name}) if name in self.layer_defs else False
+            return any(refs(a, seen) for a in node.get("args", []))
+        return any(refs(self.layer_of(s) or "", set()) for s in self.shapes)
+
+    def plain_layer(self, name):
+        """The layer a legend name merely STANDS for (``top_metal_layer`` -> ``metaltop``
+        for this stack), or the name itself."""
+        seen = set()
+        while name not in seen:
+            seen.add(name)
+            d = self.layer_defs.get(name)
+            if not (isinstance(d, dict) and set(d) == {"ref"}):
+                break
+            name = d["ref"]
+        return name
+
     def connections(self) -> list:
         """``(layer, layer)`` pairs that CONNECT -- what makes a net. Either listed
         (``"connect"``) or DRAWN: two shapes of different layers drawn touching or
         overlapping, with the fact ``K.net == D.net`` ("where a contact sits on
         diffusion they are one net"). A net equality between shapes that are apart
         is a filter on a rule instead (`net_relation`)."""
-        out = list(self.connect)
+        out = []
+        for a, b in self.connect:              # a name that only stands for a layer (the top metal of this stack) IS that layer
+            pair = (self.plain_layer(a), self.plain_layer(b))
+            if pair not in out and pair[::-1] not in out:
+                out.append(pair)
         for _, ast in self.constraints:
             for leaf in _and_leaves(ast):
                 if not (isinstance(leaf, dict) and leaf.get("op") == "=="):
@@ -1390,36 +1444,95 @@ class Rule:
         holder stands for the shapes of its layer that hold that many."""
         return {h: (k, lo, hi) for k, (h, lo, hi) in self._counts(("match",)).items()}
 
-    def _area_ratios(self):
+    def _area_ratios(self, full=False):
         """Every CHECK comparing areas of shapes: ``(terms, base, op, value)`` from
         ``T.area <op> v * B.area`` or ``T.area / B.area <op> v``, the left side a single
-        area or a sum of areas."""
-        def area_of(node):
-            ref = node.get("ref", "") if isinstance(node, dict) else ""
-            return ref[:-5] if ref.endswith(".area") and ref[:-5] in self.shapes else None
+        area or a sum of areas.
 
-        def summed(node):                      # A.area + B.area + ... -> [A, B, ...] or None
+        Two things a manual's antenna rule may add, both read here (with `full` they are
+        returned too, as ``weights`` and ``extra``): the collector counted by its SIDE
+        WALL -- ``T.perimeter * t`` (t its thickness) in place of ``T.area`` -- and the
+        gate helped by what else is on the net -- ``v * (B.area + f * D.area + ...)``,
+        "gate area plus f times the diode area connected to it"."""
+        def attr_of(node, what):
+            ref = node.get("ref", "") if isinstance(node, dict) else ""
+            n = len(what) + 1
+            return ref[:-n] if ref.endswith("." + what) and ref[:-n] in self.shapes else None
+
+        def area_of(node):
+            return attr_of(node, "area")
+
+        def term(node):                        # X.area -> (X, None); X.perimeter * t -> (X, t)
             if area_of(node):
-                return [area_of(node)]
+                return (area_of(node), None)
+            if isinstance(node, dict) and node.get("op") == "*":
+                x, y = node["args"]
+                num, ref = (x, y) if "num" in x else (y, x)
+                if "num" in num and attr_of(ref, "perimeter"):
+                    return (attr_of(ref, "perimeter"), num["num"])
+            return None
+
+        def summed(node):                      # A.area + B.area + ... -> [(A, None), (B, None), ...] or None
+            if term(node):
+                return [term(node)]
             if isinstance(node, dict) and node.get("op") == "+":
                 parts = [summed(x) for x in node["args"]]
                 return None if any(p is None for p in parts) else [x for p in parts for x in p]
             return None
+
+        def helped(node):                      # B.area + f * D.area + ... -> (B, [(D, f), ...]) or None
+            if area_of(node):
+                return area_of(node), []
+            if not (isinstance(node, dict) and node.get("op") == "+"):
+                return None
+            base, extra = None, []
+            for x in node["args"]:
+                if area_of(x) and base is None:
+                    base = area_of(x)
+                elif isinstance(x, dict) and x.get("op") == "*":
+                    u, v = x["args"]
+                    num, ref = (u, v) if "num" in u else (v, u)
+                    if "num" not in num or not area_of(ref):
+                        return None
+                    extra.append((area_of(ref), num["num"]))
+                elif isinstance(x, dict) and x.get("op") == "+":
+                    got = helped(x)
+                    if got is None or (got[0] and base):
+                        return None
+                    base, extra = got[0] or base, extra + got[1]
+                else:
+                    return None
+            return (base, extra) if base else None
         out = []
         for kind, ast in self.constraints:
             if kind != "check" or not (isinstance(ast, dict) and ast.get("op") in ("<=", "<", ">=", ">")):
                 continue
             left, right = ast["args"]
+            got = None
             if summed(left) and isinstance(right, dict) and right.get("op") == "*":
                 x, y = right["args"]
                 num, base = (x, y) if "num" in x else (y, x)
-                if "num" in num and area_of(base):
-                    out.append((summed(left), area_of(base), ast["op"], num["num"]))
+                if "num" in num and helped(base):
+                    got = (summed(left), helped(base), ast["op"], num["num"])
             elif isinstance(left, dict) and left.get("op") == "/" and "num" in right:
                 top, bottom = left["args"]
-                if summed(top) and area_of(bottom):
-                    out.append((summed(top), area_of(bottom), ast["op"], right["num"]))
+                if summed(top) and helped(bottom):
+                    got = (summed(top), helped(bottom), ast["op"], right["num"])
+            if got:
+                terms, (base, extra), op, value = got
+                row = ([s for s, _ in terms], base, op, value)
+                out.append(row + ({s: w for s, w in terms if w is not None}, extra) if full else row)
         return out
+
+    def antenna_extras(self, collectors, gate):
+        """``(weights, extra)`` of the antenna check on these collectors and this gate:
+        ``weights`` ``{collector: thickness}`` for a collector counted by its side wall
+        (perimeter x thickness), ``extra`` ``[(shape, factor)]`` for what is added to the
+        gate's area -- the diode area connected to the net, times a factor."""
+        for terms, base, _, _, weights, extra in self._area_ratios(full=True):
+            if terms == list(collectors) and base == gate:
+                return weights, extra
+        return {}, []
 
     def _connected(self, terms, base):
         return all(self.connections_up_to(self.layer_of(base), self.layer_of(t)) for t in terms)
@@ -1438,7 +1551,7 @@ class Rule:
         out = []
         for terms, base, op, value in self._area_ratios():
             if op in ("<=", "<") and self._connected(terms, base):
-                used = set(terms) | {base}
+                used = set(terms) | {base} | {s for s, _ in self.antenna_extras(terms, base)[1]}
                 filters = [(sh, o, num) for k, a in self.constraints if k != "check"
                            for sh, o, num in _attr_cmps(a, ".area") if sh in self.shapes and sh not in used]
                 out.append((terms, base, value, filters))
@@ -1498,6 +1611,7 @@ class Rule:
         many connection steps it is from `start` (the gate) -- poly and the contacts
         on it 1, metal-1 2, via-1 3 ... -- and the stage of `stop` is every connection
         between layers no further out than `stop` itself."""
+        start, stop = self.plain_layer(start), self.plain_layer(stop)
         pairs, level, todo = self.connections(), {start: 0}, [start]
         while todo:
             cur = todo.pop(0)
@@ -1755,6 +1869,24 @@ class Rule:
             return None
         wider = sf if (bf[ax + 2] - bf[ax]) > (bt[ax + 2] - bt[ax]) else st
         return {"kind": "beside", "pad": wider, "link": st if wider == sf else sf}
+
+    def from_outer_edge(self, var) -> bool:
+        """Is this arrow drawn from the OUTER edge of a ring (a shape with a drawn void)
+        to a shape lying on the ring's material?  Then the distance is to that outer edge
+        alone -- "space to the die edge, the outer edge of the marking" -- and the edge of
+        the void, which the inner shape may well touch, is no part of it."""
+        m = self.measures.get(var) or {}
+        for end, other in ((m.get("from"), m.get("to")), (m.get("to"), m.get("from"))):
+            shape, inner = self.shape_of_edge(end), self.shape_of_edge(other)
+            if not shape or not inner or shape == inner or not self.holes(shape):
+                continue
+            loops = [[(float(e["start"][0]), float(e["start"][1])) for e in loop] for loop in self.shapes[shape]["hole_loops"]]
+            first = self.shapes[inner]["edges"][0]["start"]      # (a corner of it: the inner one may be a ring itself)
+            on_material = not any(topology.contains(loop, (float(first[0]), float(first[1]))) for loop in loops)
+            if any(e.get("id") == end for e in self.shapes[shape].get("edges", [])) and on_material \
+                    and self.relation(shape, inner) == "contains":
+                return True
+        return False
 
     def in_hole(self, k, holder) -> bool:
         """Is shape `k` drawn in a drawn VOID of `holder` (in the hole of a ring, not on

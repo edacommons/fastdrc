@@ -1,0 +1,203 @@
+{
+ "name": "LU.3c",
+ "desc": "LU.3c : FOR LV and MV outside DNWELL: with the minimum NWELL to (NCOMP outside Nwell) space y < 1.0um, max LVPWELL (Psub) tap outside DNWELL space to every point on the boundary of NCOMP outside NWELL/DNWELL.",
+ "shapes": [
+  {
+   "name": "D",
+   "edges": [
+    {
+     "id": "d_0",
+     "start": [
+      4,
+      5
+     ],
+     "end": [
+      10,
+      5
+     ],
+     "edge": false
+    },
+    {
+     "id": "d_1",
+     "start": [
+      10,
+      5
+     ],
+     "end": [
+      10,
+      11
+     ],
+     "edge": true
+    },
+    {
+     "id": "d_2",
+     "start": [
+      10,
+      11
+     ],
+     "end": [
+      4,
+      11
+     ],
+     "edge": false
+    },
+    {
+     "id": "d_3",
+     "start": [
+      4,
+      11
+     ],
+     "end": [
+      4,
+      5
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "T",
+   "edges": [
+    {
+     "id": "t_0",
+     "start": [
+      16,
+      5
+     ],
+     "end": [
+      22,
+      5
+     ],
+     "edge": false
+    },
+    {
+     "id": "t_1",
+     "start": [
+      22,
+      5
+     ],
+     "end": [
+      22,
+      11
+     ],
+     "edge": false
+    },
+    {
+     "id": "t_2",
+     "start": [
+      22,
+      11
+     ],
+     "end": [
+      16,
+      11
+     ],
+     "edge": false
+    },
+    {
+     "id": "t_3",
+     "start": [
+      16,
+      11
+     ],
+     "end": [
+      16,
+      5
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "O",
+   "edges": [
+    {
+     "id": "o_0",
+     "start": [
+      4,
+      20
+     ],
+     "end": [
+      10,
+      20
+     ],
+     "edge": true
+    },
+    {
+     "id": "o_1",
+     "start": [
+      10,
+      20
+     ],
+     "end": [
+      10,
+      26
+     ],
+     "edge": false
+    },
+    {
+     "id": "o_2",
+     "start": [
+      10,
+      26
+     ],
+     "end": [
+      4,
+      26
+     ],
+     "edge": false
+    },
+    {
+     "id": "o_3",
+     "start": [
+      4,
+      26
+     ],
+     "end": [
+      4,
+      20
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "t_3",
+   "to": "d_3"
+  },
+  {
+   "name": "X",
+   "from": "d_2",
+   "to": "o_0"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "D.layer == ncomp_in_psub"
+  },
+  {
+   "kind": "match",
+   "expr": "T.layer == ptap_in_psub"
+  },
+  {
+   "kind": "match",
+   "expr": "O.layer == nwell"
+  },
+  {
+   "kind": "match",
+   "expr": "X < 1"
+  },
+  {
+   "kind": "check",
+   "expr": "S <= ?"
+  }
+ ],
+ "values": {
+  "3.3V": 15,
+  "5V": 15
+ }
+}

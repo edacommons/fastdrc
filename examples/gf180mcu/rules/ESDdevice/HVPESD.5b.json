@@ -1,0 +1,179 @@
+{
+ "name": "HVPESD.5b",
+ "desc": "HVPESD.5b : Max. number of fingers share one pick-up ring in multi-finger transistors.",
+ "shapes": [
+  {
+   "name": "R",
+   "edges": [
+    {
+     "id": "r_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      30,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "r_1",
+     "start": [
+      30,
+      0
+     ],
+     "end": [
+      30,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "r_2",
+     "start": [
+      30,
+      24
+     ],
+     "end": [
+      0,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "r_3",
+     "start": [
+      0,
+      24
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ],
+   "hole_loops": [
+    [
+     {
+      "id": "hr_0",
+      "start": [
+       4,
+       4
+      ],
+      "end": [
+       26,
+       4
+      ],
+      "edge": false
+     },
+     {
+      "id": "hr_1",
+      "start": [
+       26,
+       4
+      ],
+      "end": [
+       26,
+       20
+      ],
+      "edge": false
+     },
+     {
+      "id": "hr_2",
+      "start": [
+       26,
+       20
+      ],
+      "end": [
+       4,
+       20
+      ],
+      "edge": false
+     },
+     {
+      "id": "hr_3",
+      "start": [
+       4,
+       20
+      ],
+      "end": [
+       4,
+       4
+      ],
+      "edge": false
+     }
+    ]
+   ]
+  },
+  {
+   "name": "G",
+   "edges": [
+    {
+     "id": "g_0",
+     "start": [
+      13,
+      8
+     ],
+     "end": [
+      17,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_1",
+     "start": [
+      17,
+      8
+     ],
+     "end": [
+      17,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_2",
+     "start": [
+      17,
+      16
+     ],
+     "end": [
+      13,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_3",
+     "start": [
+      13,
+      16
+     ],
+     "end": [
+      13,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "R.layer == comp"
+  },
+  {
+   "kind": "match",
+   "expr": "G.layer == hvp_esd_gate"
+  },
+  {
+   "kind": "check",
+   "expr": "Count(G) <= 24"
+  }
+ ]
+}

@@ -229,8 +229,14 @@ class DocsBackend(Backend):
             words = {">=": "at least", ">": "more than", "<": "less than", "<=": "at most"}
             only = "".join(f", on nets with {words.get(op, op)} {_fmt(v)} µm² of "
                            f"{self._name(rule.layer_of(sh))}" for sh, op, v in filters)
-            out.append(f"the area of {what} connected to {g} must be at most {_fmt(ratio)} times "
-                       f"the area of that {g}{only} (antenna ratio).")
+            weights, extra = rule.antenna_extras(collectors, gate)
+            kind = "the area"
+            if weights and set(weights) == set(collectors):   # counted by the side wall: perimeter x thickness
+                kind = "the side-wall area (perimeter × " + _join(sorted({_fmt(v) for v in weights.values()})) + " µm)"
+            plus = "".join(f" plus {_fmt(f)} times the area of {self._name(rule.layer_of(d))} on the same net"
+                           for d, f in extra)
+            out.append(f"{kind} of {what} connected to {g} must be at most {_fmt(ratio)} times "
+                       f"the area of that {g}{plus}{only} (antenna ratio).")
         for shape, lo, hi, window in rule.density_bounds():
             skipw = {shape} | ({window["shape"]} if window else set())
             pct = lambda x: f"{_fmt(round(x * 100, 6))} %"
@@ -465,6 +471,8 @@ class DocsBackend(Backend):
                 if rel in ("inside", "contains"):
                     outer, inner = (arg, subj) if rel == "inside" else (subj, arg)
                     core = f"{outer} must enclose {inner} by at least {v} µm"
+                    if rule.from_outer_edge(var):          # a ring, measured from its outer edge alone
+                        core = f"the outer edge of {outer} must be at least {v} µm beyond {inner}"
                     if m.get("within") and lo is not None and lo.value == 0:
                         return self._with_scope(f"no {inner} may lie across the edge of {outer}.", scope)
                     if m.get("within"):

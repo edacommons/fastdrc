@@ -509,7 +509,131 @@
   "pcomp_and_what_butts_it": "pcomp + 0.005",
   "sk_anode": "comp and schottky_diode and not nplus",
   "sk_cathode": "ncomp and schottky_diode",
-  "otp_on_comp": "comp and otp_mk"
+  "otp_on_comp": "comp and otp_mk",
+  "near_pad": "pad + 2",
+  "pad_rim": "near_pad and not pad",
+  "probe_pad": "pad and probe_mk",
+  "ring_comp": "comp and guard_ring_mk",
+  "comp_and_dummy": "comp or comp_dummy",
+  "top_metal_dummy": {
+   "switch": "metal_stack",
+   "cases": {
+    "3LM": "metal3_dummy",
+    "4LM": "metal4_dummy",
+    "5LM": "metal5_dummy",
+    "6LM": "metaltop_dummy"
+   }
+  },
+  "metal1_solid": "metal1 and not metal1_slot",
+  "metal2_solid": "metal2 and not metal2_slot",
+  "metal3_solid": "metal3 and not metal3_slot",
+  "metal4_solid": "metal4 and not metal4_slot",
+  "metal5_solid": "metal5 and not metal5_slot",
+  "metaltop_solid": "metaltop and not metaltop_slot",
+  "slot_free": "pad or fusetop or fusewindow_d or ubmpperi or ubmparray or ubmeplate",
+  "near_slot_free": "slot_free + 5",
+  "thin_gate": "tgate and not dualgate",
+  "thick_gate": "tgate and dualgate",
+  "via2_plain": "via2 and not plate_b2 and not plate_a",
+  "via3_plain": "via3 and not plate_b3",
+  "via4_plain": "via4 and not plate_b4",
+  "via5_plain": "via5 and not plate_b5",
+  "mim_via": {
+   "switch": "mim",
+   "cases": {
+    "A": "via2",
+    "B": "top_via",
+    "none": "via2"
+   }
+  },
+  "no_layer": "fusetop and not fusetop",
+  "plate_a": {
+   "switch": "mim",
+   "cases": {
+    "A": "fusetop",
+    "B": "no_layer",
+    "none": "no_layer"
+   }
+  },
+  "plate_b": {
+   "switch": "mim",
+   "cases": {
+    "A": "no_layer",
+    "B": "fusetop",
+    "none": "no_layer"
+   }
+  },
+  "plate_b2": {
+   "switch": "metal_stack",
+   "cases": {
+    "3LM": "plate_b",
+    "4LM": "no_layer",
+    "5LM": "no_layer",
+    "6LM": "no_layer"
+   }
+  },
+  "plate_b3": {
+   "switch": "metal_stack",
+   "cases": {
+    "3LM": "no_layer",
+    "4LM": "plate_b",
+    "5LM": "no_layer",
+    "6LM": "no_layer"
+   }
+  },
+  "plate_b4": {
+   "switch": "metal_stack",
+   "cases": {
+    "3LM": "no_layer",
+    "4LM": "no_layer",
+    "5LM": "plate_b",
+    "6LM": "no_layer"
+   }
+  },
+  "plate_b5": {
+   "switch": "metal_stack",
+   "cases": {
+    "3LM": "no_layer",
+    "4LM": "no_layer",
+    "5LM": "no_layer",
+    "6LM": "plate_b"
+   }
+  },
+  "pcomp_in_dnwell": "pcomp and dnwell and not lvpwell",
+  "ntap_in_dnwell": "ncomp and dnwell and not lvpwell",
+  "ncomp_in_lvpwell": "ncomp and lvpwell and dnwell",
+  "ptap_in_lvpwell": "pcomp and lvpwell and dnwell",
+  "ptap_in_psub": "pcomp and not nwell and not dnwell",
+  "ntap_in_nwell": "ncomp and nwell and not dnwell",
+  "pcomp_in_nwell_only": "pcomp and nwell and not dnwell",
+  "io_ncomp": "ncomp_in_psub and latchup_mk",
+  "io_pcomp": "pcomp_in_nwell and latchup_mk",
+  "nwell_reach_50": "nwell + 50",
+  "nat_near_nwell": "nat and nwell_reach_50",
+  "esd_n_gate": "ngate and esd_mk",
+  "esd_p_gate": "pgate and esd_mk",
+  "esd_n_sd": "ncomp and esd_mk and not poly2 and not nwell and not dnwell_only",
+  "esd_p_sd": "pcomp and esd_mk and not poly2 and (nwell or dnwell_only)",
+  "esd_sab": "sab and esd_mk",
+  "lv_esd_gate": "(esd_n_gate or esd_p_gate) and not dualgate",
+  "hvn_esd_gate": "esd_n_gate and dualgate",
+  "hvp_esd_gate": "esd_p_gate and dualgate",
+  "lv_esd_sd": "(esd_n_sd or esd_p_sd) and not dualgate",
+  "hvn_esd_sd": "esd_n_sd and dualgate",
+  "hvp_esd_sd": "esd_p_sd and dualgate",
+  "lv_esd_source": "lv_esd_sd and lvs_source",
+  "lv_esd_drain": "lv_esd_sd and not lvs_source",
+  "lv_esd_drain_co": "contact and lv_esd_drain",
+  "lv_esd_source_co": "contact and lv_esd_source",
+  "hvn_esd_source": "hvn_esd_sd and lvs_source",
+  "hvn_esd_drain": "hvn_esd_sd and not lvs_source",
+  "hvn_esd_drain_co": "contact and hvn_esd_drain",
+  "hvn_esd_source_co": "contact and hvn_esd_source",
+  "hvp_esd_source": "hvp_esd_sd and lvs_source",
+  "hvp_esd_drain": "hvp_esd_sd and not lvs_source",
+  "hvp_esd_drain_co": "contact and hvp_esd_drain",
+  "hvp_esd_source_co": "contact and hvp_esd_source",
+  "open_field": "extent and not comp and not comp_dummy and not ndmy and not res_mk and not pad and not ind_mk"
  },
  "columns": {
   "3.3V": [
@@ -550,6 +674,18 @@
   ]
  },
  "connect": [
+  [
+   "thin_gate",
+   "poly2"
+  ],
+  [
+   "thick_gate",
+   "poly2"
+  ],
+  [
+   "contact",
+   "poly2"
+  ],
   [
    "ncomp",
    "nwell"
@@ -592,6 +728,10 @@
   ],
   [
    "metal2",
+   "via2_plain"
+  ],
+  [
+   "via2_plain",
    "via2"
   ],
   [
@@ -600,6 +740,10 @@
   ],
   [
    "metal3",
+   "via3_plain"
+  ],
+  [
+   "via3_plain",
    "via3"
   ],
   [
@@ -608,6 +752,10 @@
   ],
   [
    "metal4",
+   "via4_plain"
+  ],
+  [
+   "via4_plain",
    "via4"
   ],
   [
@@ -615,12 +763,20 @@
    "metal5"
   ],
   [
-   "under_top_metal",
-   "top_via"
+   "metal5",
+   "via5_plain"
   ],
   [
-   "top_via",
-   "top_metal_layer"
+   "via5_plain",
+   "via5"
+  ],
+  [
+   "via5",
+   "metaltop"
+  ],
+  [
+   "fusetop",
+   "mim_via"
   ]
  ],
  "parameters": {
@@ -649,6 +805,15 @@
     "B"
    ],
    "default": "B"
+  },
+  "bond_pad": {
+   "choices": [
+    "wedge",
+    "ball",
+    "gold_bump",
+    "solder_bump"
+   ],
+   "default": "wedge"
   }
  },
  "profiles": {
@@ -781,6 +946,44 @@
    "metal5_res",
    "metal6_res",
    "border"
+  ],
+  "metal_below_top": [
+   "metal1",
+   "metal2",
+   "metal3",
+   "metal4",
+   "metal5"
+  ],
+  "via_any": [
+   "via1",
+   "via2",
+   "via3",
+   "via4",
+   "via5"
+  ],
+  "metal_any": [
+   "metal1",
+   "metal2",
+   "metal3",
+   "metal4",
+   "metal5",
+   "metaltop"
+  ],
+  "metal_dummy_any": [
+   "metal1_dummy",
+   "metal2_dummy",
+   "metal3_dummy",
+   "metal4_dummy",
+   "metal5_dummy",
+   "metaltop_dummy"
+  ],
+  "slot_any": [
+   "metal1_slot",
+   "metal2_slot",
+   "metal3_slot",
+   "metal4_slot",
+   "metal5_slot",
+   "metaltop_slot"
   ]
  }
 }

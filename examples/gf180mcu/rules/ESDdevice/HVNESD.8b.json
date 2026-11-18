@@ -1,0 +1,133 @@
+{
+ "name": "HVNESD.8b",
+ "desc": "HVNESD.8b : Min. drain contact to gate edge space (DCGS).",
+ "shapes": [
+  {
+   "name": "K",
+   "edges": [
+    {
+     "id": "k_0",
+     "start": [
+      0,
+      4
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "k_1",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      4,
+      8
+     ],
+     "edge": true
+    },
+    {
+     "id": "k_2",
+     "start": [
+      4,
+      8
+     ],
+     "end": [
+      0,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "k_3",
+     "start": [
+      0,
+      8
+     ],
+     "end": [
+      0,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "G",
+   "edges": [
+    {
+     "id": "g_0",
+     "start": [
+      9,
+      0
+     ],
+     "end": [
+      13,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_1",
+     "start": [
+      13,
+      0
+     ],
+     "end": [
+      13,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_2",
+     "start": [
+      13,
+      12
+     ],
+     "end": [
+      9,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_3",
+     "start": [
+      9,
+      12
+     ],
+     "end": [
+      9,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "k_1",
+   "to": "g_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "K.layer == hvn_esd_drain_co"
+  },
+  {
+   "kind": "match",
+   "expr": "G.layer == hvn_esd_gate"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 1"
+  }
+ ]
+}

@@ -1,0 +1,132 @@
+{
+ "desc": "bond pad (wedge): a via of every level beside the opening, each metal 1.24 over it",
+ "shapes": [
+  {
+   "layer": "pad",
+   "box": [
+    0,
+    0,
+    60,
+    60
+   ]
+  },
+  {
+   "layer": "metal1",
+   "box": [
+    -3.0,
+    -3,
+    63,
+    63
+   ]
+  },
+  {
+   "layer": "metal2",
+   "box": [
+    -3.0,
+    -3,
+    63,
+    63
+   ]
+  },
+  {
+   "layer": "metal3",
+   "box": [
+    -3.0,
+    -3,
+    63,
+    63
+   ]
+  },
+  {
+   "layer": "metal4",
+   "box": [
+    -3.0,
+    -3,
+    63,
+    63
+   ]
+  },
+  {
+   "layer": "metal5",
+   "box": [
+    -3.0,
+    -3,
+    63,
+    63
+   ]
+  },
+  {
+   "layer": "metaltop",
+   "box": [
+    -3.0,
+    -3,
+    63,
+    63
+   ]
+  },
+  {
+   "layer": "via1",
+   "box": [
+    -1.76,
+    30,
+    -1.5,
+    30.26
+   ]
+  },
+  {
+   "layer": "via2",
+   "box": [
+    -1.76,
+    30,
+    -1.5,
+    30.26
+   ]
+  },
+  {
+   "layer": "via3",
+   "box": [
+    -1.76,
+    30,
+    -1.5,
+    30.26
+   ]
+  },
+  {
+   "layer": "via4",
+   "box": [
+    -1.76,
+    30,
+    -1.5,
+    30.26
+   ]
+  },
+  {
+   "layer": "via5",
+   "box": [
+    -1.76,
+    30,
+    -1.5,
+    30.26
+   ]
+  }
+ ],
+ "reports": [
+  "PAD.16"
+ ],
+ "when": [
+  {
+   "switch": "bond_pad",
+   "cases": {
+    "wedge": true
+   },
+   "default": false
+  },
+  {
+   "switch": "metal_stack",
+   "cases": {
+    "6LM": true
+   },
+   "default": false
+  }
+ ]
+}

@@ -1,0 +1,253 @@
+{
+ "name": "ANT.10.thick",
+ "desc": "ANT.10.thick : Maximum ratio of Via2 area to related gate oxide area. (ANT.16: with COMP connected to the net, the gate area is taken as gate area + MF x that COMP area; MF = 2 for the thin gate, 15 for the thick gate.)",
+ "shapes": [
+  {
+   "name": "G",
+   "edges": [
+    {
+     "id": "g_0",
+     "start": [
+      4,
+      0
+     ],
+     "end": [
+      8,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_1",
+     "start": [
+      8,
+      0
+     ],
+     "end": [
+      8,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_2",
+     "start": [
+      8,
+      4
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_3",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      4,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "P",
+   "edges": [
+    {
+     "id": "p_0",
+     "start": [
+      0,
+      8
+     ],
+     "end": [
+      12,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_1",
+     "start": [
+      12,
+      8
+     ],
+     "end": [
+      12,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_2",
+     "start": [
+      12,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DN",
+   "edges": [
+    {
+     "id": "dn_0",
+     "start": [
+      16,
+      0
+     ],
+     "end": [
+      20,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_1",
+     "start": [
+      20,
+      0
+     ],
+     "end": [
+      20,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_2",
+     "start": [
+      20,
+      4
+     ],
+     "end": [
+      16,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_3",
+     "start": [
+      16,
+      4
+     ],
+     "end": [
+      16,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DP",
+   "edges": [
+    {
+     "id": "dp_0",
+     "start": [
+      16,
+      8
+     ],
+     "end": [
+      20,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "dp_1",
+     "start": [
+      20,
+      8
+     ],
+     "end": [
+      20,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "dp_2",
+     "start": [
+      20,
+      12
+     ],
+     "end": [
+      16,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "dp_3",
+     "start": [
+      16,
+      12
+     ],
+     "end": [
+      16,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "G.layer == thick_gate"
+  },
+  {
+   "kind": "match",
+   "expr": "P.layer == via2"
+  },
+  {
+   "kind": "match",
+   "expr": "DN.layer == ncomp"
+  },
+  {
+   "kind": "match",
+   "expr": "DP.layer == pcomp"
+  },
+  {
+   "kind": "match",
+   "expr": "G.net == P.net"
+  },
+  {
+   "kind": "match",
+   "expr": "DN.net == P.net"
+  },
+  {
+   "kind": "match",
+   "expr": "DP.net == P.net"
+  },
+  {
+   "kind": "check",
+   "expr": "P.area <= 20 * (G.area + 15 * DN.area + 15 * DP.area)"
+  }
+ ]
+}

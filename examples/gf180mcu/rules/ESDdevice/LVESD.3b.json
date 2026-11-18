@@ -1,0 +1,74 @@
+{
+ "name": "LVESD.3b",
+ "desc": "LVESD.3b : Max. channel length for each finger.",
+ "shapes": [
+  {
+   "name": "D",
+   "edges": [
+    {
+     "id": "d_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      14,
+      0
+     ],
+     "edge": true
+    },
+    {
+     "id": "d_1",
+     "start": [
+      14,
+      0
+     ],
+     "end": [
+      14,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "d_2",
+     "start": [
+      14,
+      4
+     ],
+     "end": [
+      0,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "d_3",
+     "start": [
+      0,
+      4
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "D.layer == lv_esd_gate"
+  },
+  {
+   "kind": "match",
+   "expr": "d_0.length >= d_1.length"
+  },
+  {
+   "kind": "check",
+   "expr": "d_1.length <= 0.5"
+  }
+ ]
+}

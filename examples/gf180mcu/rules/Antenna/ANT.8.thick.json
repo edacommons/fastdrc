@@ -1,0 +1,131 @@
+{
+ "name": "ANT.8.thick",
+ "desc": "ANT.8.thick : Maximum ratio of contact area to related gate oxide area.",
+ "shapes": [
+  {
+   "name": "G",
+   "edges": [
+    {
+     "id": "g_0",
+     "start": [
+      4,
+      0
+     ],
+     "end": [
+      8,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_1",
+     "start": [
+      8,
+      0
+     ],
+     "end": [
+      8,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_2",
+     "start": [
+      8,
+      4
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_3",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      4,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "P",
+   "edges": [
+    {
+     "id": "p_0",
+     "start": [
+      0,
+      8
+     ],
+     "end": [
+      12,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_1",
+     "start": [
+      12,
+      8
+     ],
+     "end": [
+      12,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_2",
+     "start": [
+      12,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "G.layer == thick_gate"
+  },
+  {
+   "kind": "match",
+   "expr": "P.layer == contact"
+  },
+  {
+   "kind": "match",
+   "expr": "G.net == P.net"
+  },
+  {
+   "kind": "check",
+   "expr": "P.area <= 10 * G.area"
+  }
+ ]
+}

@@ -1,0 +1,141 @@
+{
+ "desc": "bond pad (ball): a 3x3 cluster of Via2 under the opening",
+ "shapes": [
+  {
+   "layer": "pad",
+   "box": [
+    0,
+    0,
+    60,
+    60
+   ]
+  },
+  {
+   "layer": "metal2",
+   "box": [
+    -3,
+    -3,
+    63,
+    63
+   ]
+  },
+  {
+   "layer": "metal3",
+   "box": [
+    -3,
+    -3,
+    63,
+    63
+   ]
+  },
+  {
+   "layer": "metaltop",
+   "box": [
+    -3,
+    -3,
+    63,
+    63
+   ]
+  },
+  {
+   "layer": "via2",
+   "box": [
+    28.0,
+    28.0,
+    28.26,
+    28.26
+   ]
+  },
+  {
+   "layer": "via2",
+   "box": [
+    28.0,
+    28.66,
+    28.26,
+    28.92
+   ]
+  },
+  {
+   "layer": "via2",
+   "box": [
+    28.0,
+    29.32,
+    28.26,
+    29.58
+   ]
+  },
+  {
+   "layer": "via2",
+   "box": [
+    28.66,
+    28.0,
+    28.92,
+    28.26
+   ]
+  },
+  {
+   "layer": "via2",
+   "box": [
+    28.66,
+    28.66,
+    28.92,
+    28.92
+   ]
+  },
+  {
+   "layer": "via2",
+   "box": [
+    28.66,
+    29.32,
+    28.92,
+    29.58
+   ]
+  },
+  {
+   "layer": "via2",
+   "box": [
+    29.32,
+    28.0,
+    29.58,
+    28.26
+   ]
+  },
+  {
+   "layer": "via2",
+   "box": [
+    29.32,
+    28.66,
+    29.58,
+    28.92
+   ]
+  },
+  {
+   "layer": "via2",
+   "box": [
+    29.32,
+    29.32,
+    29.58,
+    29.58
+   ]
+  }
+ ],
+ "reports": [
+  "PAD.16"
+ ],
+ "when": [
+  {
+   "switch": "bond_pad",
+   "cases": {
+    "ball": true
+   },
+   "default": false
+  },
+  {
+   "switch": "metal_stack",
+   "cases": {
+    "6LM": true
+   },
+   "default": false
+  }
+ ]
+}

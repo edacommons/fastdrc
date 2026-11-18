@@ -1,0 +1,266 @@
+{
+ "name": "PAD.20",
+ "desc": "PAD.20 : Pad metal to pad metal space.",
+ "shapes": [
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      14,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      14,
+      0
+     ],
+     "end": [
+      14,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      14,
+      16
+     ],
+     "end": [
+      0,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      0,
+      16
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "PA",
+   "edges": [
+    {
+     "id": "pa_0",
+     "start": [
+      3,
+      4
+     ],
+     "end": [
+      11,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "pa_1",
+     "start": [
+      11,
+      4
+     ],
+     "end": [
+      11,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "pa_2",
+     "start": [
+      11,
+      12
+     ],
+     "end": [
+      3,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "pa_3",
+     "start": [
+      3,
+      12
+     ],
+     "end": [
+      3,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      19,
+      0
+     ],
+     "end": [
+      33,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      33,
+      0
+     ],
+     "end": [
+      33,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_2",
+     "start": [
+      33,
+      16
+     ],
+     "end": [
+      19,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      19,
+      16
+     ],
+     "end": [
+      19,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "PB",
+   "edges": [
+    {
+     "id": "pb_0",
+     "start": [
+      22,
+      4
+     ],
+     "end": [
+      30,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "pb_1",
+     "start": [
+      30,
+      4
+     ],
+     "end": [
+      30,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "pb_2",
+     "start": [
+      30,
+      12
+     ],
+     "end": [
+      22,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "pb_3",
+     "start": [
+      22,
+      12
+     ],
+     "end": [
+      22,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "LA",
+   "from": "a_0",
+   "to": "pa_0"
+  },
+  {
+   "name": "LB",
+   "from": "b_0",
+   "to": "pb_0"
+  },
+  {
+   "name": "S",
+   "from": "a_1",
+   "to": "b_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "A.layer == top_metal_layer"
+  },
+  {
+   "kind": "match",
+   "expr": "PA.layer == pad"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == top_metal_layer"
+  },
+  {
+   "kind": "match",
+   "expr": "PB.layer == pad"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 5"
+  }
+ ],
+ "when": {
+  "switch": "bond_pad",
+  "cases": {
+   "wedge": true,
+   "ball": true,
+   "gold_bump": true
+  },
+  "default": false
+ }
+}

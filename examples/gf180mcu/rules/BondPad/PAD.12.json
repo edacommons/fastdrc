@@ -1,0 +1,207 @@
+{
+ "name": "PAD.12",
+ "desc": "PAD.12 : Metal2 overlap of Via2.",
+ "shapes": [
+  {
+   "name": "OUT",
+   "edges": [
+    {
+     "id": "out_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      30,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "out_1",
+     "start": [
+      30,
+      0
+     ],
+     "end": [
+      30,
+      28
+     ],
+     "edge": true
+    },
+    {
+     "id": "out_2",
+     "start": [
+      30,
+      28
+     ],
+     "end": [
+      0,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "out_3",
+     "start": [
+      0,
+      28
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "ZONE",
+   "edges": [
+    {
+     "id": "zone_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      26,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_1",
+     "start": [
+      26,
+      4
+     ],
+     "end": [
+      26,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_2",
+     "start": [
+      26,
+      24
+     ],
+     "end": [
+      4,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "zone_3",
+     "start": [
+      4,
+      24
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "IN",
+   "edges": [
+    {
+     "id": "in_0",
+     "start": [
+      18,
+      12
+     ],
+     "end": [
+      22,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "in_1",
+     "start": [
+      22,
+      12
+     ],
+     "end": [
+      22,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "in_2",
+     "start": [
+      22,
+      16
+     ],
+     "end": [
+      18,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "in_3",
+     "start": [
+      18,
+      16
+     ],
+     "end": [
+      18,
+      12
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "LZ",
+   "from": "in_0",
+   "to": "zone_0"
+  },
+  {
+   "name": "E",
+   "from": "out_1",
+   "to": "in_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "OUT.layer == metal2"
+  },
+  {
+   "kind": "match",
+   "expr": "ZONE.layer == pad_rim"
+  },
+  {
+   "kind": "match",
+   "expr": "IN.layer == via2"
+  },
+  {
+   "kind": "check",
+   "expr": "E >= 0.5"
+  },
+  {
+   "kind": "check",
+   "expr": "IN in OUT"
+  }
+ ],
+ "when": {
+  "switch": "bond_pad",
+  "cases": {
+   "wedge": true,
+   "ball": true
+  },
+  "default": false
+ }
+}

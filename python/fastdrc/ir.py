@@ -629,7 +629,16 @@ class Deck:
                     if any(c[0] == "call" and c[4] not in (None, node[4]) for c in self._below(node)):
                         raise ParseError("a net operation on the nets of another set of connections")
                     reads.setdefault(node[4], []).append(node)
-            todo, now = sorted(reads), []
+            todo, now, seen, kept = sorted(reads), [], set(), set()
+            # will the connections be started over somewhere? (the same walk as below, dry)
+            dry, cur, restarts = sorted(reads), [], False
+            while dry:
+                grows = [s for s in dry if set(cur) <= set(self.stacks[s])]
+                nxt = min(grows or dry, key=lambda s: (len(self.stacks[s]), s))
+                dry.remove(nxt)
+                if not grows and cur:
+                    restarts, cur = True, []
+                cur = cur + [x for x in self.stacks[nxt] if x not in cur]
             while todo:
                 grows = [s for s in todo if set(now) <= set(self.stacks[s])]
                 nxt = min(grows or todo, key=lambda s: (len(self.stacks[s]), s))
@@ -645,6 +654,24 @@ class Deck:
                         now.append((name, args))
                 for node in reads[nxt]:
                     ensure(node)
+                # ... and what is made FROM those readings: the nets they stand on are gone as
+                # soon as a later stack starts the connections over
+                seen.add(nxt)
+                for node in needed:
+                    if node[0] == "call" and node[4] is None and node not in done:
+                        on = {c[4] for c in self._below(node) if c[0] == "call" and c[4] is not None}
+                        if on and on <= seen and nxt in on:
+                            ensure(node)
+                if restarts:                               # what a rule reports is then kept as plain shapes
+                    for step in self.steps:
+                        node = step[1] if step[0] == "out" else None
+                        if node is None or node not in named or node in kept:
+                            continue
+                        on = {c[4] for c in [node, *self._below(node)] if c[0] == "call" and c[4] is not None}
+                        if on and on <= seen and nxt in on:
+                            ensure(node)
+                            body.append(f"{named[node]} = off_the_nets.call({named[node]})")
+                            kept.add(node)
             self.stats["nets"] = len(reads)
 
         nets_done = False

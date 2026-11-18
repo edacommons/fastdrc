@@ -532,7 +532,7 @@ def selftest(folder, out_dir=None, only=None, skip=None, optimise=True, backend=
                               backend=backend, deep=deep, profile=profile, params=params)
     proc, sheets = load(folder, profile, params)
     whole = [r for _, data in sheets for r in rules_of(data)
-             if any(w is None for _, _, _, w in Rule(r).density_bounds())]
+             if any(w is None for _, _, _, w in Rule(r).density_bounds()) or Rule(r).on_extent()]
     result = _run_selftest(deck, notes, backend, whole)
     _run_layouts(folder, deck, backend, result, {r.get("name") for r in whole}, proc.get("_values") or {})
     return result

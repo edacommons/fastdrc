@@ -1,0 +1,138 @@
+{
+ "name": "ANT.15",
+ "desc": "ANT.15 : If MIM is between Metaln and Metal (n+1): maximum ratio of each of Via (Vian to most top Via) area to related MIM area.",
+ "shapes": [
+  {
+   "name": "F",
+   "edges": [
+    {
+     "id": "f_0",
+     "start": [
+      4,
+      0
+     ],
+     "end": [
+      8,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "f_1",
+     "start": [
+      8,
+      0
+     ],
+     "end": [
+      8,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "f_2",
+     "start": [
+      8,
+      4
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "f_3",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      4,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "P",
+   "edges": [
+    {
+     "id": "p_0",
+     "start": [
+      0,
+      8
+     ],
+     "end": [
+      12,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_1",
+     "start": [
+      12,
+      8
+     ],
+     "end": [
+      12,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_2",
+     "start": [
+      12,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "F.layer == fusetop"
+  },
+  {
+   "kind": "match",
+   "expr": "P.layer == top_via"
+  },
+  {
+   "kind": "match",
+   "expr": "F.net == P.net"
+  },
+  {
+   "kind": "check",
+   "expr": "P.area <= 20 * F.area"
+  }
+ ],
+ "when": {
+  "switch": "mim",
+  "cases": {
+   "B": true
+  },
+  "default": false
+ }
+}

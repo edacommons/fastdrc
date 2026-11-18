@@ -1,0 +1,127 @@
+{
+ "name": "HVPESD.11.gate",
+ "desc": "HVPESD.11.gate : Source COMP must enclose by LVS_Source: every finger has its source.",
+ "shapes": [
+  {
+   "name": "G",
+   "edges": [
+    {
+     "id": "g_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      6,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_1",
+     "start": [
+      6,
+      0
+     ],
+     "end": [
+      6,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_2",
+     "start": [
+      6,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "SRC",
+   "edges": [
+    {
+     "id": "src_0",
+     "start": [
+      6,
+      0
+     ],
+     "end": [
+      12,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "src_1",
+     "start": [
+      12,
+      0
+     ],
+     "end": [
+      12,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "src_2",
+     "start": [
+      12,
+      12
+     ],
+     "end": [
+      6,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "src_3",
+     "start": [
+      6,
+      12
+     ],
+     "end": [
+      6,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "G.layer == hvp_esd_gate"
+  },
+  {
+   "kind": "match",
+   "expr": "SRC.layer == hvp_esd_source"
+  },
+  {
+   "kind": "check",
+   "expr": "Count(SRC) >= 1"
+  }
+ ]
+}

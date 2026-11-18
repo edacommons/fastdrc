@@ -1,0 +1,179 @@
+{
+ "name": "IO.3.a2",
+ "desc": "IO.3.a2 : It should also be directly surrounded by PCOMP guard ring outside Nwell. Max space of guard ring PCOMP to the PCOMP in Nwell directly connected to the I/O pad.",
+ "shapes": [
+  {
+   "name": "G",
+   "edges": [
+    {
+     "id": "g_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      40,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_1",
+     "start": [
+      40,
+      0
+     ],
+     "end": [
+      40,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_2",
+     "start": [
+      40,
+      24
+     ],
+     "end": [
+      0,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_3",
+     "start": [
+      0,
+      24
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ],
+   "hole_loops": [
+    [
+     {
+      "id": "hg_0",
+      "start": [
+       4,
+       4
+      ],
+      "end": [
+       36,
+       4
+      ],
+      "edge": false
+     },
+     {
+      "id": "hg_1",
+      "start": [
+       36,
+       4
+      ],
+      "end": [
+       36,
+       20
+      ],
+      "edge": false
+     },
+     {
+      "id": "hg_2",
+      "start": [
+       36,
+       20
+      ],
+      "end": [
+       4,
+       20
+      ],
+      "edge": false
+     },
+     {
+      "id": "hg_3",
+      "start": [
+       4,
+       20
+      ],
+      "end": [
+       4,
+       4
+      ],
+      "edge": false
+     }
+    ]
+   ]
+  },
+  {
+   "name": "D",
+   "edges": [
+    {
+     "id": "d_0",
+     "start": [
+      14,
+      8
+     ],
+     "end": [
+      22,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "d_1",
+     "start": [
+      22,
+      8
+     ],
+     "end": [
+      22,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "d_2",
+     "start": [
+      22,
+      16
+     ],
+     "end": [
+      14,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "d_3",
+     "start": [
+      14,
+      16
+     ],
+     "end": [
+      14,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "G.layer == ptap_in_psub"
+  },
+  {
+   "kind": "match",
+   "expr": "D.layer == io_pcomp"
+  },
+  {
+   "kind": "check",
+   "expr": "D in G.holes"
+  }
+ ]
+}

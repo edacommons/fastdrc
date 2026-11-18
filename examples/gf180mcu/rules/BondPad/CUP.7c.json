@@ -1,0 +1,209 @@
+{
+ "name": "CUP.7c",
+ "desc": "CUP.7c : Vias shall be in the form of cluster or arrays (<=3x3). Sea of Via (>3x3 array) is not allowed. (CUP.7e: min space between via arrays 0.5 -- closer vias are one array.)",
+ "shapes": [
+  {
+   "name": "PAD",
+   "edges": [
+    {
+     "id": "pad_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      22,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "pad_1",
+     "start": [
+      22,
+      0
+     ],
+     "end": [
+      22,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "pad_2",
+     "start": [
+      22,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "pad_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "V",
+   "edges": [
+    {
+     "id": "v_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      8,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "v_1",
+     "start": [
+      8,
+      4
+     ],
+     "end": [
+      8,
+      8
+     ],
+     "edge": true
+    },
+    {
+     "id": "v_2",
+     "start": [
+      8,
+      8
+     ],
+     "end": [
+      4,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "v_3",
+     "start": [
+      4,
+      8
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "V2",
+   "edges": [
+    {
+     "id": "v2_0",
+     "start": [
+      13,
+      4
+     ],
+     "end": [
+      17,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "v2_1",
+     "start": [
+      17,
+      4
+     ],
+     "end": [
+      17,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "v2_2",
+     "start": [
+      17,
+      8
+     ],
+     "end": [
+      13,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "v2_3",
+     "start": [
+      13,
+      8
+     ],
+     "end": [
+      13,
+      4
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "v_1",
+   "to": "v2_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "PAD.layer == pad"
+  },
+  {
+   "kind": "match",
+   "expr": "V.layer == via_any"
+  },
+  {
+   "kind": "match",
+   "expr": "V2.layer == via_any"
+  },
+  {
+   "kind": "match",
+   "expr": "V.rows >= 4 and V.columns >= 4"
+  },
+  {
+   "kind": "match",
+   "expr": "V2.rows >= 4 and V2.columns >= 4"
+  },
+  {
+   "kind": "match",
+   "expr": "S < 0.5"
+  },
+  {
+   "kind": "check",
+   "expr": "Count(V) == 0"
+  }
+ ],
+ "when": {
+  "switch": "bond_pad",
+  "cases": {
+   "ball": true
+  },
+  "default": false
+ }
+}

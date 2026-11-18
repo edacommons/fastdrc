@@ -1,0 +1,200 @@
+{
+ "name": "DCF.13.row",
+ "desc": "DCF.13.row : There must be at least one row of dummy COMP (or substrate tie) between IND_MK layer and the transistor channel active if IND_MK layer's both side (x and y) dimensions are greater than 80.",
+ "shapes": [
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      12,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      12,
+      0
+     ],
+     "end": [
+      12,
+      16
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      12,
+      16
+     ],
+     "end": [
+      0,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      0,
+      16
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "G",
+   "edges": [
+    {
+     "id": "g_0",
+     "start": [
+      17,
+      2
+     ],
+     "end": [
+      21,
+      2
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_1",
+     "start": [
+      21,
+      2
+     ],
+     "end": [
+      21,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_2",
+     "start": [
+      21,
+      14
+     ],
+     "end": [
+      17,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_3",
+     "start": [
+      17,
+      14
+     ],
+     "end": [
+      17,
+      2
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      26,
+      5
+     ],
+     "end": [
+      30,
+      5
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      30,
+      5
+     ],
+     "end": [
+      30,
+      11
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_2",
+     "start": [
+      30,
+      11
+     ],
+     "end": [
+      26,
+      11
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      26,
+      11
+     ],
+     "end": [
+      26,
+      5
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "Wa",
+   "from": "a_3",
+   "to": "a_1",
+   "at": 3.0
+  },
+  {
+   "name": "S",
+   "from": "b_3",
+   "to": "a_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "A.layer == ind_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "G.layer in {comp_dummy, pcomp}"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == tgate"
+  },
+  {
+   "kind": "match",
+   "expr": "Wa > 80"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 20"
+  }
+ ]
+}

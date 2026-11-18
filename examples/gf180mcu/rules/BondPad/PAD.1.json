@@ -1,0 +1,84 @@
+{
+ "name": "PAD.1",
+ "desc": "PAD.1 : Pad opening.",
+ "shapes": [
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      5,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      5,
+      0
+     ],
+     "end": [
+      5,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      5,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "W",
+   "from": "a_3",
+   "to": "a_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "A.layer == pad"
+  },
+  {
+   "kind": "check",
+   "expr": "W >= ?"
+  }
+ ],
+ "value": {
+  "switch": "bond_pad",
+  "cases": {
+   "wedge": 40,
+   "ball": 40,
+   "gold_bump": 4
+  }
+ }
+}

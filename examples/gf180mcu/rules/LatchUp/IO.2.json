@@ -1,0 +1,142 @@
+{
+ "name": "IO.2",
+ "desc": "IO.2 : Minimum recommended Nwell guard ring width.",
+ "shapes": [
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      5,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      5,
+      0
+     ],
+     "end": [
+      5,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      5,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "O",
+   "edges": [
+    {
+     "id": "o_0",
+     "start": [
+      10,
+      3
+     ],
+     "end": [
+      16,
+      3
+     ],
+     "edge": false
+    },
+    {
+     "id": "o_1",
+     "start": [
+      16,
+      3
+     ],
+     "end": [
+      16,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "o_2",
+     "start": [
+      16,
+      9
+     ],
+     "end": [
+      10,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "o_3",
+     "start": [
+      10,
+      9
+     ],
+     "end": [
+      10,
+      3
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "W",
+   "from": "a_3",
+   "to": "a_1"
+  },
+  {
+   "name": "X",
+   "from": "a_1",
+   "to": "o_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "A.layer == ntap_in_nwell"
+  },
+  {
+   "kind": "match",
+   "expr": "O.layer == io_ncomp"
+  },
+  {
+   "kind": "match",
+   "expr": "X <= 15"
+  },
+  {
+   "kind": "check",
+   "expr": "W >= 2"
+  }
+ ]
+}

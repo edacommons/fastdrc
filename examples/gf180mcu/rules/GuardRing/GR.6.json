@@ -1,0 +1,133 @@
+{
+ "name": "GR.6",
+ "desc": "GR.6 : Min PCOMP width.",
+ "shapes": [
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      13,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      13,
+      0
+     ],
+     "end": [
+      13,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      13,
+      16
+     ],
+     "end": [
+      0,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      0,
+      16
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      4,
+      2
+     ],
+     "end": [
+      9,
+      2
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      9,
+      2
+     ],
+     "end": [
+      9,
+      14
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      9,
+      14
+     ],
+     "end": [
+      4,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      4,
+      14
+     ],
+     "end": [
+      4,
+      2
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "W",
+   "from": "a_3",
+   "to": "a_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MK.layer == guard_ring_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "A.layer == pcomp"
+  },
+  {
+   "kind": "check",
+   "expr": "W >= 16"
+  }
+ ]
+}

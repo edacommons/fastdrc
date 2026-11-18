@@ -1,0 +1,197 @@
+{
+ "name": "CUP.3",
+ "desc": "CUP.3 : Minimum space of the metal line used for bond pads (slots).",
+ "shapes": [
+  {
+   "name": "PAD",
+   "edges": [
+    {
+     "id": "pad_0",
+     "start": [
+      0,
+      2
+     ],
+     "end": [
+      22,
+      2
+     ],
+     "edge": false
+    },
+    {
+     "id": "pad_1",
+     "start": [
+      22,
+      2
+     ],
+     "end": [
+      22,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "pad_2",
+     "start": [
+      22,
+      10
+     ],
+     "end": [
+      0,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "pad_3",
+     "start": [
+      0,
+      10
+     ],
+     "end": [
+      0,
+      2
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      3,
+      0
+     ],
+     "end": [
+      8,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      8,
+      0
+     ],
+     "end": [
+      8,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      8,
+      12
+     ],
+     "end": [
+      3,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      3,
+      12
+     ],
+     "end": [
+      3,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      13,
+      0
+     ],
+     "end": [
+      18,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      18,
+      0
+     ],
+     "end": [
+      18,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_2",
+     "start": [
+      18,
+      12
+     ],
+     "end": [
+      13,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      13,
+      12
+     ],
+     "end": [
+      13,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "S",
+   "from": "a_1",
+   "to": "b_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "PAD.layer == pad"
+  },
+  {
+   "kind": "match",
+   "expr": "A.layer == metal_below_top"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == metal_below_top"
+  },
+  {
+   "kind": "check",
+   "expr": "S >= 1"
+  }
+ ],
+ "when": {
+  "switch": "bond_pad",
+  "cases": {
+   "ball": true
+  },
+  "default": false
+ }
+}

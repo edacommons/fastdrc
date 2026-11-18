@@ -189,6 +189,7 @@
   }
  ],
  "except": [
-  "dnwell"
+  "dnwell",
+  "guard_ring_mk"
  ]
 }

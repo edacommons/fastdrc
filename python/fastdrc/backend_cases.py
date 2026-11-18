@@ -374,7 +374,9 @@ class CasesBackend(Backend):
                 if isinstance(zone, dict) and zone.get("op") in ("+", "-") and any(
                         r.layer_of(o) == zone["args"][0].get("ref") for o in r.shapes if o != name):
                     raise _CannotBuild("a layer of the picture is defined in a way that cannot be drawn directly")
-            for special in (self._no_straddle_cases, self._faced_edge_cases, self._count_chain_cases, self._shielded_cases, self._slanted_cases, self._net_cross_cases, self._exact_cases, self._orientation_cases, self._ring_count_cases, self._grid_cases, self._acute_cases, self._total_cases, self._form_cases, self._presence_cases, self._corner_cases, self._hole_cases, self._held_array_cases, self._array_cases, self._share_cases,
+            if r.on_extent():
+                raise _CannotBuild("a rule about the whole die (its field): a tile cannot show it")
+            for special in (self._band_cases, self._no_straddle_cases, self._faced_edge_cases, self._count_chain_cases, self._shielded_cases, self._slanted_cases, self._net_cross_cases, self._exact_cases, self._orientation_cases, self._ring_count_cases, self._grid_cases, self._acute_cases, self._total_cases, self._form_cases, self._presence_cases, self._corner_cases, self._hole_cases, self._held_array_cases, self._array_cases, self._share_cases,
                             self._density_cases, self._antenna_cases):
                 made = special(r, rule_dict)
                 if made is not None:
@@ -878,8 +880,14 @@ class CasesBackend(Backend):
             if layers is None:
                 raise _CannotBuild("a layer of the picture is defined in a way that cannot be drawn directly")
             return {"rule": r.name, "testing": tag, "case": what, "expect": expect, "shapes": layers, "markers": []}
+        x0, y0, x1, y1 = min(xs), min(ys), max(xs), max(ys)
+        if lo < 90 < hi:                                     # a right angle is too sharp as well: an octagon is quiet
+            c = (min(x1 - x0, y1 - y0) // 3 // 10) * 10
+            return [case("the corner as drawn", True, pts),
+                    case("an octagon, every corner 135 degrees", lo < 135 < hi,
+                         [(x0 + c, y0), (x1 - c, y0), (x1, y0 + c), (x1, y1 - c), (x1 - c, y1), (x0 + c, y1), (x0, y1 - c), (x0, y0 + c)])]
         return [case("the corner as drawn", True, pts),
-                case("a box, every corner a right angle", False, [(min(xs), min(ys)), (max(xs), min(ys)), (max(xs), max(ys)), (min(xs), max(ys))])]
+                case("a box, every corner a right angle", False, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)])]
 
     def _grid_cases(self, r, rule_dict):
         """"On the grid": a box on it (quiet) and one with a corner 1 nm off it (reported)."""
@@ -1086,8 +1094,28 @@ class CasesBackend(Backend):
         m = r.measures[var]
         (a0, a1) = r._edge_ends(m["from"])
         along = 1 if a0[0] == a1[0] else 0                 # the coordinate the two measured edges run along
-        ends = [q[along] for n in (r.shape_of_edge(m["from"]), r.shape_of_edge(m["to"])) for q in drawn[n]]
-        mid, span = (min(ends) + max(ends)) // 2, max(ends) - min(ends)
+        for end in (m["from"], m["to"]):                   # "... if it is wider than so much": made that wide, away from the arrow
+            n, w = r.shape_of_edge(end), r.wide_filters().get(r.shape_of_edge(end))
+            if not w:
+                continue
+            need = round(w * 1000) + 2000
+            pts = drawn[n]
+            lo_a, hi_a = min(q[along] for q in pts), max(q[along] for q in pts)
+            lo_c, hi_c = min(q[1 - along] for q in pts), max(q[1 - along] for q in pts)
+            other = [q[1 - along] for k in (m["from"], m["to"]) if r.shape_of_edge(k) != n for q in drawn[r.shape_of_edge(k)]]
+            if other and min(other) >= hi_c:               # the other shape lies beyond its high side: grow the low side
+                lo_c = min(lo_c, hi_c - need)
+            else:
+                hi_c = max(hi_c, lo_c + need)
+            c = (lo_a + hi_a) // 2
+            lo_a, hi_a = min(lo_a, c - need // 2), max(hi_a, c + need // 2)
+            box = [(lo_c, lo_a), (hi_c, lo_a), (hi_c, hi_a), (lo_c, hi_a)]
+            drawn[n] = box if along == 1 else [(y, x) for x, y in box]
+        runs = [[q[along] for q in drawn[n]] for n in (r.shape_of_edge(m["from"]), r.shape_of_edge(m["to"]))]
+        f0, f1 = max(min(x) for x in runs), min(max(x) for x in runs)      # the stretch where the two face each other
+        if f1 <= f0:
+            f0, f1 = min(min(x) for x in runs), max(max(x) for x in runs)
+        mid, span = (f0 + f1) // 2, f1 - f0
 
         def short(pts):                                    # squeezed to a quarter of the facing stretch, in its middle
             lo_, hi_ = min(q[along] for q in pts), max(q[along] for q in pts)
@@ -1172,6 +1200,39 @@ class CasesBackend(Backend):
                 case("the two tied together", False, both, [cut(A), cut(B), (strap, A[0] + 600, A[1] + 1600, B[0] + 1400, B[1] + 2400)]),
                 case("only one", False, [(holder, *H), (a, *A)]),
                 case("each in one of its own", False, apart)]
+
+    def _band_cases(self, r, rule_dict):
+        """One outline a set distance outside another, within a tolerance (``E >= lo``
+        and ``E <= hi`` on one arrow, the inner shape wholly inside): the outer one is put
+        that far out on every side. At either end of the band: quiet. A step past it: reported."""
+        dist = [d for d in r.distance_rules() if not d[3]]
+        if len(dist) != 2 or dist[0][0] != dist[1][0] or len(r.shapes) != 2:
+            return None
+        lo = next((d[1] for d in dist if d[1] is not None), None)
+        hi = next((d[2] for d in dist if d[2] is not None), None)
+        if lo is None or hi is None or lo.exact or hi.exact or not lo.value < hi.value:
+            return None
+        var = dist[0][0]
+        m = r.measures[var]
+        sf, st = r.shape_of_edge(m["from"]), r.shape_of_edge(m["to"])
+        if sf == st or r.relation(sf, st) not in ("inside", "contains"):
+            return None
+        inner, outer = (sf, st) if r.relation(sf, st) == "inside" else (st, sf)
+        pic = _Picture(r, rule_dict, 1000)
+        if not (pic.rectangle(inner) and pic.rectangle(outer)):
+            raise _CannotBuild("a distance kept within a tolerance is tested on boxes only")
+        side = max(4 * round(hi.value * 1000), 4000)
+        box = lambda d: [(-d, -d), (side + d, -d), (side + d, side + d), (-d, side + d)]   # noqa: E731
+
+        def case(tag, what, expect, d):
+            layers = self._real_layers(r, [(outer, box(d)), (inner, box(0))])
+            if layers is None:
+                raise _CannotBuild("a layer of the picture is defined in a way that cannot be drawn directly")
+            return {"rule": r.name, "testing": tag, "case": what, "expect": expect, "shapes": layers, "markers": []}
+        a, b = round(lo.value * 1000), round(hi.value * 1000)
+        tl, th = f"check {var} >= {lo.value:g}", f"check {var} <= {hi.value:g}"
+        return [case(tl, f"{var} exactly {lo.value:g} on every side", False, a), case(tl, f"{var} just under it", True, a - STEP_NM),
+                case(th, f"{var} exactly {hi.value:g} on every side", False, b), case(th, f"{var} just over it", True, b + STEP_NM)]
 
     def _exact_cases(self, r, rule_dict):
         """One exact value that no single edge can be moved to: a shape's length FROM END
@@ -1448,25 +1509,44 @@ class CasesBackend(Backend):
             raise _CannotBuild("an antenna rule with several conditions on the net is not built yet")
         collectors, gate, ratio, filters = ants[0]
         legend, pairs = dict(r.layer_defs), r.connections()
-        g_layer = r.layer_of(gate)
+        g_layer = r.plain_layer(r.layer_of(gate))
         collectors = sorted(collectors, key=lambda c: len(r.connections_up_to(g_layer, r.layer_of(c))))
         chains, prev = [], g_layer
         for c in collectors:
-            chain = self._chain(pairs, prev, r.layer_of(c), legend)
+            chain = self._chain(pairs, prev, r.plain_layer(r.layer_of(c)), legend)
             if chain is None:
                 raise _CannotBuild("no chain of connections leads from the gate to the collector")
+            # a step that is the next layer over again, less something that is not there (a via "not on
+            # a capacitor plate" before the via itself): the next one stands for both
+            reals = [set(x for x in (_expand(c_, legend) or []) if isinstance(x, str)) for c_ in chain]
+            chain = [c_ for k, c_ in enumerate(chain)
+                     if not (0 < k < len(chain) - 1 and reals[k] and reals[k] <= reals[k + 1])]
             chains.append(chain)
-            prev = r.layer_of(c)
+            prev = r.plain_layer(r.layer_of(c))
         side, height = 1000, 10_000                        # the gate: 1 um x 1 um; collectors 10 um tall
+        weights, extra = r.antenna_extras(ants[0][0], gate)
+        if weights and (len(collectors) != 1 or filters):
+            raise _CannotBuild("a side-wall antenna rule with several collectors is not built yet")
+        wall = round(weights[collectors[0]] * 1000) if weights else None      # nm: the collector's thickness
+        g_h = 2 * wall if wall else side                   # (the gate as tall as makes the lengths whole nanometres)
+        same = bool(set(_expand(g_layer, legend) or []) & set(_expand(r.plain_layer(r.layer_of(collectors[-1])), legend) or []))
+
+        def length_for(helped=0):
+            """how long the last collector is when it holds exactly what the ratio allows"""
+            if wall:                                       # perimeter x thickness <= ratio x (gate + help)
+                half = ratio * (side * g_h + helped) / wall / 2
+                return half - height - (side if same else 0) if not same or height >= g_h else None
+            return ratio * (side * g_h + helped) / height
         allowed = ratio * side * side                      # nm2 that may be collected
         parts = len(collectors)
         fixed = allowed / (2 * (parts - 1)) / height if parts > 1 else 0     # length of each earlier collector
-        last = (allowed / 2 if parts > 1 else allowed) / height
-        if abs(fixed - round(fixed)) > 1e-9 or abs(last - round(last)) > 1e-9:
+        last = (allowed / 2 if parts > 1 else allowed) / height if not wall else length_for()
+        if last is None or abs(fixed - round(fixed)) > 1e-9 or abs(last - round(last)) > 1e-9:
             raise _CannotBuild("a ratio that does not come out in whole nanometres")
         fixed, last = round(fixed), round(last)
         check = next(c["expr"] for c in rule_dict["constraints"]
-                     if c.get("kind", "check") == "check" and f"{collectors[-1]}.area" in c["expr"])
+                     if c.get("kind", "check") == "check" and (f"{collectors[-1]}.area" in c["expr"]
+                                                               or f"{collectors[-1]}.perimeter" in c["expr"]))
         diode = None
         if filters:
             d_shape, d_op, d_value = filters[0]
@@ -1481,7 +1561,7 @@ class CasesBackend(Backend):
             diode = (d_layer, link, d_op, w, total // w, d_expr)
 
         def case(testing, what, expect, length, diode_h=None):
-            boxes, box = [(lay, 0, 0, side, side) for lay in (_expand(g_layer, legend) or [])], (0, 0, side, side)
+            boxes, box = [(lay, 0, 0, side, g_h) for lay in (_expand(g_layer, legend) or [])], (0, 0, side, g_h)
             real = _expand(g_layer, legend)
             first = None
             for i, chain in enumerate(chains):
@@ -1505,10 +1585,27 @@ class CasesBackend(Backend):
                     "markers": [lay for op, lay in (rule_dict.get("scope") or []) if op in _INSIDE_OPS]}
         tag = f"check {check}"
         if not diode:
-            return [case(tag, "the collected area just above the ratio", True, last + STEP_NM),
-                    case(tag, "the collected area exactly at the ratio", False, last),
-                    case(tag, "the collected area far above the ratio", True, last * 2),
-                    case(tag, "the collected area far below the ratio", False, max(side, last // 2))]
+            out = [case(tag, "the collected area just above the ratio", True, last + STEP_NM),
+                   case(tag, "the collected area exactly at the ratio", False, last),
+                   case(tag, "the collected area far above the ratio", True, last * 2),
+                   case(tag, "the collected area far below the ratio", False, max(side, last // 2))]
+            # "... the gate's area plus f times the diode on the net": a diode tied to the collector
+            # lets it hold that much more -- where this process's stack lets one be tied to it directly
+            on = r.plain_layer(r.layer_of(collectors[0]))
+            for d_shape, f in extra[:1]:
+                d_layer = r.layer_of(d_shape)
+                link = next((y if x == d_layer else x for x, y in pairs if d_layer in (x, y)
+                             and any({(y if x == d_layer else x), on} == {u, v} for u, v in pairs)), None)
+                d_h = 2 * wall if wall else side
+                more = length_for(f * side * d_h)
+                if link is None or more is None or abs(more - round(more)) > 1e-9:
+                    continue
+                diode = (d_layer, link, None, side, d_h, None)
+                more = round(more)
+                out += [case(tag, "with a diode on the net, as much as the ratio allowed without it", False, last + STEP_NM, d_h),
+                        case(tag, "with a diode on the net, exactly what it allows now", False, more, d_h),
+                        case(tag, "with a diode on the net, just above what it allows now", True, more + STEP_NM, d_h)]
+            return out
         _, _, d_op, w, h, d_expr = diode
         # diode heights that meet / miss the condition (None: no diode at all)
         if d_op in ("<", "<="):
@@ -1562,7 +1659,7 @@ class CasesBackend(Backend):
         def real(layer):
             got = _expand(layer, legend)
             return None if got is None or any(not isinstance(x, str) for x in got) else got
-        boxes = []
+        boxes, small = [], None
         prev_box, prev_real = start_box, start_real
         if prev_real is None or len(chain) < 2:
             return None
@@ -1576,9 +1673,11 @@ class CasesBackend(Backend):
                 box = (x1, y0, x1 + (length if last else 2 * (x1 - x0)), y0 + (height if last else y1 - y0))
             elif last:                                     # the collector lies over what it connects to
                 box = (x0, y0, x0 + length, y0 + height)
+            elif small:                                    # further up the stack: on the same small square
+                box = small
             else:                                          # a contact / via: a small square on the previous box
                 m = min(x1 - x0, y1 - y0, 2000) // 4
-                box = (x0 + m, y0 + m, x0 + 3 * m, y0 + 3 * m)
+                box = small = (x0 + m, y0 + m, x0 + 3 * m, y0 + 3 * m)
             boxes += [(lay, *box) for lay in now]
             prev_box, prev_real = box, now
         return boxes, prev_box, prev_real
@@ -1874,6 +1973,7 @@ class CasesBackend(Backend):
                     reach = max(reach, min(float(b.value), 50.0))
         reach_nm = round(reach * 1000)
         x, alone = 0, 0
+        row_y, row_h, row_gap = 0, 0, 0                # tiles in rows: one row of everything runs out of coordinates
         for c in cases:
             if c.get("alone"):                         # a layout of its own (a density)
                 alone += 1
@@ -1886,17 +1986,23 @@ class CasesBackend(Backend):
             xs = [p[0] for s in c["shapes"] for p in s["points"]]
             ys = [p[1] for s in c["shapes"] for p in s["points"]]
             pad = (max(max(xs) - min(xs), max(ys) - min(ys)) // 4 + 1000 + reach_nm // 2) // 10 * 10
-            dx, dy = x - min(xs) + pad, -min(ys) + pad
+            if x > self.ROW_NM:                        # the next row, clear of this one by more than any rule reaches
+                row_y = -(-(row_y + row_h + row_gap) // 10) * 10
+                x, row_h, row_gap = 0, 0, 0
+            dx, dy = x - min(xs) + pad, row_y - min(ys) + pad
             if c.get("snap"):                          # a case about the grid stays on it
                 dx, dy = dx - dx % c["snap"], dy - dy % c["snap"]
             for s in c["shapes"]:
                 s["points"] = [[p[0] + dx, p[1] + dy] for p in s["points"]]
             w, h = max(xs) - min(xs) + 2 * pad, max(ys) - min(ys) + 2 * pad
             w, h = -(-w // 10) * 10, -(-h // 10) * 10     # tiles (and the markers drawn over them) on a 10 nm grid
-            c["tile"] = [x, 0, x + w, h]               # nm; a marker inside it belongs to this case
+            c["tile"] = [x, row_y, x + w, row_y + h]   # nm; a marker inside it belongs to this case
+            row_h, row_gap = max(row_h, h), max(row_gap, 4 * pad)
             x += w + 4 * pad
             x = -(-x // 10) * 10
         return cases, skipped
+
+    ROW_NM = 200_000_000    # 200 mm: how long a row of tiles may grow
 
     def files(self, rules, stem):
         cases, skipped = self.plan(rules)

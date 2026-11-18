@@ -1,0 +1,144 @@
+{
+ "name": "PM.4",
+ "desc": "PM.4 : Min Probe pad top layer metal overlap of pad opening.",
+ "shapes": [
+  {
+   "name": "OUT",
+   "edges": [
+    {
+     "id": "out_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      16,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "out_1",
+     "start": [
+      16,
+      0
+     ],
+     "end": [
+      16,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "out_2",
+     "start": [
+      16,
+      16
+     ],
+     "end": [
+      0,
+      16
+     ],
+     "edge": false
+    },
+    {
+     "id": "out_3",
+     "start": [
+      0,
+      16
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "IN",
+   "edges": [
+    {
+     "id": "in_0",
+     "start": [
+      5,
+      5
+     ],
+     "end": [
+      11,
+      5
+     ],
+     "edge": false
+    },
+    {
+     "id": "in_1",
+     "start": [
+      11,
+      5
+     ],
+     "end": [
+      11,
+      11
+     ],
+     "edge": false
+    },
+    {
+     "id": "in_2",
+     "start": [
+      11,
+      11
+     ],
+     "end": [
+      5,
+      11
+     ],
+     "edge": false
+    },
+    {
+     "id": "in_3",
+     "start": [
+      5,
+      11
+     ],
+     "end": [
+      5,
+      5
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E",
+   "from": "out_3",
+   "to": "in_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "OUT.layer == top_metal_layer"
+  },
+  {
+   "kind": "match",
+   "expr": "IN.layer == probe_pad"
+  },
+  {
+   "kind": "check",
+   "expr": "E >= 2"
+  },
+  {
+   "kind": "check",
+   "expr": "IN in OUT"
+  }
+ ],
+ "when": {
+  "switch": "bond_pad",
+  "cases": {
+   "solder_bump": true
+  },
+  "default": false
+ }
+}

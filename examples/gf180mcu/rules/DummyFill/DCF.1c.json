@@ -1,0 +1,71 @@
+{
+ "name": "DCF.1c",
+ "desc": "DCF.1c : A staggered array of dummy COMP 5 um X 5 um squares (DCF.10: truncated dummy COMP shall not exist).",
+ "shapes": [
+  {
+   "name": "K",
+   "edges": [
+    {
+     "id": "k_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      4,
+      0
+     ],
+     "edge": true
+    },
+    {
+     "id": "k_1",
+     "start": [
+      4,
+      0
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "k_2",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      0,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "k_3",
+     "start": [
+      0,
+      4
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "K.layer == comp_dummy"
+  },
+  {
+   "kind": "check",
+   "expr": "k_0.length == 5"
+  }
+ ],
+ "extended": true
+}

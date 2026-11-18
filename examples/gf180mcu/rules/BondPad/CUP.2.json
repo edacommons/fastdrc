@@ -1,0 +1,145 @@
+{
+ "name": "CUP.2",
+ "desc": "CUP.2 : Minimum width of the metal line used for bond pads.",
+ "shapes": [
+  {
+   "name": "PAD",
+   "edges": [
+    {
+     "id": "pad_0",
+     "start": [
+      0,
+      2
+     ],
+     "end": [
+      16,
+      2
+     ],
+     "edge": false
+    },
+    {
+     "id": "pad_1",
+     "start": [
+      16,
+      2
+     ],
+     "end": [
+      16,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "pad_2",
+     "start": [
+      16,
+      10
+     ],
+     "end": [
+      0,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "pad_3",
+     "start": [
+      0,
+      10
+     ],
+     "end": [
+      0,
+      2
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "LINE",
+   "edges": [
+    {
+     "id": "line_0",
+     "start": [
+      5,
+      0
+     ],
+     "end": [
+      10,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "line_1",
+     "start": [
+      10,
+      0
+     ],
+     "end": [
+      10,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "line_2",
+     "start": [
+      10,
+      12
+     ],
+     "end": [
+      5,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "line_3",
+     "start": [
+      5,
+      12
+     ],
+     "end": [
+      5,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "LP",
+   "from": "line_0",
+   "to": "pad_0"
+  },
+  {
+   "name": "W",
+   "from": "line_3",
+   "to": "line_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "PAD.layer == pad"
+  },
+  {
+   "kind": "match",
+   "expr": "LINE.layer == metal_below_top"
+  },
+  {
+   "kind": "check",
+   "expr": "W >= 1"
+  }
+ ],
+ "when": {
+  "switch": "bond_pad",
+  "cases": {
+   "ball": true
+  },
+  "default": false
+ }
+}

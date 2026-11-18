@@ -1,0 +1,139 @@
+{
+ "name": "LVESD.7a",
+ "desc": "LVESD.7a : SAB should cover drain and source and overlap gate, or cover drain only and partly overlap poly gate: Min/max SAB overlap Poly gate.",
+ "shapes": [
+  {
+   "name": "SAB",
+   "edges": [
+    {
+     "id": "sab_0",
+     "start": [
+      4,
+      0
+     ],
+     "end": [
+      18,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_1",
+     "start": [
+      18,
+      0
+     ],
+     "end": [
+      18,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_2",
+     "start": [
+      18,
+      14
+     ],
+     "end": [
+      4,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "sab_3",
+     "start": [
+      4,
+      14
+     ],
+     "end": [
+      4,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "G",
+   "edges": [
+    {
+     "id": "g_0",
+     "start": [
+      0,
+      2
+     ],
+     "end": [
+      7,
+      2
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_1",
+     "start": [
+      7,
+      2
+     ],
+     "end": [
+      7,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "g_2",
+     "start": [
+      7,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      2
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "O",
+   "from": "sab_3",
+   "to": "g_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "SAB.layer == esd_sab"
+  },
+  {
+   "kind": "match",
+   "expr": "G.layer == lv_esd_gate"
+  },
+  {
+   "kind": "check",
+   "expr": "O == 0.05"
+  }
+ ],
+ "scope": [
+  [
+   "not_covering",
+   "lv_esd_gate"
+  ]
+ ]
+}

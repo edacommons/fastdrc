@@ -1,0 +1,71 @@
+{
+ "name": "DM.1",
+ "desc": "DM.1 : Min/Max Dummy metal line width/length.",
+ "shapes": [
+  {
+   "name": "K",
+   "edges": [
+    {
+     "id": "k_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      4,
+      0
+     ],
+     "edge": true
+    },
+    {
+     "id": "k_1",
+     "start": [
+      4,
+      0
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "k_2",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      0,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "k_3",
+     "start": [
+      0,
+      4
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "K.layer == metal_dummy_any"
+  },
+  {
+   "kind": "check",
+   "expr": "k_0.length == 2"
+  }
+ ],
+ "extended": true
+}

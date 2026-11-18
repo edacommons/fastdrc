@@ -223,6 +223,12 @@ hole. The check is `D in G.holes` — "must lie inside", said of the ring's void
 → `dnwell.not_inside(pcomp.holes)` — *every dnwell must be surrounded by an unbroken
 ring of pcomp.* A ring with a gap has no hole, so a broken ring is reported too.
 
+**From a ring's outer edge.** "Space to the die edge, the outer edge of the marking":
+draw the marking as a ring, what lies on it, and the arrow from the ring's **outline**
+(not from the edge of its hole) → `guard_ring_mk.hulls.enclosing(metal1, 3)` — *the outer
+edge of guard_ring_mk must be at least 3 µm beyond metal1.* The edge of the hole, which
+the inner shape may well touch, is no part of it.
+
 ### A check on the overlap of two layers (a device)
 Draw **both real layers**, with the second one **covering the measured region**
 (the part you measure sits inside it). You draw `comp` and `mos_cap_mk` — two
@@ -327,6 +333,9 @@ reaches under: → `mvsd.separation(ncomp.outside(mvsd), 4)`.
 check does not measure, with a filter `Y < 1.0` on it: the rule is about those of the
 checked shape that have such a third one that near — "where the Nwell is less than 1 µm
 from the NCOMP, a tap within 20": → `ncomp.overlapping(nwell.sized(1)).not(tap.sized(20))`.
+The arrow may also start at what **holds** the checked shape, its well: "where the
+LVPWELL is less than 1 µm from a PCOMP outside it, the NCOMP in that LVPWELL ..." →
+`ncomp.inside(lvpwell.overlapping(pcomp.sized(1)))…` — the devices lying in such a well.
 
 ### A selected marker (the context has its own selection)
 The context shape itself can be a *selected* thing —
@@ -649,6 +658,14 @@ Two refinements, both read from the same picture:
 |---|---|---|
 | `(M1.area + M2.area) <= 200 * G.area` | the layers together — a *cumulative* ratio; each layer's share is taken at its own stage | one `evaluate_nets(...)` per layer as the connections are added, then the nets whose sum is too large |
 | a `match` on another connected shape: `D.area < 0.16` / `D.area >= 0.16` | only nets *without* / *with* that much of it — a protection diode | the same, with the condition on the finished stack |
+| `M.perimeter * 0.54 <= 400 * G.area` | the collector counted by its **side wall** — perimeter × thickness, as a manual that says "perimeter area" means it | `evaluate_nets(gate, { "x" => metal1 }, "put('t1', perimeter(x) * 0.54 / area)")`, then the nets above the ratio |
+| `... <= 400 * (G.area + 2 * D.area)` | the gate **helped** by what else is on the net: its area plus a factor times the diode's ("gate area + MF × the COMP connected to it") | the same, the diode's area taken at the collector's own stage: `/ (area + 2 * area(d1))` |
+
+A legend name that only stands for a layer (`top_metal_layer` for the top metal of this
+stack) is that layer in the connections. Where one deck needs the nets of several sets of
+connections (an antenna rule per metal, a rule from another gate), each set is declared
+once, what is read from it is computed while it stands, and the results are kept as plain
+shapes (`off_the_nets`) — the nets are gone when the next set starts over.
 
 ### Density — how much of an area a layer covers
 
@@ -988,7 +1005,10 @@ And the phrases manuals use map onto drawings like this:
 A layer **set** distributes the way the phrase does: "width of diff or tap" is the
 width of *each* (`diff.width(v)` or `tap.width(v)`), "spacing of diff or tap" is
 between *any* of them (`diff.or(tap).space(v)`). A zone "within x of" a layer is a
-legend entry: `"near_nwell": "nwell + 0.43"` (grown; `-` shrinks).
+legend entry: `"near_nwell": "nwell + 0.43"` (grown; `-` shrinks). The name `extent` is
+the layout's own extent, the die: `"open_field": "extent and not comp and not comp_dummy"`
+is what no active layer covers. A rule drawn on it speaks of the whole die — "no open
+field 20 µm wide or more" — so the self-test does not judge it on a tile or on a device.
 
 Everything on the earlier "not drawn yet" list now has a drawn form; rule kinds
 found missing from here on should be added to this section.

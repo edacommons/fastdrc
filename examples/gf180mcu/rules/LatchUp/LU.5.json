@@ -1,0 +1,250 @@
+{
+ "name": "LU.5",
+ "desc": "LU.5 : For within 50um from NAT layer, if there is NWELL present, then NAT layer shall be directly surrounded by PCOMP substrate guard ring. (No other NCOMP, NWELL in between the NAT and PCOMP guard ring)",
+ "shapes": [
+  {
+   "name": "G",
+   "edges": [
+    {
+     "id": "g_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      40,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_1",
+     "start": [
+      40,
+      0
+     ],
+     "end": [
+      40,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_2",
+     "start": [
+      40,
+      24
+     ],
+     "end": [
+      0,
+      24
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_3",
+     "start": [
+      0,
+      24
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ],
+   "hole_loops": [
+    [
+     {
+      "id": "hg_0",
+      "start": [
+       4,
+       4
+      ],
+      "end": [
+       36,
+       4
+      ],
+      "edge": false
+     },
+     {
+      "id": "hg_1",
+      "start": [
+       36,
+       4
+      ],
+      "end": [
+       36,
+       20
+      ],
+      "edge": false
+     },
+     {
+      "id": "hg_2",
+      "start": [
+       36,
+       20
+      ],
+      "end": [
+       4,
+       20
+      ],
+      "edge": false
+     },
+     {
+      "id": "hg_3",
+      "start": [
+       4,
+       20
+      ],
+      "end": [
+       4,
+       4
+      ],
+      "edge": false
+     }
+    ]
+   ]
+  },
+  {
+   "name": "D",
+   "edges": [
+    {
+     "id": "d_0",
+     "start": [
+      8,
+      7
+     ],
+     "end": [
+      18,
+      7
+     ],
+     "edge": false
+    },
+    {
+     "id": "d_1",
+     "start": [
+      18,
+      7
+     ],
+     "end": [
+      18,
+      17
+     ],
+     "edge": false
+    },
+    {
+     "id": "d_2",
+     "start": [
+      18,
+      17
+     ],
+     "end": [
+      8,
+      17
+     ],
+     "edge": false
+    },
+    {
+     "id": "d_3",
+     "start": [
+      8,
+      17
+     ],
+     "end": [
+      8,
+      7
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "N",
+   "edges": [
+    {
+     "id": "n_0",
+     "start": [
+      22,
+      9
+     ],
+     "end": [
+      32,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "n_1",
+     "start": [
+      32,
+      9
+     ],
+     "end": [
+      32,
+      15
+     ],
+     "edge": false
+    },
+    {
+     "id": "n_2",
+     "start": [
+      32,
+      15
+     ],
+     "end": [
+      22,
+      15
+     ],
+     "edge": false
+    },
+    {
+     "id": "n_3",
+     "start": [
+      22,
+      15
+     ],
+     "end": [
+      22,
+      9
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "APART",
+   "from": "n_3",
+   "to": "d_1"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "G.layer == pcomp"
+  },
+  {
+   "kind": "match",
+   "expr": "D.layer == nat_near_nwell"
+  },
+  {
+   "kind": "match",
+   "expr": "N.layer in {nwell, ncomp}"
+  },
+  {
+   "kind": "match",
+   "expr": "Count(D) >= 1"
+  },
+  {
+   "kind": "check",
+   "expr": "D in G.holes"
+  },
+  {
+   "kind": "check",
+   "expr": "Count(N) == 0"
+  }
+ ]
+}

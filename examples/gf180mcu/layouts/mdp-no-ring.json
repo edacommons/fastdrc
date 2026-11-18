@@ -1,5 +1,5 @@
 {
- "desc": "an LDPMOS finger: no ring. MDP.3c reports it: no part of the device is within 15 µm of a DNWELL tab (the process's own deck examines existing tabs only)",
+ "desc": "an LDPMOS finger: no ring. MDP.3c reports it: no part of the device is within 15 \u00b5m of a DNWELL tab (the process's own deck examines existing tabs only)",
  "shapes": [
   {
    "layer": "ldmos_xtor",
@@ -184,6 +184,7 @@
  ],
  "reports": [
   "MDP.3",
-  "MDP.3c"
+  "MDP.3c",
+  "LU.1a"
  ]
 }

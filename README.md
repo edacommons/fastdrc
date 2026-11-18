@@ -88,9 +88,10 @@ fastdrc pack mydeck             # -> mydeck.zip: the same deck in one file; ever
 > ([`examples/demo/`](examples/demo)): `fastdrc build examples/demo`.
 >
 > **A real process: [`examples/gf180mcu/`](examples/gf180mcu)** — the open GF180MCU
-> design rules drawn from the public manual, 492 rule files, with the metal stack, the
-> top metal and the MIM option as parameters; compared with the process's own KLayout
-> deck. Its README says how it was checked.
+> design rules drawn from the public manual, 766 rule files from the front end to
+> antenna, bond pad, seal ring, dummy fill and latch-up rules, with the metal stack, the
+> top metal, the MIM option and the kind of bond pad as parameters; compared with the
+> process's own KLayout deck where it has one. Its README says how it was checked.
 >
 > **📐 [docs/drawing-model.md](docs/drawing-model.md)** is the reference: how each kind
 > of rule is drawn and what the compiler derives from it — widths, spacings,

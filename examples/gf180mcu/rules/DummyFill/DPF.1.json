@@ -1,0 +1,71 @@
+{
+ "name": "DPF.1",
+ "desc": "DPF.1 : The size of the dummy poly2 is 5.6 um X 5.6 um square (DPF.10: remove truncated dummy squares).",
+ "shapes": [
+  {
+   "name": "K",
+   "edges": [
+    {
+     "id": "k_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      4,
+      0
+     ],
+     "edge": true
+    },
+    {
+     "id": "k_1",
+     "start": [
+      4,
+      0
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "k_2",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      0,
+      4
+     ],
+     "edge": true
+    },
+    {
+     "id": "k_3",
+     "start": [
+      0,
+      4
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "K.layer == poly2_dummy"
+  },
+  {
+   "kind": "check",
+   "expr": "k_0.length == 5.6"
+  }
+ ],
+ "extended": true
+}

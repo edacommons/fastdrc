@@ -1,0 +1,148 @@
+{
+ "name": "ANT.14.M4",
+ "desc": "ANT.14.M4 : If MIM is between Metaln and Metal (n+1): maximum ratio of each of the metal layer (Metal (n+1) to MetalTop) perimeter area to related MIM area.",
+ "shapes": [
+  {
+   "name": "F",
+   "edges": [
+    {
+     "id": "f_0",
+     "start": [
+      4,
+      0
+     ],
+     "end": [
+      8,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "f_1",
+     "start": [
+      8,
+      0
+     ],
+     "end": [
+      8,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "f_2",
+     "start": [
+      8,
+      4
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "f_3",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      4,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "P",
+   "edges": [
+    {
+     "id": "p_0",
+     "start": [
+      0,
+      8
+     ],
+     "end": [
+      12,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_1",
+     "start": [
+      12,
+      8
+     ],
+     "end": [
+      12,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_2",
+     "start": [
+      12,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "p_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      8
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "F.layer == fusetop"
+  },
+  {
+   "kind": "match",
+   "expr": "P.layer == metal4"
+  },
+  {
+   "kind": "match",
+   "expr": "F.net == P.net"
+  },
+  {
+   "kind": "check",
+   "expr": "P.perimeter * 0.54 <= 400 * F.area"
+  }
+ ],
+ "when": [
+  {
+   "switch": "mim",
+   "cases": {
+    "A": true
+   },
+   "default": false
+  },
+  {
+   "switch": "metal_stack",
+   "cases": {
+    "5LM": true,
+    "6LM": true
+   },
+   "default": false
+  }
+ ]
+}

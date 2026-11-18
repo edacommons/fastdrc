@@ -1,0 +1,130 @@
+{
+ "name": "HVNESD.11",
+ "desc": "HVNESD.11 : Source COMP must enclose by LVS_Source.",
+ "shapes": [
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      11,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      11,
+      0
+     ],
+     "end": [
+      11,
+      14
+     ],
+     "edge": true
+    },
+    {
+     "id": "a_2",
+     "start": [
+      11,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      9,
+      5
+     ],
+     "end": [
+      13,
+      5
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      13,
+      5
+     ],
+     "end": [
+      13,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_2",
+     "start": [
+      13,
+      9
+     ],
+     "end": [
+      9,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      9,
+      9
+     ],
+     "end": [
+      9,
+      5
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "X",
+   "from": "b_3",
+   "to": "a_1",
+   "crossed": "straddle"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "A.layer == lvs_source"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == hvn_esd_sd"
+  }
+ ]
+}

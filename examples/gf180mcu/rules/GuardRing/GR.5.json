@@ -1,0 +1,244 @@
+{
+ "name": "GR.5",
+ "desc": "GR.5 : Minimum metal-n (n=1 to 6) outer edge space to die edge (Identified by the outer edge of GUARD_RING_MK).",
+ "shapes": [
+  {
+   "name": "MK",
+   "edges": [
+    {
+     "id": "mk_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      40,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_1",
+     "start": [
+      40,
+      0
+     ],
+     "end": [
+      40,
+      32
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_2",
+     "start": [
+      40,
+      32
+     ],
+     "end": [
+      0,
+      32
+     ],
+     "edge": false
+    },
+    {
+     "id": "mk_3",
+     "start": [
+      0,
+      32
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ],
+   "hole_loops": [
+    [
+     {
+      "id": "hmk_0",
+      "start": [
+       10,
+       10
+      ],
+      "end": [
+       30,
+       10
+      ],
+      "edge": false
+     },
+     {
+      "id": "hmk_1",
+      "start": [
+       30,
+       10
+      ],
+      "end": [
+       30,
+       22
+      ],
+      "edge": false
+     },
+     {
+      "id": "hmk_2",
+      "start": [
+       30,
+       22
+      ],
+      "end": [
+       10,
+       22
+      ],
+      "edge": false
+     },
+     {
+      "id": "hmk_3",
+      "start": [
+       10,
+       22
+      ],
+      "end": [
+       10,
+       10
+      ],
+      "edge": false
+     }
+    ]
+   ]
+  },
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      4,
+      4
+     ],
+     "end": [
+      36,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      36,
+      4
+     ],
+     "end": [
+      36,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_2",
+     "start": [
+      36,
+      28
+     ],
+     "end": [
+      4,
+      28
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      4,
+      28
+     ],
+     "end": [
+      4,
+      4
+     ],
+     "edge": true
+    }
+   ],
+   "hole_loops": [
+    [
+     {
+      "id": "ha_0",
+      "start": [
+       8,
+       8
+      ],
+      "end": [
+       32,
+       8
+      ],
+      "edge": false
+     },
+     {
+      "id": "ha_1",
+      "start": [
+       32,
+       8
+      ],
+      "end": [
+       32,
+       24
+      ],
+      "edge": false
+     },
+     {
+      "id": "ha_2",
+      "start": [
+       32,
+       24
+      ],
+      "end": [
+       8,
+       24
+      ],
+      "edge": false
+     },
+     {
+      "id": "ha_3",
+      "start": [
+       8,
+       24
+      ],
+      "end": [
+       8,
+       8
+      ],
+      "edge": false
+     }
+    ]
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "E",
+   "from": "mk_3",
+   "to": "a_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "MK.layer == guard_ring_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "A.layer == metal_any"
+  },
+  {
+   "kind": "check",
+   "expr": "E >= 3"
+  }
+ ],
+ "when": {
+  "switch": "bond_pad",
+  "cases": {
+   "solder_bump": true
+  },
+  "default": false
+ }
+}

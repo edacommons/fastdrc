@@ -1,0 +1,137 @@
+{
+ "name": "TM.6",
+ "desc": "TM.6 : Pad without UBM layers is not allowed except the Pad under PROBE_MK marking.",
+ "shapes": [
+  {
+   "name": "OUT",
+   "edges": [
+    {
+     "id": "out_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      16,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "out_1",
+     "start": [
+      16,
+      0
+     ],
+     "end": [
+      16,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "out_2",
+     "start": [
+      16,
+      14
+     ],
+     "end": [
+      0,
+      14
+     ],
+     "edge": false
+    },
+    {
+     "id": "out_3",
+     "start": [
+      0,
+      14
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "IN",
+   "edges": [
+    {
+     "id": "in_0",
+     "start": [
+      5,
+      4
+     ],
+     "end": [
+      11,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "in_1",
+     "start": [
+      11,
+      4
+     ],
+     "end": [
+      11,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "in_2",
+     "start": [
+      11,
+      10
+     ],
+     "end": [
+      5,
+      10
+     ],
+     "edge": false
+    },
+    {
+     "id": "in_3",
+     "start": [
+      5,
+      10
+     ],
+     "end": [
+      5,
+      4
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "OUT.layer in {ubmpperi, ubmparray, ubmeplate}"
+  },
+  {
+   "kind": "match",
+   "expr": "IN.layer == pad"
+  },
+  {
+   "kind": "check",
+   "expr": "IN in OUT"
+  }
+ ],
+ "when": {
+  "switch": "bond_pad",
+  "cases": {
+   "solder_bump": true
+  },
+  "default": false
+ },
+ "except": [
+  "probe_mk"
+ ]
+}
