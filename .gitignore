@@ -28,4 +28,6 @@ venv/
 .doit.db
 # a process's generated deck and rule text
 examples/*/build/
+fastdrc-gf180mcu/fastdrc_gf180mcu/build/
+*.build/
 docs/figures/build/

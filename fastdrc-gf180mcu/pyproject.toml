@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling >=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fastdrc-gf180mcu"
+version = "0.0.1"
+description = "The design rules of the open GF180MCU process, drawn from its manual: a FastDRC deck"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["fastdrc"]
+license = "Apache-2.0"
+keywords = ["EDA", "DRC", "design-rule-check", "GF180MCU", "KLayout"]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
+]
+
+# what makes `fastdrc build gf180mcu` find the deck
+[project.entry-points."fastdrc.decks"]
+gf180mcu = "fastdrc_gf180mcu"
+
+[tool.hatch.build.targets.wheel]
+packages = ["fastdrc_gf180mcu"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/fastdrc_gf180mcu", "/README.md", "/LICENSE"]

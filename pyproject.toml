@@ -19,7 +19,16 @@ classifiers = [
 ]
 
 [dependency-groups]
-dev = ["pytest>=8", "rawast>=0.1.1"]   # rawast: cross-checks the constraint grammar in the tests
+# rawast: cross-checks the constraint grammar in the tests; the GF180MCU deck is tested here too
+dev = ["pytest>=8", "rawast>=0.1.1", "fastdrc-gf180mcu"]
+
+# the GF180MCU deck is a package of its own, kept in this repository
+[tool.uv.workspace]
+members = ["fastdrc-gf180mcu"]
+
+[tool.uv.sources]
+fastdrc = { workspace = true }
+fastdrc-gf180mcu = { workspace = true }
 
 [project.scripts]
 fastdrc = "fastdrc.cli:main"
@@ -28,7 +37,7 @@ fastdrc = "fastdrc.cli:main"
 packages = ["python/fastdrc"]
 
 [tool.hatch.build.targets.sdist]
-exclude = ["/build", "/private", "/docs/gf180mcu", "/docs/sky130", "/docs/ihp", "/docs/fp45"]
+exclude = ["/build", "/private", "/fastdrc-gf180mcu", "/docs/gf180mcu", "/docs/sky130", "/docs/ihp", "/docs/fp45"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

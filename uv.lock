@@ -2,6 +2,12 @@ version = 1
 revision = 3
 requires-python = ">=3.11"
 
+[manifest]
+members = [
+    "fastdrc",
+    "fastdrc-gf180mcu",
+]
+
 [[package]]
 name = "colorama"
 version = "0.4.6"
@@ -18,6 +24,7 @@ source = { editable = "." }
 
 [package.dev-dependencies]
 dev = [
+    { name = "fastdrc-gf180mcu" },
     { name = "pytest" },
     { name = "rawast" },
 ]
@@ -26,9 +33,21 @@ dev = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "fastdrc-gf180mcu", editable = "fastdrc-gf180mcu" },
     { name = "pytest", specifier = ">=8" },
     { name = "rawast", specifier = ">=0.1.1" },
 ]
+
+[[package]]
+name = "fastdrc-gf180mcu"
+version = "0.0.1"
+source = { editable = "fastdrc-gf180mcu" }
+dependencies = [
+    { name = "fastdrc" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "fastdrc", editable = "." }]
 
 [[package]]
 name = "iniconfig"

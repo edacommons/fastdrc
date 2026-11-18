@@ -8,9 +8,18 @@ manual:
 
 (part of the GF180MCU PDK, Apache License 2.0, GlobalFoundries PDK Authors).
 
-    fastdrc build examples/gf180mcu            ->  build/gf180mcu.drc, build/gf180mcu.md
-    fastdrc gui examples/gf180mcu              the drawings
-    fastdrc check chip.gds examples/gf180mcu --profile gf180mcuC
+    pip install fastdrc-gf180mcu
+
+installs the deck beside [FastDRC](https://github.com/edacommons/FastDRC), which then
+knows it by the name `gf180mcu`:
+
+    fastdrc build gf180mcu                     ->  gf180mcu.build/gf180mcu.drc, gf180mcu.md
+    fastdrc gui gf180mcu                       the drawings
+    fastdrc check chip.gds gf180mcu --profile gf180mcuC
+
+The deck itself is the folder [`fastdrc_gf180mcu/`](fastdrc_gf180mcu): `process.json`,
+`rules/<section>/<rule>.json` and `layouts/`. It can be copied and used as any deck
+folder (`fastdrc build path/to/folder`).
 
 ## What is in it
 
@@ -45,7 +54,7 @@ value the manual gives for it.
 
 ## The options of the process
 
-They are parameters of the deck (`fastdrc parameters examples/gf180mcu`):
+They are parameters of the deck (`fastdrc parameters gf180mcu`):
 
 | parameter | choices | what it decides |
 |---|---|---|
@@ -58,17 +67,16 @@ The profiles are the variants of the open PDK: `gf180mcuA` (3LM, 30K, MIM option
 manual's option B "only supports 4 or more metal layers"), `gf180mcuB` (4LM, 11K),
 `gf180mcuC` (5LM, 9K), `gf180mcuD` (5LM, 11K), these three with MIM option B.
 
-    fastdrc check chip.gds examples/gf180mcu --profile gf180mcuC
-    fastdrc build examples/gf180mcu --set top_metal=30K,mim=none
-    fastdrc check chip.gds examples/gf180mcu --set bond_pad=ball
+    fastdrc check chip.gds gf180mcu --profile gf180mcuC
+    fastdrc build gf180mcu --set top_metal=30K,mim=none
+    fastdrc check chip.gds gf180mcu --set bond_pad=ball
 
 ## How it was checked
 
 - **Against the manual.** Every section's rules were read beside the manual's sentence and
-  its figure; what was found and changed is in [`MANUAL_CHECK.md`](MANUAL_CHECK.md). Where
-  the manual was not clear, a rule is read by what it is for in the process, and that is
-  written there too.
-- **Against its own drawings.** `fastdrc selftest examples/gf180mcu` builds test layouts
+  its figure, and corrected where it said more or less than the manual. Where the manual
+  was not clear, a rule is read by what it is for in the process.
+- **Against its own drawings.** `fastdrc selftest gf180mcu` builds test layouts
   from every rule's picture and runs the deck on them: of the default deck's 1045 checks,
   all 1015 that are tested behave as drawn, and so do those of every profile and every
   kind of bond pad. 30 have no generated test. 18 are the rules that hold in a zone — along a well edge (`NP.3bi`, `NP.3bii`,
@@ -81,7 +89,7 @@ manual's option B "only supports 4 or more metal layers"), `gf180mcuB` (4LM, 11K
   native device near an Nwell (`LU.5`), each on a layout below, and `DCF.1a`, which
   speaks of the whole die and was run on a layout of its own (COMP 18 µm apart: quiet;
   30 µm apart: reported).
-- **On its own layouts.** `layouts/` holds 150 pieces of layout drawn by hand, each naming
+- **On its own layouts.** [`fastdrc_gf180mcu/layouts/`](fastdrc_gf180mcu/layouts) holds 150 pieces of layout drawn by hand, each naming
   the rules that must report on it; `fastdrc selftest` runs the whole deck on them, and a
   rule that reports where it is not named is a rule drawn too broadly. All of them are read as
   they should be, in every build they belong to. Among them: LDNMOS and LDPMOS fingers with each of their values off,
@@ -94,7 +102,10 @@ manual's option B "only supports 4 or more metal layers"), `gf180mcuB` (4LM, 11K
   - the cells as they are: the rules are silent in both decks, but for `DF.13` and
     `DF.14` here — the tap distance, read for the device: a cell with no tap of its own is
     reported until it stands beside its tap cells (the process's deck reads these two from
-    the tap's side and is silent);
+    the tap's side and is silent). For the same reason the latch-up tap distances
+    `LU.3a`-`LU.3c` and `LU.4a`-`LU.4c` report those cells, and `DCF.1b` — the COMP
+    density of a whole die — reports the row of cells once; the process's deck has none of
+    these rules;
   - the cells with about 2800 random small errors put in: the rules that fire flag the
     same places in both decks, but for `DF.13`, `DF.14` (above) and one marker of `NP.5b`,
     where the process's deck takes a whole Nplus shape that touches an LVPWELL anywhere
@@ -126,5 +137,5 @@ the circuit, checked by LVS), and the pages that send the rest back to section 7
 From chapters 8 to 14 the same holds for what the manual lists in its appendix B, "Rules
 not coded", and for what it calls a guideline or a recommended rule (the names beginning
 `G.` / `G_`, the matched-pair and DFM pages, current densities, the ESD diode and die
-corner pages); [`MANUAL_CHECK.md`](MANUAL_CHECK.md) names them one by one.
+corner pages).
 

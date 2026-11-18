@@ -88,6 +88,41 @@ def build_dir(path) -> str:
     return os.path.join(path, "build")
 
 
+def installed() -> dict:
+    """The decks installed as Python packages: ``{name: folder}``. A package offers a
+    deck through the ``fastdrc.decks`` entry-point group -- the entry names a module, and
+    the deck is the folder that module lies in (or its ``PATH``, if it gives one)::
+
+        [project.entry-points."fastdrc.decks"]
+        gf180mcu = "fastdrc_gf180mcu"
+
+    A package that cannot be loaded is left out."""
+    from importlib.metadata import entry_points
+    found = {}
+    for ep in entry_points(group="fastdrc.decks"):
+        try:
+            mod = ep.load()
+            folder = getattr(mod, "PATH", None) or os.path.dirname(os.path.abspath(mod.__file__))
+        except Exception:                               # noqa: BLE001
+            continue
+        if is_process(folder):
+            found.setdefault(ep.name, folder)
+    return found
+
+
+def find(deck) -> tuple:
+    """Where the deck `deck` is, and where its generated files go by default: ``(path,
+    None)`` for a folder or a zip (see `build_dir`); for the NAME of an installed deck
+    (see `installed`), its folder and ``<name>.build`` in the current folder -- nothing is
+    written into an installed package. A folder or file of that name comes first."""
+    if os.path.exists(deck):
+        return deck, None
+    folder = installed().get(deck)
+    if folder is None:
+        return deck, None
+    return folder, os.path.abspath(deck + ".build")
+
+
 def _kept(rel) -> bool:
     """Does the file `rel` (relative to the deck) belong in the zip?  Everything written
     by hand does; what is generated (build/) and hidden files do not."""

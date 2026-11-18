@@ -1,4 +1,4 @@
-"""The GF180MCU deck in examples/: every rule file compiles, and says something."""
+"""The GF180MCU deck (the package fastdrc-gf180mcu): every rule file compiles, and says something."""
 import glob
 import json
 import os
@@ -7,7 +7,7 @@ import pytest
 
 from fastdrc import process
 
-DECK = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "examples", "gf180mcu")
+DECK = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "fastdrc-gf180mcu", "fastdrc_gf180mcu")
 
 
 def test_every_rule_compiles(tmp_path):

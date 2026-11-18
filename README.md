@@ -77,6 +77,7 @@ fastdrc check chip.gds mydeck --only "3-metal,NW.*"   # part of the deck: one sc
 fastdrc check chip.gds mydeck --deep   # on the layout's hierarchy: a cell placed many times is checked once
 fastdrc check chip.gds mydeck --profile NAME    # a process with options (metal stack, ...): `fastdrc parameters mydeck`
 fastdrc pack mydeck             # -> mydeck.zip: the same deck in one file; every command and the editor take it
+fastdrc check chip.gds gf180mcu # a deck installed as a package (pip install fastdrc-gf180mcu) goes by its name: `fastdrc decks`
 ```
 
 `build`, `rules` and the editor need nothing but Python; `selftest`, `check` and the editor's
@@ -87,11 +88,13 @@ fastdrc pack mydeck             # -> mydeck.zip: the same deck in one file; ever
 > taken from the manual's page to a deck that has been run, with every kind of rule
 > ([`examples/demo/`](examples/demo)): `fastdrc build examples/demo`.
 >
-> **A real process: [`examples/gf180mcu/`](examples/gf180mcu)** — the open GF180MCU
+> **A real process: [`fastdrc-gf180mcu/`](fastdrc-gf180mcu)** — the open GF180MCU
 > design rules drawn from the public manual, 775 rule files from the front end to
 > antenna, bond pad, seal ring, dummy fill and latch-up rules, with the metal stack, the
 > top metal, the MIM option and the kind of bond pad as parameters; compared with the
-> process's own KLayout deck where it has one. Its README says how it was checked.
+> process's own KLayout deck where it has one. It is a package of its own
+> (`pip install fastdrc-gf180mcu`, then `fastdrc check chip.gds gf180mcu`); its README
+> says how it was checked.
 >
 > **📐 [docs/drawing-model.md](docs/drawing-model.md)** is the reference: how each kind
 > of rule is drawn and what the compiler derives from it — widths, spacings,
@@ -143,7 +146,7 @@ drawn-rule corpus read from `docs/gf180mcu/`, which is not part of this reposito
 ```
 python/fastdrc/    the Python package: the rule compiler, its backends, the editor
 examples/demo/     a complete deck for an invented process, with every kind of rule
-examples/gf180mcu/ the design rules of the open GF180MCU process, drawn from its manual
+fastdrc-gf180mcu/  the package fastdrc-gf180mcu: the design rules of the open GF180MCU process, drawn from its manual
 docs/              the tutorial (from-a-manual.md), the reference (drawing-model.md), what is new (own-and-known.md)
 docs/img/          the docs' figures, drawn from rule files by tools/doc_figures.py
 tools/             validation of the compiler against a reference deck

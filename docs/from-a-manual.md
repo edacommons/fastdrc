@@ -33,6 +33,14 @@ folder back, and `fastdrc init mydeck.zip` starts an empty one. Every command an
 editor take the zip where they take the folder — the editor saves straight into it —
 and what is generated goes beside it, in `mydeck.build/`.
 
+A deck may also be installed as a Python package and then given by its name: after `pip
+install fastdrc-gf180mcu`, `fastdrc check chip.gds gf180mcu` (`fastdrc decks` lists what is
+installed; what is generated goes into `gf180mcu.build/` in the current folder). Such a
+package holds the deck folder and names it in the `fastdrc.decks` entry-point group:
+
+    [project.entry-points."fastdrc.decks"]
+    gf180mcu = "fastdrc_gf180mcu"          # a module; the deck is the folder it lies in
+
 A rule file is a drawing and what the manual says about it:
 
     { "name": "NW.1", "desc": "N-well width",

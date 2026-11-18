@@ -5,6 +5,10 @@
     fastdrc build mydeck            -> the deck (a KLayout script) and the rules as sentences
     fastdrc selftest mydeck         does every constraint of every rule behave as drawn?
     fastdrc check chip.gds mydeck   run the deck on a layout, list the violations per rule
+
+A deck installed as a package is given by its name (`fastdrc decks` lists them):
+
+    fastdrc check chip.gds gf180mcu
 """
 
 from __future__ import annotations
@@ -132,7 +136,7 @@ def _check(args):
     """`fastdrc check`: build the process, run its deck on a layout, say what it found."""
     from . import process
     from .backend import RunError, runner
-    deck, _, n, notes = process.build(args.process, **_set(args))
+    deck, _, n, notes = process.build(args.process, getattr(args, "out", None), **_set(args))
     for note in notes:
         print(f"fastdrc: warning: {note}", file=sys.stderr)
     eng = runner(args.backend)
@@ -178,8 +182,8 @@ def main(argv=None):
 
     build_p = sub.add_parser(
         "build", help="Compile a process folder: the KLayout deck and the rules as text.")
-    build_p.add_argument("process", nargs="?", default=".", help="deck folder or .zip (default: here)")
-    build_p.add_argument("-o", "--out", help="output folder (default: <deck>/build; for a zip, <name>.build beside it)")
+    build_p.add_argument("process", nargs="?", default=".", help="deck folder, .zip, or the name of an installed deck (default: here)")
+    build_p.add_argument("-o", "--out", help="output folder (default: <deck>/build; for a zip, <name>.build beside it; for an installed deck, <name>.build here)")
 
     _set_options(build_p)
     build_p.add_argument("--with", dest="also", metavar="BACKEND[,BACKEND]",
@@ -188,8 +192,8 @@ def main(argv=None):
     self_p = sub.add_parser(
         "selftest", help="Generate test cases from the drawings and report which rules behave as drawn "
                          "(needs KLayout).")
-    self_p.add_argument("process", nargs="?", default=".", help="deck folder or .zip (default: here)")
-    self_p.add_argument("-o", "--out", help="output folder (default: <deck>/build; for a zip, <name>.build beside it)")
+    self_p.add_argument("process", nargs="?", default=".", help="deck folder, .zip, or the name of an installed deck (default: here)")
+    self_p.add_argument("-o", "--out", help="output folder (default: <deck>/build; for a zip, <name>.build beside it; for an installed deck, <name>.build here)")
     _set_options(self_p)
     self_p.add_argument("-v", "--verbose", action="store_true", help="also list the rules with no generated test")
 
@@ -201,16 +205,18 @@ def main(argv=None):
     unpack_p.add_argument("zip", help="deck .zip")
     unpack_p.add_argument("folder", nargs="?", help="folder to extract into (default: the zip's name, beside it)")
 
+    sub.add_parser("decks", help="List the decks installed as packages; each can be named wherever a deck is asked for.")
+
     sub.add_parser("backends", help="List the available backends (the shipped ones and installed plugins).")
 
     split_p = sub.add_parser(
         "split", help="Rewrite a deck's sheets (several rules on one drawing) as one file per rule.")
-    split_p.add_argument("process", nargs="?", default=".", help="deck folder or .zip (default: here)")
+    split_p.add_argument("process", nargs="?", default=".", help="deck folder, .zip, or the name of an installed deck (default: here)")
 
     check_p = sub.add_parser(
         "check", help="Run a process's rules on a layout (needs KLayout) and list the violations.")
     check_p.add_argument("layout", help="layout file (GDS / OASIS)")
-    check_p.add_argument("process", nargs="?", default=".", help="deck folder or .zip (default: here)")
+    check_p.add_argument("process", nargs="?", default=".", help="deck folder, .zip, or the name of an installed deck (default: here)")
     _set_options(check_p)
     check_p.add_argument("--top", help="top cell (default: the layout's)")
     check_p.add_argument("--report", help="report database to write (default: beside the layout)")
@@ -221,7 +227,7 @@ def main(argv=None):
 
     par_p = sub.add_parser(
         "parameters", help="List a deck's parameters (what is chosen once for a chip), their choices and its profiles.")
-    par_p.add_argument("process", nargs="?", default=".", help="deck folder or .zip (default: here)")
+    par_p.add_argument("process", nargs="?", default=".", help="deck folder, .zip, or the name of an installed deck (default: here)")
 
     args = parser.parse_args(argv)
     from .params import ParameterError
@@ -251,7 +257,30 @@ def _parameters(args):
     return 0
 
 
+def _named_deck(args):
+    """A deck may be given by the name it is installed under (`fastdrc decks`): put its
+    folder in place of the name, and its generated files in ``<name>.build`` here."""
+    from . import process
+    if args.command in ("init", "unpack", "backends", "decks"):
+        return
+    if args.command == "rules":
+        args.files = [process.find(f)[0] for f in args.files]
+    elif args.command == "gui":
+        if args.file:
+            args.file = process.find(args.file)[0]
+    else:
+        given = args.process
+        args.process, out = process.find(given)
+        if out and not getattr(args, "out", None):
+            args.out = out
+        if not os.path.exists(args.process):
+            names = ", ".join(process.installed()) or "none"
+            raise SystemExit(f"fastdrc: {given}: no such folder or zip, and no installed deck of that name "
+                             f"(installed decks: {names})")
+
+
 def _run(args):
+    _named_deck(args)
     if args.command == "rules":
         return _compile_rules(args)
     elif args.command == "parameters":
@@ -288,6 +317,13 @@ def _run(args):
         if os.path.isdir(target) and os.listdir(target):
             raise SystemExit(f"fastdrc: {target} exists and is not empty")
         print(process.unpack(args.zip, target))
+    elif args.command == "decks":
+        from fastdrc import process
+        found = process.installed()
+        for name, folder in found.items():
+            print(f"  {name:14} {folder}")
+        if not found:
+            print("no deck is installed as a package (a deck is also just a folder, or a zip)")
     elif args.command == "backends":
         from fastdrc import backend
         for name in backend.available():
