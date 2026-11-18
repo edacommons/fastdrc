@@ -1,0 +1,211 @@
+{
+ "desc": "MIM antenna: a 8200 um top-metal line on the top plate, 1 um2 of N+ COMP on its net",
+ "shapes": [
+  {
+   "layer": "metal5",
+   "box": [
+    0,
+    0,
+    15,
+    15
+   ]
+  },
+  {
+   "layer": "cap_mk",
+   "box": [
+    -2,
+    -2,
+    17,
+    17
+   ]
+  },
+  {
+   "layer": "fusetop",
+   "box": [
+    5,
+    5,
+    10,
+    10
+   ]
+  },
+  {
+   "layer": "via5",
+   "box": [
+    7.37,
+    7.37,
+    7.63,
+    7.63
+   ]
+  },
+  {
+   "layer": "metaltop",
+   "box": [
+    7,
+    7,
+    8207,
+    8
+   ]
+  },
+  {
+   "layer": "metal1",
+   "box": [
+    8206,
+    7,
+    8207,
+    8
+   ]
+  },
+  {
+   "layer": "metal2",
+   "box": [
+    8206,
+    7,
+    8207,
+    8
+   ]
+  },
+  {
+   "layer": "metal3",
+   "box": [
+    8206,
+    7,
+    8207,
+    8
+   ]
+  },
+  {
+   "layer": "metal4",
+   "box": [
+    8206,
+    7,
+    8207,
+    8
+   ]
+  },
+  {
+   "layer": "metal5",
+   "box": [
+    8206,
+    7,
+    8207,
+    8
+   ]
+  },
+  {
+   "layer": "via1",
+   "box": [
+    8206.37,
+    7.37,
+    8206.63,
+    7.63
+   ]
+  },
+  {
+   "layer": "via2",
+   "box": [
+    8206.37,
+    7.37,
+    8206.63,
+    7.63
+   ]
+  },
+  {
+   "layer": "via3",
+   "box": [
+    8206.37,
+    7.37,
+    8206.63,
+    7.63
+   ]
+  },
+  {
+   "layer": "via4",
+   "box": [
+    8206.37,
+    7.37,
+    8206.63,
+    7.63
+   ]
+  },
+  {
+   "layer": "via5",
+   "box": [
+    8206.37,
+    7.37,
+    8206.63,
+    7.63
+   ]
+  },
+  {
+   "layer": "contact",
+   "box": [
+    8206.39,
+    7.39,
+    8206.61,
+    7.61
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    8206,
+    7,
+    8207,
+    8
+   ]
+  },
+  {
+   "layer": "nplus",
+   "box": [
+    8205.6,
+    6.6,
+    8207.4,
+    8.4
+   ]
+  },
+  {
+   "layer": "comp",
+   "box": [
+    8206,
+    10,
+    8207,
+    11
+   ]
+  },
+  {
+   "layer": "pplus",
+   "box": [
+    8205.6,
+    9.6,
+    8207.4,
+    11.4
+   ]
+  }
+ ],
+ "reports": [
+  "ANT.14"
+ ],
+ "when": [
+  {
+   "switch": "mim",
+   "cases": {
+    "B": true
+   },
+   "default": false
+  },
+  {
+   "switch": "metal_stack",
+   "cases": {
+    "6LM": true
+   },
+   "default": false
+  },
+  {
+   "switch": "top_metal",
+   "cases": {
+    "9K": true
+   },
+   "default": false
+  }
+ ]
+}

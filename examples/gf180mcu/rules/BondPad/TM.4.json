@@ -1,0 +1,195 @@
+{
+ "name": "TM.4",
+ "desc": "TM.4 : Space from centre of Pad to Die Edge (Outer edge of GUARD_RING_MK marking).",
+ "shapes": [
+  {
+   "name": "R",
+   "edges": [
+    {
+     "id": "r_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      40,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "r_1",
+     "start": [
+      40,
+      0
+     ],
+     "end": [
+      40,
+      30
+     ],
+     "edge": false
+    },
+    {
+     "id": "r_2",
+     "start": [
+      40,
+      30
+     ],
+     "end": [
+      0,
+      30
+     ],
+     "edge": false
+    },
+    {
+     "id": "r_3",
+     "start": [
+      0,
+      30
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ],
+   "hole_loops": [
+    [
+     {
+      "id": "hr_0",
+      "start": [
+       4,
+       4
+      ],
+      "end": [
+       36,
+       4
+      ],
+      "edge": false
+     },
+     {
+      "id": "hr_1",
+      "start": [
+       36,
+       4
+      ],
+      "end": [
+       36,
+       26
+      ],
+      "edge": false
+     },
+     {
+      "id": "hr_2",
+      "start": [
+       36,
+       26
+      ],
+      "end": [
+       4,
+       26
+      ],
+      "edge": false
+     },
+     {
+      "id": "hr_3",
+      "start": [
+       4,
+       26
+      ],
+      "end": [
+       4,
+       4
+      ],
+      "edge": false
+     }
+    ]
+   ]
+  },
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      16,
+      11
+     ],
+     "end": [
+      24,
+      11
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      24,
+      11
+     ],
+     "end": [
+      24,
+      19
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_2",
+     "start": [
+      24,
+      19
+     ],
+     "end": [
+      16,
+      19
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      16,
+      19
+     ],
+     "end": [
+      16,
+      11
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "D",
+   "from": "A.centre",
+   "to": "r_3"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "R.layer == guard_ring_mk"
+  },
+  {
+   "kind": "match",
+   "expr": "A.layer == pad"
+  },
+  {
+   "kind": "check",
+   "expr": "D >= 90"
+  }
+ ],
+ "when": {
+  "switch": "bond_pad",
+  "cases": {
+   "solder_bump": true
+  },
+  "default": false
+ },
+ "except": [
+  "probe_mk"
+ ]
+}

@@ -1,0 +1,263 @@
+{
+ "name": "TM.5",
+ "desc": "TM.5 : Min allowable bump pitch: >= 70 + (1.3*TM.2).",
+ "shapes": [
+  {
+   "name": "UA",
+   "edges": [
+    {
+     "id": "ua_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      12,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "ua_1",
+     "start": [
+      12,
+      0
+     ],
+     "end": [
+      12,
+      12
+     ],
+     "edge": true
+    },
+    {
+     "id": "ua_2",
+     "start": [
+      12,
+      12
+     ],
+     "end": [
+      0,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "ua_3",
+     "start": [
+      0,
+      12
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      3,
+      3
+     ],
+     "end": [
+      9,
+      3
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      9,
+      3
+     ],
+     "end": [
+      9,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_2",
+     "start": [
+      9,
+      9
+     ],
+     "end": [
+      3,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      3,
+      9
+     ],
+     "end": [
+      3,
+      3
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "UB",
+   "edges": [
+    {
+     "id": "ub_0",
+     "start": [
+      20,
+      0
+     ],
+     "end": [
+      32,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "ub_1",
+     "start": [
+      32,
+      0
+     ],
+     "end": [
+      32,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "ub_2",
+     "start": [
+      32,
+      12
+     ],
+     "end": [
+      20,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "ub_3",
+     "start": [
+      20,
+      12
+     ],
+     "end": [
+      20,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      23,
+      3
+     ],
+     "end": [
+      29,
+      3
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      29,
+      3
+     ],
+     "end": [
+      29,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_2",
+     "start": [
+      29,
+      9
+     ],
+     "end": [
+      23,
+      9
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      23,
+      9
+     ],
+     "end": [
+      23,
+      3
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "P",
+   "from": "A.centre",
+   "to": "B.centre"
+  },
+  {
+   "name": "U",
+   "from": "ua_3",
+   "to": "ua_1",
+   "at": 1.5
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "UA.layer in {ubmpperi, ubmparray, ubmeplate}"
+  },
+  {
+   "kind": "match",
+   "expr": "A.layer == pad"
+  },
+  {
+   "kind": "match",
+   "expr": "UB.layer in {ubmpperi, ubmparray, ubmeplate}"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == pad"
+  },
+  {
+   "kind": "check",
+   "expr": "P >= 70 + 1.3 * U"
+  }
+ ],
+ "when": {
+  "switch": "bond_pad",
+  "cases": {
+   "solder_bump": true
+  },
+  "default": false
+ },
+ "except": [
+  "probe_mk"
+ ]
+}

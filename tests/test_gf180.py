@@ -14,7 +14,7 @@ def test_every_rule_compiles(tmp_path):
     deck, text, n, notes = process.build(DECK, str(tmp_path))
     files = glob.glob(os.path.join(DECK, "rules", "*", "*.json"))
     grid = len(process.load(DECK)[0]["layers"])              # one grid check per layer
-    assert len(files) == 766 and n == 829 + 2 * grid == 1039  # the default; the grid and the angle, per layer
+    assert len(files) == 775 and n == 835 + 2 * grid == 1045  # the default; the grid and the angle, per layer
     assert notes == []                                    # no rule that checks nothing, no layer without a number
     said = open(text, encoding="utf-8").read()
     assert "(no checkable assertion found)" not in said
@@ -50,13 +50,19 @@ def test_the_options_of_the_process_are_parameters(tmp_path):
     assert '.output("CUP.5"' in ball and '.output("PAD.17"' not in ball
     bump = read(params=["bond_pad=solder_bump"])
     assert '.output("TM.6"' in bump and '.output("GR.5' in bump and '.output("PAD.1"' not in bump
+    assert "centres_closer.call(probe_pad, nil, 80)" in bump and '.output("TM.4"' in bump      # the pitch, centre to centre
+    assert ", nil, 70, 1.3, " in bump and '.output("TM.5"' in bump                              # ... growing with the UBM opening
+    assert "side_sums.call(comp, lv_esd_gate, true, 160, nil)" in wedge                        # the total finger width
 
 
 def test_the_antenna_rules_count_the_side_wall_and_the_diode(tmp_path):
     deck = open(process.build(DECK, str(tmp_path), only=["ANT.2,ANT.9,ANT.14"], optimise=False)[0]).read()
     assert "perimeter(x) * 0.54 / (area + 2 * area(d1) + 2 * area(d2))" in deck      # metal1: side wall, gate + 2 x COMP
     assert "area(x) / (area + 2 * area(d1) + 2 * area(d2))" in deck                  # via1: its area
-    assert 'evaluate_nets(fusetop, { "x" => top_metal_layer }' in deck               # the MIM top plate as the gate
+    assert 'evaluate_nets(fusetop, { "x" => top_metal_layer, "d1" => ncomp, "d2" => pcomp }' in deck    # the MIM top plate as the gate
+    assert "perimeter(x) * 0.99 / (area + 15 * area(d1) + 15 * area(d2))" in deck    # ... helped by 15 x the COMP below it
+    before = deck.split("ant_14_l1 =")[0]                                             # the stack below the plate stands by then
+    assert "connect(contact, ncomp)" in before and "connect(via5, metaltop)" in before and "clear_connections" not in before
 
 
 @pytest.mark.skipif(not process.klayout_binary(), reason="KLayout is not installed")
@@ -69,7 +75,7 @@ def test_part_of_it_behaves_as_drawn(tmp_path):
 @pytest.mark.skipif(not process.klayout_binary(), reason="KLayout is not installed")
 def test_its_layouts_are_read_as_they_should_be(tmp_path):
     # whole devices drawn by hand: every rule of the deck gets its say on each
-    assert len(process.deck_layouts(DECK)) == 147
+    assert len(process.deck_layouts(DECK)) == 150
     res = process.selftest(DECK, str(tmp_path), only=["LDNMOS,LDPMOS,HRES,PRES,LRES,Poly2,Pplus,Nplus,Dualgate,OTP,"
                                                       "DummyExclude,MIM-B,Grid,COMP,Wells,SAB,Contact"])
     assert [line for line in res["wrong"] if line.startswith("layout ")] == []

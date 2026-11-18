@@ -94,6 +94,12 @@ class Rule:
         self.desc = data.get("desc", "")      # human description for .output
         self.shapes = {s["name"]: s for s in data.get("shapes", [])}
         self.measures = {m["name"]: m for m in data.get("measures", [])}
+        # an arrow that starts or ends on the CENTRE of a shape (a small circle in the
+        # picture; "A.centre" where an edge is named otherwise) is a reading of its own
+        self.centre_measures = {n: m for n, m in self.measures.items()
+                                if any(str(m.get(k, "")).endswith(".centre") for k in ("from", "to"))}
+        for n in self.centre_measures:
+            del self.measures[n]
         # A cross drawn OVER a shape ("this must not exist", as a datasheet marks it):
         # the same check as a cross on a measure across that shape -- carried as one.
         filtered = self._filtered_shapes(data)
@@ -1395,6 +1401,104 @@ class Rule:
         the picture, as for ``Count``."""
         return [(h, k, lo, hi) for k, (h, lo, hi) in self._counts(("check",), "area").items()]
 
+    def centre_bounds(self) -> list:
+        """``(var, shape, other, edge, lo, per)``: the CHECK ``P >= v`` on an arrow drawn
+        from the centre of `shape` -- to the centre of `other` (`edge` None: a pitch,
+        centre to centre) or to an edge of `other`. The centre is that of the shape's
+        bounding box. Only a minimum is read. `per` is None, or ``(factor, measure,
+        its shape)`` when the limit grows with another measure of the drawing --
+        ``P >= 70 + 1.3 * U``, U an arrow across a shape: so much more for every µm of
+        that shape's size (centre to centre only)."""
+        out = []
+        names = set(self.centre_measures)
+        for kind, ast in self.constraints:
+            if kind != "check":
+                continue
+            for leaf in _and_leaves(ast):
+                b, per = _bound(leaf, names), None
+                if b is None:
+                    b, per = self._grown_bound(leaf, names)
+                if b is None or not b.is_min:
+                    continue
+                m = self.centre_measures[b.var]
+                ends = [m.get("from"), m.get("to")]
+                if not str(ends[0]).endswith(".centre"):
+                    ends.reverse()
+                shape = ends[0][:-len(".centre")]
+                if str(ends[1]).endswith(".centre"):
+                    other, edge = ends[1][:-len(".centre")], None
+                else:
+                    other, edge = self.shape_of_edge(ends[1]), ends[1]
+                if shape in self.shapes and other in self.shapes and not (per and edge):
+                    out.append((b.var, shape, other, edge, b.value, per))
+        return out
+
+    def _grown_bound(self, leaf, names):
+        """``P >= a + f * U`` (the terms in any order, ``a`` may be left out) as
+        ``(Bound(P, >=, a), (f, U, U's shape))``; U is an arrow across ONE shape."""
+        if not (isinstance(leaf, dict) and leaf.get("op") in _CMP and len(leaf.get("args", [])) == 2):
+            return None, None
+        left, right = leaf["args"]
+        op = leaf["op"]
+        if isinstance(right, dict) and right.get("ref") in names:
+            left, right, op = right, left, _FLIP.get(op, op)
+        if not (isinstance(left, dict) and left.get("ref") in names) or op not in _FLIP:
+            return None, None
+
+        def grown(ast):                                  # f * U, U * f or U alone
+            if isinstance(ast, dict) and ast.get("ref") in self.measures:
+                return 1, ast["ref"]
+            if isinstance(ast, dict) and ast.get("op") == "*":
+                x, y = ast["args"]
+                for n, u in ((x, y), (y, x)):
+                    if isinstance(n, dict) and "num" in n and isinstance(u, dict) and u.get("ref") in self.measures:
+                        return n["num"], u["ref"]
+            return None
+        base, term = 0, grown(right)
+        if term is None and isinstance(right, dict) and right.get("op") == "+":
+            x, y = right["args"]
+            for n, g in ((x, y), (y, x)):
+                if isinstance(n, dict) and "num" in n and grown(g):
+                    base, term = n["num"], grown(g)
+        if term is None:
+            return None, None
+        m = self.measures[term[1]]
+        across = self.shape_of_edge(m.get("from"))
+        if not across or across != self.shape_of_edge(m.get("to")):
+            return None, None
+        return Bound(left["ref"], op, base), (term[0], term[1], across)
+
+    def sum_bounds(self) -> list:
+        """``(holder, shape, edge, lo, hi)``: the CHECK ``Sum(k_0.length) >= v`` /
+        ``<= v`` -- that side of every shape of K's layer a holder holds, added up.
+        The holder is read from the picture (the shape K is drawn inside); the side
+        must be the long or the short one of its shape (`side_roles`)."""
+        out = {}
+        for kind, ast in self.constraints:
+            if kind != "check":
+                continue
+            for leaf in _and_leaves(ast):
+                if not (isinstance(leaf, dict) and leaf.get("op") in ("==", "<", "<=", ">", ">=")):
+                    continue
+                a, b = leaf["args"]
+                op = leaf["op"]
+                if isinstance(b, dict) and b.get("op") == "sum":
+                    a, b, op = b, a, _FLIP.get(op, op)
+                if not (isinstance(a, dict) and a.get("op") == "sum" and isinstance(b, dict) and "num" in b):
+                    continue
+                ref = a["args"][0].get("ref", "")
+                edge = ref[:-len(".length")] if ref.endswith(".length") else None
+                k = self.shape_of_edge(edge)
+                holders = [s for s in self.shapes if s != k and k and self.relation(k, s) == "inside"]
+                if not holders or edge not in self.side_roles():
+                    continue
+                span = out.setdefault((holders[0], k, edge), [None, None])
+                if op in ("==", ">=", ">"):
+                    span[0] = b["num"]
+                if op in ("==", "<=", "<"):
+                    span[1] = b["num"]
+        return [(h, k, e, lo, hi) for (h, k, e), (lo, hi) in out.items()]
+
     def _counts(self, kinds, fn="count"):
         """``{counted shape: [container, lo, hi]}`` from ``Count(K) <cmp> n`` constraints
         of the given kinds. WHAT is counted in WHAT is read from the picture: K's
@@ -1605,26 +1709,43 @@ class Rule:
         """Every shape an antenna rule speaks of (its areas are not area rules)."""
         return {s for cs, g, _, fs in self.antenna_bounds() for s in [*cs, g, *(f[0] for f in fs)]}
 
-    def connections_up_to(self, start, stop) -> list:
+    def connections_up_to(self, start, stop, below=()) -> list:
         """The connections that exist while layer `stop` is the last one made. The
         stack's order is read from the connections themselves: a layer's level is how
         many connection steps it is from `start` (the gate) -- poly and the contacts
         on it 1, metal-1 2, via-1 3 ... -- and the stage of `stop` is every connection
-        between layers no further out than `stop` itself."""
+        between layers no further out than `stop` itself.
+
+        `below`: layers that help the gate (a diode's). Where the gate is not at the
+        bottom of the stack (the top plate of a capacitor) they are reached only by
+        way of the collector and down again -- further out than `stop`, yet made long
+        before it. Then the stage also holds the stack from those layers up to `stop`."""
         start, stop = self.plain_layer(start), self.plain_layer(stop)
-        pairs, level, todo = self.connections(), {start: 0}, [start]
-        while todo:
-            cur = todo.pop(0)
-            for a, b in pairs:
-                if cur in (a, b):
-                    other = b if cur == a else a
-                    if other not in level:
-                        level[other] = level[cur] + 1
-                        todo.append(other)
+        pairs = self.connections()
+
+        def levels(roots):
+            level, todo = {r: 0 for r in roots}, list(roots)
+            while todo:
+                cur = todo.pop(0)
+                for a, b in pairs:
+                    if cur in (a, b):
+                        other = b if cur == a else a
+                        if other not in level:
+                            level[other] = level[cur] + 1
+                            todo.append(other)
+            return level
+        level = levels([start])
         top = level.get(stop)
         if top is None:
             return []
-        return [(a, b) for a, b in pairs if level.get(a, top + 1) <= top and level.get(b, top + 1) <= top]
+        keep = {(a, b) for a, b in pairs if level.get(a, top + 1) <= top and level.get(b, top + 1) <= top}
+        below = [self.plain_layer(x) for x in below]
+        if below and not {x for p in keep for x in p} & set(below):
+            up = levels(below)
+            reach = up.get(stop)
+            if reach is not None:
+                keep |= {(a, b) for a, b in pairs if up.get(a, reach + 1) <= reach and up.get(b, reach + 1) <= reach}
+        return [p for p in pairs if p in keep]
 
     def net_relation(self, a, b):
         """``"ne"`` / ``"eq"`` if a constraint says shapes `a` and `b` are on DIFFERENT

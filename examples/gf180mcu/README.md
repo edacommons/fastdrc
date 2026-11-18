@@ -14,12 +14,12 @@ manual:
 
 ## What is in it
 
-766 rule files in 37 sections — the rules of the whole manual that can be checked on a
+775 rule files in 37 sections — the rules of the whole manual that can be checked on a
 layout, chapters 7 to 14 (a rule with a value per column — 3.3 V and 5 V/6 V — is one
 file and one check per column; what is left out, and why, is under *Not drawn*). The section `Grid` holds what the manual says once for every layer: the
 manufacturing grid, 0.005 µm (`"grid"` in `process.json`, one check per layer), and "no
 acute angle" (one drawing, `ANGLE`, on the family `every_layer`). Built as it is by
-default — six metals, 9K top metal, MIM option B, wedge bond pads — that is 1039 checks,
+default — six metals, 9K top metal, MIM option B, wedge bond pads — that is 1045 checks,
 210 of them those two per layer.
 
 | sections | the manual's chapter |
@@ -69,8 +69,8 @@ manual's option B "only supports 4 or more metal layers"), `gf180mcuB` (4LM, 11K
   the manual was not clear, a rule is read by what it is for in the process, and that is
   written there too.
 - **Against its own drawings.** `fastdrc selftest examples/gf180mcu` builds test layouts
-  from every rule's picture and runs the deck on them: of the default deck's 1039 checks,
-  all 1009 that are tested behave as drawn, and so do those of every profile and every
+  from every rule's picture and runs the deck on them: of the default deck's 1045 checks,
+  all 1015 that are tested behave as drawn, and so do those of every profile and every
   kind of bond pad. 30 have no generated test. 18 are the rules that hold in a zone — along a well edge (`NP.3bi`, `NP.3bii`,
   `NP.3ci`, `NP.5ci`, `NP.5cii`, `NP.5di`, `PP.3bii`, `PP.3cii`, `PP.5cii`, `PP.5dii`,
   `NP.11`, `PP.11`), near a gate's poly extension (`NP.4b`, `PP.4b`, `NP.12`, `PP.12`),
@@ -81,7 +81,7 @@ manual's option B "only supports 4 or more metal layers"), `gf180mcuB` (4LM, 11K
   native device near an Nwell (`LU.5`), each on a layout below, and `DCF.1a`, which
   speaks of the whole die and was run on a layout of its own (COMP 18 µm apart: quiet;
   30 µm apart: reported).
-- **On its own layouts.** `layouts/` holds 147 pieces of layout drawn by hand, each naming
+- **On its own layouts.** `layouts/` holds 150 pieces of layout drawn by hand, each naming
   the rules that must report on it; `fastdrc selftest` runs the whole deck on them, and a
   rule that reports where it is not named is a rule drawn too broadly. All of them are read as
   they should be, in every build they belong to. Among them: LDNMOS and LDPMOS fingers with each of their values off,
@@ -128,12 +128,3 @@ not coded", and for what it calls a guideline or a recommended rule (the names b
 `G.` / `G_`, the matched-pair and DFM pages, current densities, the ESD diode and die
 corner pages); [`MANUAL_CHECK.md`](MANUAL_CHECK.md) names them one by one.
 
-Seven rules are layout checks and are not drawn yet, because the drawing has no way to
-say them:
-
-- `TM.4`, `TM.5`, `PM.3` — distances from the **centre** of a pad (bump pitch, probe pad
-  pitch, pad centre to the die edge);
-- `LVESD.6`, `HVNESD.6`, `HVPESD.6` — the **total** finger width of an ESD device, the
-  fingers' widths added up;
-- the diode allowance of `ANT.16` for the MIM case (`ANT.14`, `ANT.15` are checked at the
-  plain ratio).

@@ -206,7 +206,49 @@ class SvgBackend(Backend):
         # what a link (an arrow to a wavy edge) is called matters only if a constraint names it
         named = set(re.findall(r"[A-Za-z_]\w*", " ".join(c.get("expr", "") for c in data.get("constraints", []))))
         arrows = []                                          # every arrow first, then their names: off all the lines
+        boxes = {sh["name"]: (min(v[0] for v in vs), min(v[1] for v in vs), max(v[0] for v in vs), max(v[1] for v in vs))
+                 for sh, vs, _, _ in shapes}
+
+        def middle(end):                                     # "A.centre": the middle of A's bounding box
+            name = str(end)[:-7] if str(end).endswith(".centre") else None
+            if name not in boxes:
+                return None
+            x0_, y0_, x1_, y1_ = boxes[name]
+            return ((x0_ + x1_) / 2, (y0_ + y1_) / 2)
+
+        def dimension(p1, p2, col, dashed=False):
+            dash = ' stroke-dasharray="5 3"' if dashed else (f' marker-start="url(#head-{col[1:]})" '
+                                                             f'marker-end="url(#head-{col[1:]})"')
+            body.append(f'<line x1="{p1[0]:.1f}" y1="{p1[1]:.1f}" x2="{p2[0]:.1f}" y2="{p2[1]:.1f}" stroke="{col}" '
+                        f'stroke-width="{1.1 if dashed else 1.6}"{dash}/>')
+            lines.append((p1, p2, 2.0, None))
         for m in data.get("measures", []):
+            ca, cb = middle(m.get("from")), middle(m.get("to"))
+            if ca or cb:                                     # from the CENTRE of a shape: a small circle with a cross
+                for c in (ca, cb):
+                    if c:
+                        body.append(f'<circle cx="{c[0]:.1f}" cy="{c[1]:.1f}" r="4.5" fill="#ffffff" stroke="{ARROW}" stroke-width="1.4"/>'
+                                    f'<path d="M{c[0] - 8:.1f},{c[1]:.1f} L{c[0] + 8:.1f},{c[1]:.1f} M{c[0]:.1f},{c[1] - 8:.1f} '
+                                    f'L{c[0]:.1f},{c[1] + 8:.1f}" stroke="{ARROW}" stroke-width="1"/>')
+                        taken.append((c[0] - 9, c[1] - 9, c[0] + 9, c[1] + 9))
+                side = sides.get(m.get("to") if ca and not cb else m.get("from"))
+                if ca and cb:
+                    p1, p2 = ca, cb
+                elif side:                                   # ... to an edge: straight across to it
+                    c = ca or cb
+                    (ex0, ey0), (ex1, ey1), _ = side
+                    ln2 = (ex1 - ex0) ** 2 + (ey1 - ey0) ** 2 or 1.0
+                    k = ((c[0] - ex0) * (ex1 - ex0) + (c[1] - ey0) * (ey1 - ey0)) / ln2
+                    p1, p2 = c, (ex0 + k * (ex1 - ex0), ey0 + k * (ey1 - ey0))
+                else:
+                    continue
+                ln = math.hypot(p2[0] - p1[0], p2[1] - p1[1]) or 1.0
+                ux, uy = (p2[0] - p1[0]) / ln * 5.5, (p2[1] - p1[1]) / ln * 5.5   # the head stops at the circle
+                p1 = (p1[0] + ux, p1[1] + uy) if (ca if p1 == ca else cb) and p1 in (ca, cb) else p1
+                p2 = (p2[0] - ux, p2[1] - uy) if p2 in (ca, cb) else p2
+                dimension(p1, p2, ARROW)
+                arrows.append((m, p1, p2, ARROW))
+                continue
             a, b = sides.get(m.get("from")), sides.get(m.get("to"))
             if not a or not b:
                 continue
@@ -246,6 +288,26 @@ class SvgBackend(Backend):
             if m.get("crossed"):                             # its cross is in the way of a name too
                 taken.append((mx - 8, my - 8, mx + 8, my + 8))
             arrows.append((m, p1, p2, col))
+        for holder, shape, edge, _, _ in rule.sum_bounds():   # a side ADDED UP: an arrow along it on every such
+            if edge not in sides:                            # shape in the holder, joined by a dashed line named Σ
+                continue
+            (sx0, sy0), (sx1, sy1), _ = sides[edge]
+            upright = abs(sx0 - sx1) < abs(sy0 - sy1)
+            mids = []
+            for sh, _, _, layer in shapes:
+                if layer != rule.layer_of(shape) or sh.get("cut"):
+                    continue
+                x0_, y0_, x1_, y1_ = boxes[sh["name"]]
+                cx, cy = (x0_ + x1_) / 2, (y0_ + y1_) / 2
+                p1, p2 = ((cx, y0_), (cx, y1_)) if upright else ((x0_, cy), (x1_, cy))
+                dimension(p1, p2, ARROW)
+                mids.append((cx, cy))
+            mids.sort()
+            for q1, q2 in zip(mids, mids[1:]):
+                dimension(q1, q2, ARROW, dashed=True)
+            if mids:
+                q1, q2 = (mids[0], mids[1]) if len(mids) > 1 else (mids[0], mids[0])
+                arrows.append(({"name": "Σ"}, q1, q2, ARROW))
         for sh, verts, centre, layer in shapes:              # names, and the cross of a forbidden shape
             xs, ys = [v[0] for v in verts], [v[1] for v in verts]
             col = HOLE if sh.get("cut") else sh.get("color") or colour_of(layer or sh["name"])

@@ -13,6 +13,8 @@ leaves are::
 The two functions are ``Count(K)`` -> ``{"op": "count", "args": [{"ref": "K"}]}``: how
 many of K's layer a shape holds (which shape: the one K is drawn in), and ``Area(K)``
 -> ``{"op": "area", ...}``: how much area of K's layer it holds, all of it together.
+``Sum(k_0.length)`` -> ``{"op": "sum", "args": [{"ref": "k_0.length"}]}``: that side of
+every shape of K's layer it holds, added up.
 
 Anything outside the subset (other calls, strings, subscripts, chained comparisons,
 ``**``, ...) is rejected with `ConstraintError`. The compiler walks one node
@@ -91,7 +93,7 @@ def _lower(node, text):
     if isinstance(node, ast.Call):                         # the one function: Count(shape)
         name = node.func.id.lower() if isinstance(node.func, ast.Name) else None
         arg = _ref(node.args[0]) if len(node.args) == 1 and not node.keywords else None
-        if name not in ("count", "area") or arg is None:
+        if name not in ("count", "area", "sum") or arg is None:
             raise bad("this function call")
         return {"op": name, "args": [{"ref": arg}]}
     if _num(node) is not None:

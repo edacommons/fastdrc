@@ -1,0 +1,76 @@
+{
+ "desc": "MIM antenna: a 5100 um top-metal line on the top plate, no diode",
+ "shapes": [
+  {
+   "layer": "metal5",
+   "box": [
+    0,
+    0,
+    15,
+    15
+   ]
+  },
+  {
+   "layer": "cap_mk",
+   "box": [
+    -2,
+    -2,
+    17,
+    17
+   ]
+  },
+  {
+   "layer": "fusetop",
+   "box": [
+    5,
+    5,
+    10,
+    10
+   ]
+  },
+  {
+   "layer": "via5",
+   "box": [
+    7.37,
+    7.37,
+    7.63,
+    7.63
+   ]
+  },
+  {
+   "layer": "metaltop",
+   "box": [
+    7,
+    7,
+    5107,
+    8
+   ]
+  }
+ ],
+ "reports": [
+  "ANT.14"
+ ],
+ "when": [
+  {
+   "switch": "mim",
+   "cases": {
+    "B": true
+   },
+   "default": false
+  },
+  {
+   "switch": "metal_stack",
+   "cases": {
+    "6LM": true
+   },
+   "default": false
+  },
+  {
+   "switch": "top_metal",
+   "cases": {
+    "9K": true
+   },
+   "default": false
+  }
+ ]
+}

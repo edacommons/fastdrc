@@ -69,7 +69,7 @@ MUL: choice { <MUL_BIN>, <PRIMARY> }
 MUL_BIN: sequence dict { <PRIMARY>:args[]=@, <MUL_OP>:op=@, <PRIMARY>:args[]=@ }
 MUL_OP: choice { "*":@, "/":@ }
 
-PRIMARY: choice { <GROUP>, <NUMBER>, <COUNT>, <AREA>, <REF> }
+PRIMARY: choice { <GROUP>, <NUMBER>, <COUNT>, <AREA>, <SUM>, <REF> }
 // The one function: Count(K) -- how many of K's layer a shape holds (which shape is
 // read from the drawing: the one K is drawn in). Tried before <REF> so that the
 // name is not taken for an identifier.
@@ -78,6 +78,9 @@ COUNT_KW: choice { 'Count', 'count' }
 // Area(K) -- how much area of K's layer that shape holds, all of it together.
 AREA: sequence dict { <AREA_KW>:op="area", "(", <REF>:args[]=@, ")" }
 AREA_KW: choice { 'Area', 'area' }
+// Sum(k_0.length) -- that side of every shape of K's layer the shape holds, added up.
+SUM: sequence dict { <SUM_KW>:op="sum", "(", <REF>:args[]=@, ")" }
+SUM_KW: choice { 'Sum', 'sum' }
 GROUP: sequence { "(", <OR>, ")" }
 // `int`/`float` are signed parsers, so -45 parses natively as {num:-45}.
 // `float` precedes `int` (strict float fails on a bare integer, letting int win).

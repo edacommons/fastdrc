@@ -4,8 +4,8 @@
     python tools/doc_figures.py            write docs/img/<set>/<rule>.svg
     python tools/doc_figures.py --check    exit 1 if a figure is not what the rule files give
 
-Sets: `demo` -- every rule of examples/demo; `edges` -- docs/figures, the four small
-drawings that show what straight and wavy edges mean. A figure is never edited by hand:
+Sets: `demo` -- every rule of examples/demo; `edges` -- docs/figures, the small
+drawings that show what straight and wavy edges mean, a centre mark and a sum. A figure is never edited by hand:
 change the rule file and run this again.
 """
 import os

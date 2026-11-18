@@ -86,6 +86,10 @@ means:**
 This is the single most important convention: **straight measure = distance, a link to
 a wavy edge = relation.**
 
+An arrow may also start or end on the **centre** of a shape — a small circle with a
+cross, in the file `"from": "A.centre"` where an edge id stands otherwise. It is always
+a distance (see *From the centre of a shape*).
+
 ---
 
 ## Constraints: `match` vs `check`
@@ -617,6 +621,72 @@ must carry a 2 × 2 array of them" (→ `metal.interacting(via, 1).not_interacti
 together, in µm². "The MIM capacitors on one bottom plate may be 10000 µm² in all" is
 the plate with a capacitor in it and `Area(F) <= 10000`.
 
+### From the centre of a shape — a pitch, a centre to an edge
+"Min probe pad pitch 80", where the manual defines pitch as the centre-to-centre
+distance. Draw the two pads and an arrow from one **centre** to the other — in the
+editor, shift-click inside each shape instead of on a side; in the file
+`{"name": "P", "from": "A.centre", "to": "B.centre"}` — and bound it: `P >= 80`.
+
+![5-pitch](img/edges/5-pitch.svg)
+
+*the centres of two pad must be at least 80 µm apart (the pitch, centre to centre).*
+
+The centre is that of the shape's bounding box, so the shape's form does not matter
+(all its edges may stay wavy). The distance is the straight one between the two
+centres, in any direction. → a small helper in the deck, `centres_closer.call(pad, nil,
+80)`, which marks each offending pair with the line between its centres. It compares
+twice the coordinates, so a centre on half a database unit is exact too.
+
+With one end on an **edge** it is the distance from the centre straight across to that
+edge. "Space from centre of pad to die edge (outer edge of the seal ring marking) 90":
+the pad in the ring's hole, the arrow from its centre to the ring's outline:
+
+![6-centre-to-edge](img/edges/6-centre-to-edge.svg)
+
+*the centre of every pad must be at least 90 µm in from the outer edge of the seal
+around it.* → `pad.interacting(pad.middle.not_inside(seal.hulls.sized(-89.999)))`.
+KLayout's `middle` is a box one database unit about the centre, which is why the other
+shape is shrunk by the distance less that unit; here the centre is rounded to the
+database grid. An arrow to an edge of the hole measures in from the hole (`.holes`), to
+the edge of a plain shape the pad lies in from that shape, and to a shape beside it
+out from that one (`pad.middle.overlapping(metal.sized(11.999))`).
+
+Only a minimum is read from a centre.
+
+**A pitch that grows with a size.** "Min allowable bump pitch >= 70 + 1.3 × the UBM
+opening": the limit is not one number, it is worked out for each pair. Draw the two
+pads, each in its UBM opening, the pitch arrow `P` between the pads' centres, an
+arrow `U` across one opening, and write the formula as the manual does:
+
+    P >= 70 + 1.3 * U
+
+*the pitch of two pad, centre to centre, must be at least 70 µm plus 1.3 times the size
+of the ubm it lies in (the longer side of its bounding box; of the two, the larger).*
+`U` may be drawn across the measured shape itself (`P >= 2 * W`: by its own size) or
+across the shape that holds it (as here). Where the two of a pair differ, the larger
+counts. → `centres_closer.call(pad, nil, 70, 1.3, ubm)`.
+
+### A side added up — "total finger width"
+"Min. total finger width 160": not one finger, all the fingers of one device together.
+Draw the holder (the diffusion) with two or three of the shapes in it, say which side
+is meant by ordering two sides (`g_1.length >= g_0.length`: g_1 is the long one), and
+bound the sum:
+
+    Sum(g_1.length) >= 160         (and  <= 720  for the maximum)
+
+![7-total](img/edges/7-total.svg)
+
+*the longer sides of all the gate in one diff must add up to at least 160 µm and at
+most 720 µm.*
+
+`Sum` is the third function beside `Count` and `Area`, and like them it reads the
+holder from the picture: the shape the summed one is drawn inside. Every shape of that
+layer whose centre lies in a holder is taken; its longer (or shorter) side is the
+longer (shorter) extent of its bounding box. A holder that holds none is not judged.
+The picture shows an arrow along the side on every such shape, joined by a dashed
+line named Σ — drawn from the constraint, not stored in the file. → the helper
+`side_sums.call(diff, gate, true, 160, 720)`; the holders out of range are reported.
+
 ### A share of a shape's area — what it holds
 "Slit density of a metal plate at least 6 %": the area of what a shape **holds**,
 relative to its own. Draw the slit inside the plate and bound one area by the other:
@@ -660,6 +730,11 @@ Two refinements, both read from the same picture:
 | a `match` on another connected shape: `D.area < 0.16` / `D.area >= 0.16` | only nets *without* / *with* that much of it — a protection diode | the same, with the condition on the finished stack |
 | `M.perimeter * 0.54 <= 400 * G.area` | the collector counted by its **side wall** — perimeter × thickness, as a manual that says "perimeter area" means it | `evaluate_nets(gate, { "x" => metal1 }, "put('t1', perimeter(x) * 0.54 / area)")`, then the nets above the ratio |
 | `... <= 400 * (G.area + 2 * D.area)` | the gate **helped** by what else is on the net: its area plus a factor times the diode's ("gate area + MF × the COMP connected to it") | the same, the diode's area taken at the collector's own stage: `/ (area + 2 * area(d1))` |
+
+The "gate" need not be at the bottom of the stack: for a capacitor's top plate the
+diode lies *below* it and is reached only by way of the collector and down again. Then
+the collector's stage also holds the whole stack from the diode's layer up to that
+collector — everything that was made before it.
 
 A legend name that only stands for a layer (`top_metal_layer` for the top metal of this
 stack) is that layer in the connections. Where one deck needs the nets of several sets of
@@ -1291,7 +1366,8 @@ flags (on the clean layout: nothing, or the drawing says more than the manual).
   straight ↔ wavy. **Right-click** an edge: split it.
 - **Shift-click two edges**: a measure. Give it a number in a constraint and it is a
   distance; with a wavy end and no constraint it is a **link** (a relation). Select
-  the measure to set a **cross**, the metric, or edge-to-edge.
+  the measure to set a **cross**, the metric, or edge-to-edge. Shift-click **inside a
+  shape**, off its sides, to put that end on the shape's **centre** (a pitch).
 - **Drag an arrow** to slide it along its two edges (a new one lands mid-way, often on
   top of another); "arrow at" in its properties is the same position as a number.
   Where an arrow sits can matter: what lies under it combines with what it measures.

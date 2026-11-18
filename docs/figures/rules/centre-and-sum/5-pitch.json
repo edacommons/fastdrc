@@ -1,0 +1,133 @@
+{
+ "name": "5-pitch",
+ "desc": "pad pitch, centre to centre",
+ "shapes": [
+  {
+   "name": "A",
+   "edges": [
+    {
+     "id": "a_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      8,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_1",
+     "start": [
+      8,
+      0
+     ],
+     "end": [
+      8,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_2",
+     "start": [
+      8,
+      8
+     ],
+     "end": [
+      0,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "a_3",
+     "start": [
+      0,
+      8
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "B",
+   "edges": [
+    {
+     "id": "b_0",
+     "start": [
+      16,
+      0
+     ],
+     "end": [
+      24,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_1",
+     "start": [
+      24,
+      0
+     ],
+     "end": [
+      24,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_2",
+     "start": [
+      24,
+      8
+     ],
+     "end": [
+      16,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "b_3",
+     "start": [
+      16,
+      8
+     ],
+     "end": [
+      16,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "name": "P",
+   "from": "A.centre",
+   "to": "B.centre"
+  }
+ ],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "A.layer == pad"
+  },
+  {
+   "kind": "match",
+   "expr": "B.layer == pad"
+  },
+  {
+   "kind": "check",
+   "expr": "P >= 80"
+  }
+ ]
+}

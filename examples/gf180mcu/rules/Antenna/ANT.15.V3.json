@@ -1,6 +1,6 @@
 {
  "name": "ANT.15.V3",
- "desc": "ANT.15.V3 : If MIM is between Metaln and Metal (n+1): maximum ratio of each of Via (Vian to most top Via) area to related MIM area.",
+ "desc": "ANT.15.V3 : If MIM is between Metaln and Metal (n+1): maximum ratio of each of Via (Vian to most top Via) area to related MIM area. (ANT.16: with COMP connected to the net, the MIM area is taken as FuseTop area + 15 x that COMP area.)",
  "shapes": [
   {
    "name": "F",
@@ -107,6 +107,112 @@
      "edge": false
     }
    ]
+  },
+  {
+   "name": "DN",
+   "edges": [
+    {
+     "id": "dn_0",
+     "start": [
+      16,
+      0
+     ],
+     "end": [
+      20,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_1",
+     "start": [
+      20,
+      0
+     ],
+     "end": [
+      20,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_2",
+     "start": [
+      20,
+      4
+     ],
+     "end": [
+      16,
+      4
+     ],
+     "edge": false
+    },
+    {
+     "id": "dn_3",
+     "start": [
+      16,
+      4
+     ],
+     "end": [
+      16,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "DP",
+   "edges": [
+    {
+     "id": "dp_0",
+     "start": [
+      16,
+      8
+     ],
+     "end": [
+      20,
+      8
+     ],
+     "edge": false
+    },
+    {
+     "id": "dp_1",
+     "start": [
+      20,
+      8
+     ],
+     "end": [
+      20,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "dp_2",
+     "start": [
+      20,
+      12
+     ],
+     "end": [
+      16,
+      12
+     ],
+     "edge": false
+    },
+    {
+     "id": "dp_3",
+     "start": [
+      16,
+      12
+     ],
+     "end": [
+      16,
+      8
+     ],
+     "edge": false
+    }
+   ]
   }
  ],
  "measures": [],
@@ -121,11 +227,27 @@
   },
   {
    "kind": "match",
+   "expr": "DN.layer == ncomp"
+  },
+  {
+   "kind": "match",
+   "expr": "DP.layer == pcomp"
+  },
+  {
+   "kind": "match",
    "expr": "F.net == P.net"
   },
   {
+   "kind": "match",
+   "expr": "DN.net == P.net"
+  },
+  {
+   "kind": "match",
+   "expr": "DP.net == P.net"
+  },
+  {
    "kind": "check",
-   "expr": "P.area <= 20 * F.area"
+   "expr": "P.area <= 20 * (F.area + 15 * DN.area + 15 * DP.area)"
   }
  ],
  "when": [

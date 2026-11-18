@@ -222,6 +222,43 @@ class DocsBackend(Backend):
                 for via, far, (fk, flo, fhi) in rule.count_chain(holder, counted))
             out.append(f"every {self._fmt_deriv_en(rule.holder_derivation(holder, alike)[0])}{which} must hold "
                        f"{_how_many(lo, hi)} {what}{arrayed}.")
+        for var, shape, other, edge, lo, per in rule.centre_bounds():
+            da, db, used = rule.check_derivations(shape, other)
+            least = f"{_fmt(lo)} µm"
+            if per:                                 # the limit grows with a size: its own, or its holder's
+                sized = per[2] not in (shape, other)
+                if sized:
+                    layer = rule.layer_of(per[2])
+                    da, db = (dict(d, ands=[x for x in d["ands"] if x != layer]) for d in (da, db))
+                    used = used | {s for s in rule.shapes if rule.layer_of(s) == layer}
+                whose = f"the {self._name(rule.layer_of(per[2]))} it lies in" if sized else "the shape itself"
+                times = "" if per[0] == 1 else f"{_fmt(per[0])} times "
+                least = (f"{_fmt(lo)} µm plus " if lo else "") + (
+                    f"{times}the size of {whose} (the longer side of its bounding box; of the two, the larger)")
+            a, b = self._fmt_deriv_en(da), self._fmt_deriv_en(db)
+            if edge is None and a == b and per:
+                core = f"the pitch of two {a}, centre to centre, must be at least {least}."
+            elif edge is None and a == b:
+                core = f"the centres of two {a} must be at least {least} apart (the pitch, centre to centre)."
+            elif edge is None:
+                core = f"the centre of every {a} must be at least {least} from the centre of any {b}."
+            elif rule.relation(shape, other) == "inside" or rule.in_hole(shape, other):
+                outline = rule.holes(other) and any(e.get("id") == edge for e in rule.shapes[other]["edges"])
+                where = (f"the outer edge of the {b} around it" if outline
+                         else f"the edge of the {b} it lies in")
+                core = f"the centre of every {a} must be at least {_fmt(lo)} µm in from {where}."
+            else:
+                core = f"the centre of every {a} must be at least {_fmt(lo)} µm from {b}."
+            out.append(self._with_scope(core, self._scope(rule, shape, (used if per else set()) | {shape, other})))
+        for holder, shape, edge, lo, hi in rule.sum_bounds():
+            alike = [x for x in rule.shapes if rule.layer_of(x) == rule.layer_of(shape)]
+            d, consumed = rule.holder_derivation(holder, alike)
+            side = "longer" if rule.side_roles()[edge] == "long" else "shorter"
+            lim = " and ".join(([f"at least {_fmt(lo)} µm"] if lo is not None else [])
+                               + ([f"at most {_fmt(hi)} µm"] if hi is not None else []))
+            core = (f"the {side} sides of all the {self._name(rule.layer_of(shape))} in one {self._fmt_deriv_en(d)} "
+                    f"must add up to {lim}.")
+            out.append(self._with_scope(core, self._scope(rule, holder, consumed)))
         for collectors, gate, ratio, filters in rule.antenna_bounds():
             g = self._name(rule.layer_of(gate))
             what = _join([self._name(rule.layer_of(c)) for c in collectors])

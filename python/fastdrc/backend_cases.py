@@ -376,7 +376,7 @@ class CasesBackend(Backend):
                     raise _CannotBuild("a layer of the picture is defined in a way that cannot be drawn directly")
             if r.on_extent():
                 raise _CannotBuild("a rule about the whole die (its field): a tile cannot show it")
-            for special in (self._band_cases, self._no_straddle_cases, self._faced_edge_cases, self._count_chain_cases, self._shielded_cases, self._slanted_cases, self._net_cross_cases, self._exact_cases, self._orientation_cases, self._ring_count_cases, self._grid_cases, self._acute_cases, self._total_cases, self._form_cases, self._presence_cases, self._corner_cases, self._hole_cases, self._held_array_cases, self._array_cases, self._share_cases,
+            for special in (self._centre_cases, self._sum_cases, self._band_cases, self._no_straddle_cases, self._faced_edge_cases, self._count_chain_cases, self._shielded_cases, self._slanted_cases, self._net_cross_cases, self._exact_cases, self._orientation_cases, self._ring_count_cases, self._grid_cases, self._acute_cases, self._total_cases, self._form_cases, self._presence_cases, self._corner_cases, self._hole_cases, self._held_array_cases, self._array_cases, self._share_cases,
                             self._density_cases, self._antenna_cases):
                 made = special(r, rule_dict)
                 if made is not None:
@@ -1781,6 +1781,121 @@ class CasesBackend(Backend):
         for what, gx, gy in (("too small across only", under, v), ("too small upwards only", v, under)):
             out.append(self._case(r, rule_dict, f"check {check}", f"{rows} x {cols}, gaps {what}",
                                   not both_needed, grid(rows, cols, gx, gy)))
+        return out
+
+    def _centre_cases(self, r, rule_dict):
+        """"From the CENTRE of a shape": two squares with their centres just closer than
+        the value, at it and far apart -- side by side and on a slant (3 : 4 : 5, where
+        the distance comes out whole); or a square whose centre is just too near an
+        edge of the other shape, at the value from it, and far from it."""
+        found = r.centre_bounds()
+        if not found:
+            return None
+        if len(found) != 1 or len(rule_dict.get("constraints", [])) != len(r.shapes) + 1:
+            raise _CannotBuild("a distance from a centre with further conditions is not built yet")
+        var, shape, other, edge, lo, per = found[0]
+        v = round(lo * 1000)
+        side = max(v // 4 // (2 * STEP_NM) * 2 * STEP_NM, 2 * STEP_NM)      # an even side: the centre on the grid
+        tag = f"check {var} >= {lo:g}"
+        sq = lambda n, cx, cy: (n, cx - side // 2, cy - side // 2, cx + side // 2, cy + side // 2)   # noqa: E731
+        out = []
+
+        def case(what, expect, boxes):
+            out.append(self._case(r, rule_dict, tag, what, expect, boxes))
+        if per:
+            # the limit grows with a size: two of one size, then a small one beside a large
+            # one (the larger counts), each just closer than its own limit and exactly at it
+            f, _, sized = per
+            tag = "check " + next(c["expr"] for c in rule_dict["constraints"] if c.get("kind", "check") == "check")
+            small = max(v, 20_000) // (20 * STEP_NM) * 20 * STEP_NM or 20 * STEP_NM
+            large = 2 * small
+            lim = {s: v + f * s for s in (small, large)}
+            if any(abs(x - round(x)) > 1e-6 or round(x) % STEP_NM or round(x) <= s for s, x in lim.items()):
+                raise _CannotBuild("a limit that does not come out in whole steps")
+            lim = {s: round(x) for s, x in lim.items()}
+
+            def one(n, cx, s):                               # a square of that size; or one a holder of that size holds
+                if sized in (shape, other):
+                    return [(n, cx - s // 2, -s // 2, cx + s // 2, s // 2)]
+                return [(sized, cx - s // 2, -s // 2, cx + s // 2, s // 2), (n, cx - s // 4, -s // 4, cx + s // 4, s // 4)]
+            for (s1, s2), what in (((small, small), "two of one size"), ((small, large), "a small one beside a large one")):
+                need = lim[max(s1, s2)]
+                case(f"{what}, the centres just closer than their limit", True, one(shape, 0, s1) + one(other, need - STEP_NM, s2))
+                case(f"{what}, the centres exactly at their limit", False, one(shape, 0, s1) + one(other, need, s2))
+            case("a small one beside a large one, as far as two small ones need", True,
+                 one(shape, 0, small) + one(other, lim[small], large))
+            return out
+        if edge is None:
+            case("side by side, the centres just closer than the value", True, [sq(shape, 0, 0), sq(other, v - STEP_NM, 0)])
+            case("side by side, the centres exactly the value apart", False, [sq(shape, 0, 0), sq(other, v, 0)])
+            case("one above the other, the centres just closer", True, [sq(shape, 0, 0), sq(other, 0, v - STEP_NM)])
+            if v % (5 * STEP_NM) == 0:
+                dx, dy = 3 * v // 5, 4 * v // 5
+                case("on a slant, the centres exactly the value apart", False, [sq(shape, 0, 0), sq(other, dx, dy)])
+                case("on a slant, the centres just closer", True, [sq(shape, 0, 0), sq(other, dx, dy - STEP_NM)])
+            case("far apart", False, [sq(shape, 0, 0), sq(other, 3 * v, 0)])
+            return out
+        size = 4 * v
+        if r.holes(other):                                   # a ring: four bars; the square in its hole
+            t_ = v // 4
+            ring = [(other, 0, 0, size, t_), (other, 0, size - t_, size, size), (other, 0, t_, t_, size - t_),
+                    (other, size - t_, t_, size, size - t_)]
+            outline = any(e.get("id") == edge for e in r.shapes[other]["edges"])
+            off = 0 if outline else t_                       # measured from the outline, or from the edge of the hole
+        elif r.relation(shape, other) == "inside":
+            ring, off = [(other, 0, 0, size, size)], 0
+        else:                                                # beside it
+            block = (other, -size, 0, 0, size)
+            case("its centre just too near", True, [block, sq(shape, v - STEP_NM, size // 2)])
+            case("its centre exactly the value away", False, [block, sq(shape, v, size // 2)])
+            case("far away", False, [block, sq(shape, 3 * v, size // 2)])
+            return out
+        case("its centre just too near one edge", True, ring + [sq(shape, off + v - STEP_NM, size // 2)])
+        case("its centre exactly the value from that edge", False, ring + [sq(shape, off + v, size // 2)])
+        case("its centre just too near another edge", True, ring + [sq(shape, size // 2, size - off - v + STEP_NM)])
+        case("in the middle", False, ring + [sq(shape, size // 2, size // 2)])
+        return out
+
+    def _sum_cases(self, r, rule_dict):
+        """"One side of all it holds, added up": a holder with two bars in it whose long
+        (or short) sides together are just outside the value, at it and well inside it;
+        and one bar alone that has the whole value."""
+        found = r.sum_bounds()
+        if not found:
+            return None
+        holder, shape, edge, lo, hi = found[0]
+        plain = [c for c in rule_dict.get("constraints", []) if "um(" not in c.get("expr", "") and ".layer" not in c.get("expr", "")]
+        if len(found) != 1 or len(plain) != 1:               # (the one that says which side is the long one)
+            raise _CannotBuild("a sum of sides with further conditions is not built yet")
+        long = r.side_roles()[edge] == "long"
+        check = next(c["expr"] for c in rule_dict["constraints"] if "um(" in c["expr"])
+        out = []
+        for limit, is_min in ((lo, True), (hi, False)):
+            if limit is None:
+                continue
+            total = round(limit * 1000)
+            half = total // 2 // STEP_NM * STEP_NM
+            if half * 2 != total or half <= 8 * STEP_NM:
+                raise _CannotBuild("a sum that does not split into two whole steps")
+            sign = -1 if is_min else 1
+
+            def boxes(sides):
+                # the summed side runs upwards; the other one is far shorter (long) or far longer (short)
+                far = max(sides) * 3 if not long else max(max(sides) // 20 // STEP_NM * STEP_NM, 2 * STEP_NM)
+                bars, x = [], far
+                for s in sides:
+                    w, h = (far, s) if long else (far, s)
+                    bars.append((shape, x, far, x + w, far + h) if long else (shape, far, x, far + h, x + w))
+                    x += 2 * far
+                reach = far + max(sides) + far
+                return [(holder, 0, 0, x, reach) if long else (holder, 0, 0, reach, x)] + bars
+            tag = f"check {check}"
+            out += [self._case(r, rule_dict, tag, "two of them, together just outside the value", True, boxes([half, half + sign * STEP_NM])),
+                    self._case(r, rule_dict, tag, "two of them, together exactly the value", False, boxes([half, half])),
+                    self._case(r, rule_dict, tag, "two of them, together well inside the value", False,
+                               boxes([half, half * 2] if is_min else [half // 2, half // 2])),
+                    self._case(r, rule_dict, tag, "one alone, exactly the value", False, boxes([total])),
+                    self._case(r, rule_dict, tag, "one alone, just outside the value", True, boxes([total + sign * STEP_NM]))]
         return out
 
     def _total_cases(self, r, rule_dict):

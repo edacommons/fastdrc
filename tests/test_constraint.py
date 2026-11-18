@@ -50,7 +50,7 @@ def from_py(node):
         return {"op": _CMP[type(node.ops[0])],
                 "args": [from_py(node.left), from_py(node.comparators[0])]}
     if isinstance(node, ast.Call):                        # the one function: Count(shape)
-        assert isinstance(node.func, ast.Name) and node.func.id.lower() in ("count", "area")
+        assert isinstance(node.func, ast.Name) and node.func.id.lower() in ("count", "area", "sum")
         return {"op": node.func.id.lower(), "args": [from_py(a) for a in node.args]}
     if isinstance(node, ast.Set):
         return {"set": [from_py(e) for e in node.elts]}
@@ -65,6 +65,7 @@ FORMULAS = [
     "A.layer == metal5",
     "A.net != B.net",
     "Count(K) == 4",
+    "Sum(k_0.length) >= 160",
     "Area(F) <= 10000",
     "count(V) >= 2 and X >= 1.4",
     "e2.angle - e3.angle == 45",
@@ -147,7 +148,7 @@ def test_uniform_shape():
             return
         assert set(n) == {"op", "args"}, n
         assert isinstance(n["args"], list) and n["args"], n
-        if n["op"] in ("not", "count", "area"):
+        if n["op"] in ("not", "count", "area", "sum"):
             assert len(n["args"]) == 1, n          # unary / a function
         elif n["op"] in ("and", "or"):
             assert len(n["args"]) >= 2, n          # flat n-ary

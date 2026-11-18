@@ -12,7 +12,9 @@ You build any orthogonal shape from a rect by editing it:
              the neighbour is collinear). Drag the interior to move the shape.
   * Rect   : drag a box = a material polygon (all sides wavy).
   * Split  : click a side to drop a vertex on it (divide into two sub-sides).
-  * Measure: shift-click two sides. Two STRAIGHT sides = a distance (a variable you
+  * Measure: shift-click two sides. Shift-click INSIDE a shape instead of on a side to
+             take its CENTRE as that end (a pitch, centre to centre; or centre to a side).
+             Two STRAIGHT sides = a distance (a variable you
              bound in a constraint). With a WAVY side = a RELATION between the two
              shapes (inside / overlapping / touching / apart, read off the drawing):
              a filter as it stands, or -- with "cross" set -- the rule's check: that
@@ -512,6 +514,14 @@ class Editor:
     def find_measure(self, i):
         return next((m for m in self.measures if m["id"] == i), None)
 
+    def _rename_shape(self, sh, name):
+        old = sh.get("name", "")
+        sh["name"] = name
+        for m in self.measures:                        # arrows on its centre follow the name
+            for end in ("from", "to"):
+                if m[end] == f"{old}.centre":
+                    m[end] = f"{name}.centre"
+
     def find_side(self, sid):
         for s in self.shapes:
             for i, sd in enumerate(s["sides"]):
@@ -612,6 +622,8 @@ class Editor:
         if var and any(re.search(rf"(?<![\w.]){re.escape(var)}(?![\w.(])", c.get("expr", ""))
                        for c in self.constraints):
             return False
+        if str(m["from"]).endswith(".centre") or str(m["to"]).endswith(".centre"):
+            return False                               # from a centre: always a distance
         sa, sb = self.find_side(m["from"])[0], self.find_side(m["to"])[0]
         if sa is not None and sa is sb:                # across ONE shape: its width, never a relation
             return False
@@ -654,12 +666,40 @@ class Editor:
         a, b = self.side_pts_px(s, i)
         return ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
 
+    def centre_px(self, ref):
+        """The centre (of the bounding box) of the shape an end like ``A.centre`` names."""
+        if not str(ref).endswith(".centre"):
+            return None
+        s = next((x for x in self.shapes if x.get("name") == str(ref)[:-7] and not x.get("cut")), None)
+        if not s:
+            return None
+        pts = [self.px(v) for v in s["verts"]]
+        return ((min(q[0] for q in pts) + max(q[0] for q in pts)) / 2, (min(q[1] for q in pts) + max(q[1] for q in pts)) / 2)
+
+    def _centre_geom(self, m):
+        """A measure with an end on a shape's centre: centre to centre, or straight across
+        from the centre to the side at the other end."""
+        ca, cb = self.centre_px(m["from"]), self.centre_px(m["to"])
+        if ca and cb:
+            return ca, cb, None, None
+        c = ca or cb
+        s, i = self.find_side(m["to"] if ca else m["from"])
+        if not c or not s:
+            return None
+        a, b = self.side_pts_px(s, i)
+        ln2 = (b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2 or 1.0
+        k = ((c[0] - a[0]) * (b[0] - a[0]) + (c[1] - a[1]) * (b[1] - a[1])) / ln2
+        foot = (a[0] + k * (b[0] - a[0]), a[1] + k * (b[1] - a[1]))
+        return (c, foot, None, None) if ca else (foot, c, None, None)
+
     def _measure_geom(self, m):
         """Endpoints (p1,p2) of a measure's dimension line + on-edge witness
         anchors (e1,e2). Two parallel sides -> a true H/V dimension line: placed
         INSIDE their shared span when they overlap there, else OUTSIDE the shape
         (nearest side, with witness lines extending each edge to it) so it never
         lands on a perpendicular edge. A non-parallel pair -> slanted midpoint link."""
+        if str(m["from"]).endswith(".centre") or str(m["to"]).endswith(".centre"):
+            return self._centre_geom(m)
         sa, ia = self.find_side(m["from"])
         sb, ib = self.find_side(m["to"])
         if not sa or not sb:
@@ -964,10 +1004,14 @@ class Editor:
         # it is a real distance (a dimensional variable); with a WAVY end it is a
         # RELATION between the two shapes (a filter as it stands, or the check when crossed).
         s, i = self.hit_side(e.x, e.y)
-        if not s:
+        ref = s["sides"][i]["id"] if s else None
+        if not s:                                      # inside a shape, off its sides: its centre
+            inner = next((x for x in reversed(self.shapes) if not x.get("cut") and x.get("name")
+                          and point_in_poly(e.x, e.y, [self.px(v) for v in x["verts"]])), None)
+            ref = f"{inner['name']}.centre" if inner else None
+        if not ref:
             self.pending = None
         else:
-            ref = s["sides"][i]["id"]
             if not self.pending:
                 self.pending = {"side": ref}
             elif self.pending["side"] != ref:
@@ -1027,6 +1071,7 @@ class Editor:
         elif self.find_shape(self.sel):
             sid = self.sel
             dead = {sd["id"] for sd in self.find_shape(sid)["sides"]}
+            dead.add(f"{self.find_shape(sid).get('name', '')}.centre")
             self.shapes = [s for s in self.shapes if s["id"] != sid]
             self.measures = [m for m in self.measures
                              if m["from"] not in dead and m["to"] not in dead]
@@ -1138,6 +1183,12 @@ class Editor:
             else:
                 c.create_line(*p1, *p2, fill=col, width=3 if sel else 2,
                               arrow=tk.BOTH, arrowshape=(9, 11, 4))
+            for ref in (m["from"], m["to"]):               # an end on a centre: a small circle with a cross
+                q = self.centre_px(ref)
+                if q:
+                    c.create_oval(q[0] - 5, q[1] - 5, q[0] + 5, q[1] + 5, outline=col, width=1.5)
+                    c.create_line(q[0] - 8, q[1], q[0] + 8, q[1], fill=col)
+                    c.create_line(q[0], q[1] - 8, q[0], q[1] + 8, fill=col)
             mx, my = (p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2
             if crossed:
                 r = 7
@@ -1158,6 +1209,9 @@ class Editor:
             self._label_meta[m["id"]] = (c.bbox(lab), axis)
 
         if self.pending and "side" in self.pending:
+            q = self.centre_px(self.pending["side"])
+            if q:                                      # a centre picked first
+                c.create_oval(q[0] - 6, q[1] - 6, q[0] + 6, q[1] + 6, outline=ACCENT, width=3)
             s, i = self.find_side(self.pending["side"])
             if s:                                      # the edge picked first, in its own form
                 a, b = self.side_pts_px(s, i)
@@ -1485,7 +1539,7 @@ class Editor:
             return
         sh = self.find_shape(self.sel) if self.sel else None
         if sh:                                                 # a shape
-            name(0, "name"); ent(0, sh.get("name", ""), lambda x: sh.__setitem__("name", x))
+            name(0, "name"); ent(0, sh.get("name", ""), lambda x: self._rename_shape(sh, x))
             name(1, "drawn as")
             tk.Button(p, text="material" if not sh.get("cut") else "hole (a void)",
                       command=self.toggle_hole).grid(row=1, column=1, sticky="w", pady=2)

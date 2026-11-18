@@ -1,0 +1,188 @@
+{
+ "name": "7-total",
+ "desc": "total gate width of the fingers in one diffusion",
+ "shapes": [
+  {
+   "name": "D",
+   "edges": [
+    {
+     "id": "d_0",
+     "start": [
+      0,
+      0
+     ],
+     "end": [
+      30,
+      0
+     ],
+     "edge": false
+    },
+    {
+     "id": "d_1",
+     "start": [
+      30,
+      0
+     ],
+     "end": [
+      30,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "d_2",
+     "start": [
+      30,
+      20
+     ],
+     "end": [
+      0,
+      20
+     ],
+     "edge": false
+    },
+    {
+     "id": "d_3",
+     "start": [
+      0,
+      20
+     ],
+     "end": [
+      0,
+      0
+     ],
+     "edge": false
+    }
+   ]
+  },
+  {
+   "name": "G",
+   "edges": [
+    {
+     "id": "g_0",
+     "start": [
+      8,
+      2
+     ],
+     "end": [
+      11,
+      2
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_1",
+     "start": [
+      11,
+      2
+     ],
+     "end": [
+      11,
+      18
+     ],
+     "edge": true
+    },
+    {
+     "id": "g_2",
+     "start": [
+      11,
+      18
+     ],
+     "end": [
+      8,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "g_3",
+     "start": [
+      8,
+      18
+     ],
+     "end": [
+      8,
+      2
+     ],
+     "edge": true
+    }
+   ]
+  },
+  {
+   "name": "G2",
+   "edges": [
+    {
+     "id": "g2_0",
+     "start": [
+      19,
+      2
+     ],
+     "end": [
+      22,
+      2
+     ],
+     "edge": false
+    },
+    {
+     "id": "g2_1",
+     "start": [
+      22,
+      2
+     ],
+     "end": [
+      22,
+      18
+     ],
+     "edge": true
+    },
+    {
+     "id": "g2_2",
+     "start": [
+      22,
+      18
+     ],
+     "end": [
+      19,
+      18
+     ],
+     "edge": false
+    },
+    {
+     "id": "g2_3",
+     "start": [
+      19,
+      18
+     ],
+     "end": [
+      19,
+      2
+     ],
+     "edge": true
+    }
+   ]
+  }
+ ],
+ "measures": [],
+ "constraints": [
+  {
+   "kind": "match",
+   "expr": "D.layer == diff"
+  },
+  {
+   "kind": "match",
+   "expr": "G.layer == gate"
+  },
+  {
+   "kind": "match",
+   "expr": "G2.layer == gate"
+  },
+  {
+   "kind": "match",
+   "expr": "g_1.length >= g_0.length"
+  },
+  {
+   "kind": "check",
+   "expr": "Sum(g_1.length) >= 160 and Sum(g_1.length) <= 720"
+  }
+ ]
+}

@@ -235,6 +235,10 @@ def _rules_of_sheet(data) -> list:
     shapes = {s["name"]: s for s in data.get("shapes", [])}
     measures = {m["name"]: m for m in data.get("measures", [])}
     edge_owner = {e["id"]: n for n, s in shapes.items() for e in s["edges"]}
+
+    def owner(end):                                  # the shape an arrow's end is on: an edge of it, or its centre
+        end = str(end)
+        return end[:-7] if end.endswith(".centre") and end[:-7] in shapes else edge_owner.get(end)
     out = []
     for r in _per_column(data):
         refs = set()
@@ -251,9 +255,11 @@ def _rules_of_sheet(data) -> list:
                 spots.append((scene.interior_point(name), ()))   # that lies under it counts
             for mn in used:
                 m = measures[mn]
-                sf, st = edge_owner.get(m["from"]), edge_owner.get(m["to"])
+                sf, st = owner(m["from"]), owner(m["to"])
                 seeds |= {s for s in (sf, st) if s}
                 # a DISTANCE sits at a place; a link or a cross on a relation does not
+                if mn in scene.centre_measures:      # from a centre: the two shapes, no spot on an edge
+                    continue
                 if sf and st and scene.measure_is_straight(mn) and not m.get("crossed"):
                     a, b = scene.measure_spots(mn)
                     spots += [(a, (sf,)), (b, (st,)),
@@ -286,8 +292,8 @@ def _rules_of_sheet(data) -> list:
             while grown:                             # follow the links, from a kept shape
                 grown = False                        # to the context it is linked to
                 for mn, m in measures.items():
-                    sf, st = edge_owner.get(m["from"]), edge_owner.get(m["to"])
-                    if (sf and st and sf != st and not m.get("crossed")
+                    sf, st = owner(m["from"]), owner(m["to"])
+                    if (sf and st and sf != st and not m.get("crossed") and mn not in scene.centre_measures
                             and not scene.measure_is_straight(mn)
                             and sf in keep and st not in keep and st not in skip):
                         keep.add(st)
@@ -310,7 +316,7 @@ def _rules_of_sheet(data) -> list:
         # rule of its own: only the rule that names it has it)
         rm = [m for mn, m in measures.items()
               if (mn in used or not (m.get("crossed") or scene.measure_is_straight(mn)))
-              and m["from"] in kept_edges and m["to"] in kept_edges]
+              and owner(m["from"]) in keep and owner(m["to"]) in keep]
         # the scene's facts that are about the kept shapes, then the rule's own
         cons = []
         for c in data.get("constraints", []):

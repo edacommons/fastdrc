@@ -182,11 +182,14 @@ class KLayoutBackend(Backend):
         counts = rule.count_bounds()                     # how many of a layer a shape holds
         helds = rule.held_ratio_bounds()                 # how much of a shape what it holds takes up
         helds += [([k], h, lo, hi, True) for h, k, lo, hi in rule.held_area_bounds()]   # ... or how much area
+        centres = rule.centre_bounds()                   # from the centre of a shape
+        sums = rule.sum_bounds()                         # a side of what a shape holds, added up
         if any(m.get("from") and rule.net_relation(rule.shape_of_edge(m["from"]), rule.shape_of_edge(m["to"]))
                for m in rule.measures.values()):
             self._use_connections(rule.connections())
         total = (len(checks) + len(areas) + len(angles) + len(corners) + len(lengths)
-                 + len(crosses) + len(eols) + len(insides) + len(forms) + len(eithers) + len(densities) + len(antennas) + len(counts) + len(helds))
+                 + len(crosses) + len(eols) + len(insides) + len(forms) + len(eithers) + len(densities) + len(antennas) + len(counts) + len(helds)
+                 + len(centres) + len(sums))
         off = 0
         for i, (var, lo, hi, select) in enumerate(checks):
             self._emit_check(rule, var, lo, hi, i, total, select)
@@ -271,6 +274,112 @@ class KLayoutBackend(Backend):
             rid = rule.name or f"{'+'.join(held)} in {holder}"
             stem = self._result_var(rid, off + k, total)
             self._emit(rule, self._held_ratio(rule, held, holder, lo, hi, stem, bool(absolute)), off + k, total, rid)
+        off += len(helds)
+        for k, (var, shape, other, edge, lo, per) in enumerate(centres):
+            self._emit(rule, self._centre(rule, var, shape, other, edge, lo, per), off + k, total,
+                       rule.name or f"{var} >= {self._fmt(lo)}")
+        off += len(centres)
+        for k, (holder, shape, edge, lo, hi) in enumerate(sums):
+            d, consumed = rule.holder_derivation(holder, [x for x in rule.shapes if rule.layer_of(x) == rule.layer_of(shape)])
+            self._helpers["side_sums"] = self._SIDE_SUMS
+            nm = lambda x: "nil" if x is None else self._fmt(x)
+            long = "true" if rule.side_roles()[edge] == "long" else "false"
+            expr = f"side_sums.call({self._fmt_deriv(d)}, {self._shape_layer(rule, shape)}, {long}, {nm(lo)}, {nm(hi)})"
+            expr += "".join(f".{op}({mk})" for op, mk in self._scope(rule, consumed, holder))
+            self._emit(rule, expr, off + k, total, rule.name or f"Sum({edge}.length)")
+
+    def _centre(self, rule, var, shape, other, edge, lo, per=None):
+        """A minimum distance from the CENTRE of a shape (of its bounding box). Centre
+        to centre: the pairs closer than that, marked by the line between the two
+        centres (a helper: the distance is taken exactly, on any direction). Centre to
+        an edge: the shapes whose centre lies too near -- the centre is KLayout's
+        `middle`, a box one database unit about it, so the other shape is grown or
+        shrunk by the distance less that one unit."""
+        da, db, used = rule.check_derivations(shape, other)
+        sized = per and per[2] not in (shape, other)     # the size is that of the shape HOLDING each one
+        if sized:                                        # ... which is then no part of what they are
+            layer = rule.layer_of(per[2])
+            da, db = (dict(d, ands=[x for x in d["ands"] if x != layer]) for d in (da, db))
+            used = used | {s for s in rule.shapes if rule.layer_of(s) == layer}
+        a, b = self._fmt_deriv(da), self._fmt_deriv(db)
+        scope = "".join(f".{op}({mk})" for op, mk in self._scope(rule, used | {shape, other}, shape))
+        if edge is None:
+            self._helpers["centres_closer"] = self._CENTRES_CLOSER
+            more = ""
+            if per:
+                more = f", {self._fmt(per[0])}" + (f", {self._shape_layer(rule, per[2])}" if sized else "")
+            return f"centres_closer.call({a}, {'nil' if a == b else b}, {self._fmt(lo)}{more}){scope}"
+        by = self._fmt(round(lo - rule.LENGTH_STEP, 6))
+        if rule.relation(shape, other) == "inside" or rule.in_hole(shape, other):
+            outline = rule.holes(other) and any(e.get("id") == edge for e in rule.shapes[other]["edges"])
+            area = f"{b}.hulls" if outline else f"{b}.holes" if rule.in_hole(shape, other) else b
+            near = f"{a}.middle.not_inside({area}.sized(-{by}))"
+        else:
+            near = f"{a}.middle.overlapping({b}.sized({by}))"
+        return f"{a}.interacting({near}){scope}"
+
+    # the pairs of shapes whose centres (of their bounding boxes) are closer than `least`
+    # µm (`b` nil: among the shapes of `a`): an edge from one centre to the other. With
+    # `per`, the limit of a pair is `least` + `per` x the size of the larger of the two --
+    # its own size (the longer side of its bounding box), or that of the shape of `by`
+    # its centre lies in. Twice the coordinates are compared, so a
+    # centre on half a database unit is exact too.
+    _CENTRES_CLOSER = """centres_closer = lambda do |a, b, least, per = 0, by = nil|
+  holders = RBA::Shapes::new
+  by.data.each_merged { |q| holders.insert(q) } if by
+  size = lambda do |box|
+    next 0 if per == 0
+    if by
+      at = box.center
+      held = holders.each_touching(RBA::Box::new(at, at)).find { |s| s.polygon.inside?(at) }
+      box = held ? held.polygon.bbox : nil
+    end
+    box ? [box.width, box.height].max : 0
+  end
+  twice = lambda { |l| l.data.each_merged.map { |q| [q.bbox.left + q.bbox.right, q.bbox.bottom + q.bbox.top, size.call(q.bbox)] }.sort }
+  pa = twice.call(a)
+  same = b.nil?
+  pb = same ? pa : twice.call(b)
+  limit = lambda { |s| (2 * (least / dbu + per * s)).round }
+  lim = limit.call((pa + pb).map { |q| q[2] }.max || 0)
+  found = RBA::Edges::new
+  first = 0
+  pa.each do |p|
+    first += 1 while first < pb.size && pb[first][0] - p[0] <= -lim
+    j = first
+    while j < pb.size && pb[j][0] - p[0] < lim
+      q = pb[j]
+      j += 1
+      next if same && (q <=> p) <= 0
+      dx, dy = q[0] - p[0], q[1] - p[1]
+      pair = limit.call([p[2], q[2]].max)
+      next unless dx * dx + dy * dy < pair * pair
+      found.insert(RBA::Edge::new(p[0] / 2, p[1] / 2, q[0] / 2, q[1] / 2))
+    end
+  end
+  DRC::DRCLayer::new(self, found)
+end"""
+
+    # the holders in which one side (the longer or the shorter) of the shapes they hold
+    # adds up to less than `lo` or more than `hi` µm. A shape is held where its centre
+    # lies in the holder; a holder that holds none is not judged.
+    _SIDE_SUMS = """side_sums = lambda do |holders, held, long, lo, hi|
+  shapes = RBA::Shapes::new
+  held.data.each_merged { |q| shapes.insert(q) }
+  found = RBA::Region::new
+  holders.data.each_merged do |h|
+    sum, any = 0, false
+    shapes.each_touching(h.bbox) do |s|
+      b = s.polygon.bbox
+      next unless h.inside?(b.center)
+      any = true
+      sum += long ? [b.width, b.height].max : [b.width, b.height].min
+    end
+    next unless any
+    found.insert(h) if (lo && sum < (lo / dbu).round) || (hi && sum > (hi / dbu).round)
+  end
+  DRC::DRCLayer::new(self, found)
+end"""
 
     def _assemble(self):
         out = ["# Generated by FastDRC -> KLayout DRC", ""]
@@ -1110,8 +1219,8 @@ end"""
         g = self._derived(rule, gate, set(collectors) | {gate})
         lay = lambda sh: self._derived(rule, sh, set(collectors) | {gate})
         glayer = rule.layer_of(gate)
-        stage = lambda sh: rule.connections_up_to(glayer, rule.layer_of(sh))
         weights, extra = rule.antenna_extras(collectors, gate)
+        stage = lambda sh: rule.connections_up_to(glayer, rule.layer_of(sh), [rule.layer_of(d) for d, _ in extra])
         if len(collectors) == 1 and not filters and not weights and not extra:
             self._use_connections(stage(collectors[0]))
             return f"antenna_check({g}, {lay(collectors[0])}, {float(ratio)!r})"
