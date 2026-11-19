@@ -104,6 +104,8 @@ which shapes the rule is about.
 | must be surrounded by a guard ring | the ring drawn as a donut, the device in its hole: `check  D in G.holes` | (see the reference) |
 | must be rectangular | `check  F.corners == 4` | (see the reference) |
 | total area on one plate | `check  Area(F) <= 10000`, F drawn in the plate | (see the reference) |
+| a pitch, centre to centre; a centre in from an edge | an arrow that ends on a shape's centre (`"from": "A.centre"`): `check  P >= 80` | (see the reference) |
+| total width of all fingers in one device | `check  Sum(k_0.length) >= 160`, the fingers drawn in the device | (see the reference) |
 | every shape on the manufacturing grid | `"grid": 0.005` in `process.json` | (see the reference) |
 | abutting shapes are fine everywhere | `"touching": "allowed"` in `process.json` | (see the reference) |
 | an option of the process — metal stack, thick top metal ("for the 3 µm top metal: …") | `"parameters"` in `process.json`; in the rule a switch on one: `"value": {"switch": "top_metal", "cases": {...}}`, or `"when"` | built with `--profile` / `--set top_metal=30K` |

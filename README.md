@@ -7,7 +7,7 @@ what must hold — and FastDRC compiles the rules into a working
 sentences to read back. *Fast*: the script is fitted to the set of rules being run —
 the whole deck, or part of it — so what several rules need is computed once.
 
-    pip install .                # from a checkout (not on PyPI yet); pure Python, no compiler needed
+    pip install . ./fastdrc-gf180mcu   # from a checkout (not on PyPI yet): the tool and the GF180MCU deck; pure Python
 
 > Status: pre-alpha. This is the **rule compiler** with its **KLayout backend**
 > (compared rule by rule with the public decks of several open processes), the
@@ -99,8 +99,9 @@ fastdrc check chip.gds gf180mcu # a deck installed as a package (pip install fas
 > **📐 [docs/drawing-model.md](docs/drawing-model.md)** is the reference: how each kind
 > of rule is drawn and what the compiler derives from it — widths, spacings,
 > enclosures and extensions; a value per table column; exact sizes, squares and bars;
-> arrays and counts; "on one of two sides"; maximum distances; density; nets and
-> antenna ratios; rules for a family of layers; and the cross ("must not exist").
+> arrays and counts; "on one of two sides"; maximum distances; a pitch from centre to
+> centre; a side added up over several shapes; density; nets and antenna ratios; rules
+> for a family of layers; and the cross ("must not exist").
 
 **The self-test.** For each constraint of each rule, `selftest` builds small layouts
 from the rule's own picture — a `check` with its quantity just outside the value (must
@@ -123,14 +124,16 @@ python/fastdrc/topology.py        spatial relations off geometry (inside / overl
 python/fastdrc/constraint.py      the constraint language (a Python-expression subset, parsed with `ast`)
 python/fastdrc/rule.py            the analyzed-rule API the backends work against
 python/fastdrc/sheet.py           rule files: a value per table column, layer families (and older multi-rule sheets)
-python/fastdrc/process.py         a deck folder: build, check, self-test
+python/fastdrc/process.py         a deck (a folder, a zip, or an installed package): build, check, self-test
 python/fastdrc/params.py          the parameters of a process (its options), profiles, and the switch that reads them
+python/fastdrc/ir.py              the set of rules as one graph of operations: what several rules need is computed once
 python/fastdrc/backend.py         the backend registry and plugin discovery
 python/fastdrc/backend_klayout.py -> a KLayout DRC deck
 python/fastdrc/backend_docs.py    -> the rules as plain sentences
 python/fastdrc/backend_svg.py     -> each rule's drawing as a picture
 python/fastdrc/backend_cases.py   -> test layouts made from the drawings, with what to expect
 python/fastdrc/editor.py          the visual editor (Tkinter)
+python/fastdrc/cli.py             the `fastdrc` command
 tools/compare_reports.py          two DRC runs of one layout, compared rule by rule, by place
 tools/cells_in_a_row.rb           a cell library laid out flat, to try a deck on
 tools/perturb_layout.rb           random small errors put into a layout
@@ -153,6 +156,11 @@ tools/             validation of the compiler against a reference deck
 tests/             pytest
 ```
 
+Two packages are built from this repository: `fastdrc` (the tool) and
+`fastdrc-gf180mcu` (the deck, which needs the tool). A deck package holds the deck
+folder and names it in the entry-point group `fastdrc.decks`;
+[docs/from-a-manual.md](docs/from-a-manual.md) shows the two lines it takes.
+
 ## Compiling a drawn rule
 
 ```python
@@ -165,6 +173,9 @@ text = get("docs").compile(Rule(my_drawn_rule))     # the same rule as a sentenc
 
 from fastdrc import process                    # a whole process folder
 deck_path, text_path, n_rules, warnings = process.build("examples/demo")
+
+folder, out = process.find("gf180mcu")         # a deck installed as a package, by its name
+deck_path, *_ = process.build(folder, out)
 ```
 
 ## Install for development
@@ -172,7 +183,7 @@ deck_path, text_path, n_rules, warnings = process.build("examples/demo")
 Requires Python 3.11+; pure Python, no compiler.
 
 ```bash
-pip install -e . pytest
+pip install -e . -e ./fastdrc-gf180mcu pytest     # the tool and the GF180MCU deck
 pytest
 ```
 

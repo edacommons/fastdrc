@@ -9,7 +9,8 @@
 The same folder zipped -- ``mydeck.zip`` -- is the same deck: every function here that
 takes a deck takes either (`pack` / `unpack` convert). What is generated from a zip is
 written beside it, in ``mydeck.build/``; the zip itself holds only what was written by
-hand.
+hand. A deck may also be installed as a Python package and found by its name (`installed`,
+`find`).
 
 ``process.json``::
 

@@ -1199,6 +1199,11 @@ fastdrc build mydeck                    # -> build/<name>.drc and build/<name>.m
 fastdrc check chip.gds mydeck           # builds, runs KLayout, lists the violations per rule
 ```
 
+The folder may be zipped (`fastdrc pack`), or installed as a Python package and given by
+its name: `pip install fastdrc-gf180mcu`, then `fastdrc check chip.gds gf180mcu`
+(`fastdrc decks` lists the installed ones; what is generated goes to `<name>.build/` in
+the current folder).
+
 **One script for the set being run.** `build`, `check` and `selftest` take `--only`
 and `--skip`: rule names or sections, comma-separated, `*` and `?` as in file names
 (`--only 3-metal`, `--only "NW.*,CO.1"`, `--skip "DN.*"`, `--only 2-devices/CO.1`). The
@@ -1423,15 +1428,21 @@ flags (on the clean layout: nothing, or the drawing says more than the manual).
 
 ## Status / scope
 
-This model is validated against the GF180MCU deck by `tools/validate_klayout.py`
-(op-level round-trip: parse the deck rule → draw it via `as_drawn` → recompile →
-confirm the op matches) and `tools/differential_validate.py` (run our complete
-generated deck and the official statement in KLayout on many layouts per rule and
-compare the violation markers by XOR; `tools/behavioral_validate.py` is the older,
-weaker count-on-one-layout check). The recipes above cover the declarative rule
-families. **Not** geometry-by-example (separate, parameterized/universal forms):
-off-grid, antenna; and a small tail of **procedural** rules (multi-stage
-imperative layer algebra, e.g. via-3D enclosure) that are hand-coded algorithms
-rather than a single drawn example.
+The recipes above were enough to draw the whole public design manual of the open
+GF180MCU process — 775 rule files, from widths and spacings to antenna ratios, bond
+pads, dummy fill and latch-up — without one rule written by hand in the deck's own
+language. That deck is the package `fastdrc-gf180mcu` in this repository; its README
+says how each rule was checked: against the manual's sentence and figure, against test
+layouts made from its own drawing (`fastdrc selftest`), and, where the process has a
+KLayout deck of its own, against that deck on real cells.
+
+What a drawing does not say is said once in `process.json`: the grid, the layer
+numbers, the connections between layers, the options of the process. What is not a
+check on a layout at all — a current density, the potential a ring is tied to, a
+guideline — has no drawn form and is left out of a deck.
+
+`tools/validate_klayout.py`, `tools/differential_validate.py` and
+`tools/behavioral_validate.py` are the older checks of the compiler against a reference
+deck, rule by rule; they read a corpus that is not part of this repository.
 
 _Keep this in sync as new drawing conventions are added._

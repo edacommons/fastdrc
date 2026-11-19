@@ -17,7 +17,7 @@ knows it by the name `gf180mcu`:
     fastdrc gui gf180mcu                       the drawings
     fastdrc check chip.gds gf180mcu --profile gf180mcuC
 
-The deck itself is the folder [`fastdrc_gf180mcu/`](fastdrc_gf180mcu): `process.json`,
+The deck itself is the folder [`fastdrc_gf180mcu/`](https://github.com/edacommons/FastDRC/tree/main/fastdrc-gf180mcu/fastdrc_gf180mcu): `process.json`,
 `rules/<section>/<rule>.json` and `layouts/`. It can be copied and used as any deck
 folder (`fastdrc build path/to/folder`).
 
@@ -89,7 +89,7 @@ manual's option B "only supports 4 or more metal layers"), `gf180mcuB` (4LM, 11K
   native device near an Nwell (`LU.5`), each on a layout below, and `DCF.1a`, which
   speaks of the whole die and was run on a layout of its own (COMP 18 µm apart: quiet;
   30 µm apart: reported).
-- **On its own layouts.** [`fastdrc_gf180mcu/layouts/`](fastdrc_gf180mcu/layouts) holds 150 pieces of layout drawn by hand, each naming
+- **On its own layouts.** [`fastdrc_gf180mcu/layouts/`](https://github.com/edacommons/FastDRC/tree/main/fastdrc-gf180mcu/fastdrc_gf180mcu/layouts) holds 150 pieces of layout drawn by hand, each naming
   the rules that must report on it; `fastdrc selftest` runs the whole deck on them, and a
   rule that reports where it is not named is a rule drawn too broadly. All of them are read as
   they should be, in every build they belong to. Among them: LDNMOS and LDPMOS fingers with each of their values off,
