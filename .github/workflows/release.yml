@@ -11,6 +11,7 @@ name: Release
 on:
   release:
     types: [published]
+  workflow_dispatch:        # by hand, from the Actions page: to repeat an upload that did not go through
 
 jobs:
   build:
@@ -50,7 +51,7 @@ jobs:
           skip-existing: true
 
   fastdrc-gf180mcu:
-    needs: fastdrc          # the deck needs the tool: the tool goes first
+    needs: build
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
