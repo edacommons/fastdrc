@@ -1316,7 +1316,8 @@ colour per layer across the deck), `facts`, `cases` (the test cases above). A ba
 use another by name -- a document backend takes its figures from `get("svg")` and its
 text from `get("docs")`. `fastdrc build DIR --with cases`
 writes a backend's files beside the deck. Another package adds one with an entry point
-in the group `fastdrc.backends` naming a `fastdrc.backend.Backend` subclass.
+in the group `fastdrc.backends` naming a `fastdrc.backend.Backend` subclass —
+[plugins.md](plugins.md) shows one written and packaged.
 
 A backend may also **run** the deck it writes on a layout. `build`, `check` and
 `selftest` take `--backend NAME` (default `klayout`): the deck is compiled by that

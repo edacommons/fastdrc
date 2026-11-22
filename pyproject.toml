@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fastdrc"
-version = "0.0.1"
+version = "0.0.2"
 description = "Design rules (DRC) drawn by example and compiled for any checking tool through backend plugins. KLayout backend included."
 dynamic = ["readme"]          # README.md, its links made full addresses: hatch_build.py
 requires-python = ">=3.11"

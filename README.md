@@ -7,7 +7,8 @@ what must hold — and FastDRC compiles the rules into a working
 sentences to read back. *Fast*: the script is fitted to the set of rules being run —
 the whole deck, or part of it — so what several rules need is computed once.
 
-    pip install . ./fastdrc-gf180mcu   # from a checkout (not on PyPI yet): the tool and the GF180MCU deck; pure Python
+    pip install fastdrc                # the tool; pure Python, no compiler needed
+    pip install fastdrc-gf180mcu       # the GF180MCU deck (brings the tool with it)
 
 > Status: pre-alpha. This is the **rule compiler** with its **KLayout backend**
 > (compared rule by rule with the public decks of several open processes), the
@@ -96,6 +97,10 @@ fastdrc check chip.gds gf180mcu # a deck installed as a package (pip install fas
 > (`pip install fastdrc-gf180mcu`, then `fastdrc check chip.gds gf180mcu`); its README
 > says how it was checked.
 >
+> **[docs/commands.md](docs/commands.md)** — every command and option.
+> **[docs/plugins.md](docs/plugins.md)** — writing a backend for another tool, and
+> packaging a deck.
+>
 > **📐 [docs/drawing-model.md](docs/drawing-model.md)** is the reference: how each kind
 > of rule is drawn and what the compiler derives from it — widths, spacings,
 > enclosures and extensions; a value per table column; exact sizes, squares and bars;
@@ -111,11 +116,14 @@ computed from the constraints, not from the deck. Rules it cannot build a case f
 listed, never counted as passing.
 
 **Backends are plugins.** `fastdrc backends` lists them (`klayout`, `docs`, `svg`,
-`facts`, `cases`); another package adds one through the entry-point group `fastdrc.backends`.
+`facts`, `cases`); another package adds one through the entry-point group `fastdrc.backends`
+— a class with one method, see [docs/plugins.md](docs/plugins.md).
 A backend may use another (`get("svg")` for a rule's figure, `get("docs")` for its
 sentence). A backend may also *run* the deck it writes on a layout: `build`, `check` and
 `selftest` take `--backend NAME` and go through that one for both. KLayout is the one
-shipped here that does, and the default; the C++ core will be another.
+shipped here that does, and the default; the C++ core will be another. This is how
+another checking tool is put under the same drawn rules, and `fastdrc selftest --backend
+NAME` then shows, rule by rule, whether that tool reads them as drawn.
 
 The pieces (Python):
 
@@ -150,7 +158,8 @@ drawn-rule corpus read from `docs/gf180mcu/`, which is not part of this reposito
 python/fastdrc/    the Python package: the rule compiler, its backends, the editor
 examples/demo/     a complete deck for an invented process, with every kind of rule
 fastdrc-gf180mcu/  the package fastdrc-gf180mcu: the design rules of the open GF180MCU process, drawn from its manual
-docs/              the tutorial (from-a-manual.md), the reference (drawing-model.md), what is new (own-and-known.md)
+docs/              the tutorial (from-a-manual.md), the reference (drawing-model.md), the commands (commands.md),
+                   plugins (plugins.md), what is new (own-and-known.md)
 docs/img/          the docs' figures, drawn from rule files by tools/doc_figures.py
 tools/             validation of the compiler against a reference deck
 tests/             pytest

@@ -48,6 +48,8 @@ def test_another_package_can_add_a_backend(monkeypatch):
     rule = {"name": "w.1", "shapes": [_rect("A", 0, 0, 4, 10)], "measures": [{"name": "W", "from": "a3", "to": "a1"}],
             "constraints": [M("A.layer == met"), C("W >= 0.2")]}
     assert get("shout").files([rule], "deck") == {"deck.shout.txt": "W.1"}
+    # a backend with no constructor of its own is offered a layer map and a title like any other
+    assert get("shout", layermap={"met": (1, 0)}, title="x").name == "shout"
 
 
 def test_another_package_can_add_a_backend_that_runs_its_deck(monkeypatch, tmp_path, capsys):
@@ -528,3 +530,19 @@ def test_the_rules_behave_as_drawn_on_the_hierarchy_too(tmp_path):
     res = process.selftest(DEMO, str(tmp_path), only=["NW.*,CO.*,AN.1,DN.*"], deep=True)
     assert res["wrong"] == [] and res["stray"] == {}
     assert sum(v == "ok" for v in res["rules"].values()) == 12
+
+
+def test_the_backend_written_in_the_plugin_guide_works(monkeypatch, tmp_path):
+    """docs/plugins.md shows a backend in full; it is run here as it stands there."""
+    import re
+    text = open(os.path.join(HERE, "..", "docs", "plugins.md"), encoding="utf-8").read()
+    code = re.search(r"```python\n(from fastdrc\.backend import Backend\n.*?)```", text, re.S).group(1)
+    scope = {}
+    exec(code, scope)
+    monkeypatch.setitem(backend._REGISTRY, "table", scope["Table"])
+    deck, _, n, _ = process.build(DEMO, str(tmp_path), extra=["table"])
+    lines = open(tmp_path / "demo.csv").read().splitlines()
+    assert lines[0] == "rule,layers,measure,op,value"
+    for shown in re.findall(r"^    ((?:NW|CO|PO)\.\d,\S+)$", text, re.M):       # the lines the guide prints
+        assert shown in lines
+    assert get("table").compile_all([]) == lines[0] + "\n"

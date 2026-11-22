@@ -19,3 +19,11 @@ def test_no_relative_link_is_left_and_the_file_keeps_its_own():
     assert f"]({RAW}docs/img/demo/PO.2.svg)" in out
     assert f"]({REPO}/blob/main/docs/from-a-manual.md)" in out
     assert f"]({REPO}/tree/main/examples/demo)" in out and f"]({REPO}/blob/main/LICENSE)" in out
+
+
+def test_the_package_says_the_version_it_is_released_as():
+    import tomllib
+
+    import fastdrc
+    with open(os.path.join(ROOT, "pyproject.toml"), "rb") as f:
+        assert fastdrc.__version__ == tomllib.load(f)["project"]["version"]

@@ -140,6 +140,8 @@ def get(name, **kw) -> Backend:
         raise KeyError(f"no backend {name!r}; available: {sorted(_REGISTRY)}")
     cls = _REGISTRY[name]
     import inspect
+    if cls.__init__ is object.__init__:                 # no constructor of its own: it takes nothing
+        return cls()
     params = inspect.signature(cls.__init__).parameters
     if not any(p.kind is p.VAR_KEYWORD for p in params.values()):
         kw = {k: v for k, v in kw.items() if k in params}

@@ -8,4 +8,4 @@ writes the deck. See :mod:`fastdrc.process` (a deck: build, check, self-test),
 
 from __future__ import annotations
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
