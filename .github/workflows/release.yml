@@ -6,7 +6,8 @@ name: Release
 #
 # No password is kept here: PyPI trusts this workflow ("trusted publishing"). Each of
 # the two PyPI projects names it as its publisher -- owner edacommons, repository
-# FastDRC, workflow release.yml, environment pypi.
+# FastDRC, workflow release.yml -- and each under an environment of its own
+# (pypi-fastdrc, pypi), so that PyPI can tell which project an upload is for.
 
 on:
   release:
@@ -37,7 +38,7 @@ jobs:
   fastdrc:
     needs: build
     runs-on: ubuntu-latest
-    environment: pypi
+    environment: pypi-fastdrc
     permissions:
       id-token: write
     steps:
