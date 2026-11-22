@@ -5,8 +5,8 @@ build-backend = "hatchling.build"
 [project]
 name = "fastdrc"
 version = "0.0.1"
-description = "Design rules (DRC) drawn by example and compiled to a working KLayout deck"
-readme = "README.md"
+description = "Design rules (DRC) drawn by example and compiled for any checking tool through backend plugins. KLayout backend included."
+dynamic = ["readme"]          # README.md, its links made full addresses: hatch_build.py
 requires-python = ">=3.11"
 dependencies = []
 license = "Apache-2.0"
@@ -17,6 +17,13 @@ classifiers = [
   "Programming Language :: Python :: 3",
   "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
 ]
+
+[project.urls]
+Homepage = "https://github.com/edacommons/FastDRC"
+Documentation = "https://github.com/edacommons/FastDRC/blob/main/docs/from-a-manual.md"
+Issues = "https://github.com/edacommons/FastDRC/issues"
+
+[tool.hatch.metadata.hooks.custom]
 
 [dependency-groups]
 # rawast: cross-checks the constraint grammar in the tests; the GF180MCU deck is tested here too
