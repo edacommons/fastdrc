@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fastdrc"
-version = "0.0.2"
+version = "0.0.3"
 description = "Design rules (DRC) drawn by example and compiled for any checking tool through backend plugins. KLayout backend included."
 dynamic = ["readme"]          # README.md, its links made full addresses: hatch_build.py
 requires-python = ">=3.11"
@@ -26,16 +26,17 @@ Issues = "https://github.com/edacommons/FastDRC/issues"
 [tool.hatch.metadata.hooks.custom]
 
 [dependency-groups]
-# rawast: cross-checks the constraint grammar in the tests; the GF180MCU deck is tested here too
-dev = ["pytest>=8", "rawast>=0.1.1", "fastdrc-gf180mcu"]
+# rawast: cross-checks the constraint grammar in the tests; the GF180MCU deck and the gdscheck backend are tested here too
+dev = ["pytest>=8", "rawast>=0.1.1", "fastdrc-gf180mcu", "fastdrc-gdscheck"]
 
-# the GF180MCU deck is a package of its own, kept in this repository
+# the GF180MCU deck and the gdscheck backend are packages of their own, kept in this repository
 [tool.uv.workspace]
-members = ["fastdrc-gf180mcu"]
+members = ["fastdrc-gf180mcu", "fastdrc-gdscheck"]
 
 [tool.uv.sources]
 fastdrc = { workspace = true }
 fastdrc-gf180mcu = { workspace = true }
+fastdrc-gdscheck = { workspace = true }
 
 [project.scripts]
 fastdrc = "fastdrc.cli:main"
@@ -44,7 +45,7 @@ fastdrc = "fastdrc.cli:main"
 packages = ["python/fastdrc"]
 
 [tool.hatch.build.targets.sdist]
-exclude = ["/build", "/private", "/fastdrc-gf180mcu", "/docs/gf180mcu", "/docs/sky130", "/docs/ihp", "/docs/fp45"]
+exclude = ["/build", "/private", "/fastdrc-gf180mcu", "/fastdrc-gdscheck", "/docs/gf180mcu", "/docs/sky130", "/docs/ihp", "/docs/fp45"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,13 +1,13 @@
 name: Release
 
-# Publishing a GitHub release uploads both packages to PyPI: fastdrc (the tool) and
-# fastdrc-gf180mcu (the deck). A version that is already there is left alone, so to
-# release one of the two, raise its version alone.
+# Publishing a GitHub release uploads the packages to PyPI: fastdrc (the tool),
+# fastdrc-gf180mcu (the deck) and fastdrc-gdscheck (the gdscheck backend). A version
+# that is already there is left alone, so to release one of them, raise its version alone.
 #
 # No password is kept here: PyPI trusts this workflow ("trusted publishing"). Each of
-# the two PyPI projects names it as its publisher -- owner edacommons, repository
+# the PyPI projects names it as its publisher -- owner edacommons, repository
 # FastDRC, workflow release.yml -- and each under an environment of its own
-# (pypi-fastdrc, pypi), so that PyPI can tell which project an upload is for.
+# (pypi-fastdrc, pypi, pypi-gdscheck), so that PyPI can tell which project an upload is for.
 
 on:
   release:
@@ -30,6 +30,7 @@ jobs:
         run: |
           uv build --package fastdrc -o dist/fastdrc
           uv build --package fastdrc-gf180mcu -o dist/fastdrc-gf180mcu
+          uv build --package fastdrc-gdscheck -o dist/fastdrc-gdscheck
       - uses: actions/upload-artifact@v4
         with:
           name: dist
@@ -65,4 +66,20 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/fastdrc-gf180mcu
+          skip-existing: true
+
+  fastdrc-gdscheck:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi-gdscheck
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/fastdrc-gdscheck
           skip-existing: true

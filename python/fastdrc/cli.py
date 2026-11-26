@@ -110,19 +110,23 @@ def _selftest(args):
         raise SystemExit(f"fastdrc: {ex}")
     for note in res["notes"]:
         print(f"fastdrc: warning: {note}", file=sys.stderr)
-    tally = {k: sum(1 for v in res["rules"].values() if v == k) for k in ("ok", "wrong", "not generated")}
+    tally = {k: sum(1 for v in res["rules"].values() if v == k)
+             for k in ("ok", "wrong", "not generated", "not in the deck")}
     for line in res["wrong"]:
         print(f"  WRONG  {line}")
     if args.verbose or not res["wrong"]:
         for rule, why in res["not_generated"]:
             print(f"  not tested  {rule}: {why}")
     if args.verbose:
+        for rule in res.get("not_in_deck", []):
+            print(f"  not tested  {rule}: not in the {args.backend} deck")
         for (rule, testing), state in res["constraints"].items():
             print(f"  {'ok   ' if state == 'ok' else 'WRONG'}  {rule}  [{testing}]")
     tested = [t for (_, t) in res["constraints"] if t.startswith(("check ", "match "))]
     checks, filters = (sum(1 for t in tested if t.startswith(k)) for k in ("check ", "match "))
     print(f"{tally['ok']} rule(s) behave as drawn, {tally['wrong']} do not, "
-          f"{tally['not generated']} have no generated test yet "
+          f"{tally['not generated']} have no generated test yet"
+          + (f", {tally['not in the deck']} are not in the {args.backend} deck" if tally["not in the deck"] else "") + " "
           f"({checks} checks and {filters} filters tested one by one). "
           f"Cases: {res['files'].get('layout', res['files']['cases'])}")
     if res.get("layouts"):

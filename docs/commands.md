@@ -55,7 +55,7 @@ The editor: one rule, one file, one drawing. How to use it is in
 | `--deep` | a script that works on the layout's hierarchy (see `check`) |
 | `--no-optimise` | write every rule out in full, instead of computing once what several rules need. Slower to run; each rule can be read by itself |
 | `--backend NAME` | compile with this backend instead of `klayout` |
-| `--with NAMES` | also write the files of these backends: `--with svg` (a picture per rule), `--with cases,table` |
+| `--with NAMES` | also write the files of these backends: `--with svg` (a picture per rule), `--with cases,table`; a rule one of them cannot write is a warning, with the reason |
 
 The script is fitted to the set of rules it holds: it reads only the layers they need
 and computes once what several of them share. Its first lines say which set it is.
@@ -78,6 +78,11 @@ Takes the options of `build` except `--with`, and:
 | option | |
 |---|---|
 | `-v`, `--verbose` | list every constraint tested, one by one. (The rules with no generated test are named, with the reason, whenever nothing is wrong; with `-v` always) |
+
+A backend may not write every rule (it says which, and why, at `build`). Such a rule
+is not tested, and is counted on its own:
+
+    1009 rule(s) behave as drawn, 0 do not, 30 have no generated test yet, 6 are not in the gdscheck deck (...)
 
 The exit status is 1 if a rule does not behave as drawn, else 0.
 

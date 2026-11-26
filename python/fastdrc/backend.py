@@ -60,7 +60,8 @@ class Backend:
             {"rules": {rule name: (description, [(x0, y0, x1, y1) | None, ...])},   # µm, one box per violation (None: no place);
              "report": path or None}                                         # every rule of the deck, clean ones with []
 
-        Raises `RunError` if it cannot run or fails."""
+        A rule the backend did not write into the deck is not named: the self-test then
+        counts it as not in the deck, not as wrong. Raises `RunError` if it cannot run or fails."""
         raise RunError(self.ready() or f"the {self.name} backend has no run step")
 
     def files(self, rules, stem) -> dict:

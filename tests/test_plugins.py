@@ -76,7 +76,7 @@ def test_another_package_can_add_a_backend_that_runs_its_deck(monkeypatch, tmp_p
 
     monkeypatch.setitem(backend._REGISTRY, "toy", Toy)
     assert backend.runner("toy").name == "toy" and backend.runner("klayout").runs
-    with pytest.raises(KeyError, match="does not run decks; these do: klayout, toy"):
+    with pytest.raises(KeyError, match="does not run decks; these do: .*klayout, toy"):
         backend.runner("docs")
     assert "does not run" in get("docs").ready()
     with pytest.raises(backend.RunError):
@@ -245,6 +245,29 @@ def test_the_example_process_behaves_as_drawn(tmp_path):
     assert res["wrong"] == [] and sum(v == "ok" for v in res["rules"].values()) == 18
     assert sum(1 for (_, t) in res["constraints"] if t.startswith("match ")) == 5
     assert res["stray"] == {}                           # nothing is reported where nothing was drawn
+
+
+@pytest.mark.skipif(not process.klayout_binary(), reason="KLayout is not installed")
+def test_a_rule_the_backend_did_not_write_is_not_tested_which_is_not_wrong(tmp_path, monkeypatch, capsys):
+    """A run names every rule of its deck. A rule it does not name is not in the deck:
+    it is counted on its own, never as one that does not behave as drawn."""
+    kl = type(get("klayout"))
+    whole = kl.run
+
+    def without_one(self, deck, layout, top=None, report=None):
+        found = whole(self, deck, layout, top=top, report=report)
+        found["rules"].pop("NW.1")
+        return found
+    monkeypatch.setattr(kl, "run", without_one)
+    res = process.selftest(DEMO, str(tmp_path))
+    assert res["not_in_deck"] == ["NW.1"] and res["rules"]["NW.1"] == "not in the deck"
+    assert res["wrong"] == [] and sum(v == "ok" for v in res["rules"].values()) == 17
+    assert not any(rule == "NW.1" for rule, _ in res["constraints"])
+    from fastdrc import cli
+    assert cli.main(["selftest", DEMO, "-o", str(tmp_path), "-v"]) == 0
+    out = capsys.readouterr().out
+    assert "17 rule(s) behave as drawn, 0 do not, 0 have no generated test yet, 1 are not in the klayout deck" in out
+    assert "not tested  NW.1: not in the klayout deck" in out
 
 
 @pytest.mark.skipif(not process.klayout_binary(), reason="KLayout is not installed")
@@ -546,3 +569,19 @@ def test_the_backend_written_in_the_plugin_guide_works(monkeypatch, tmp_path):
     for shown in re.findall(r"^    ((?:NW|CO|PO)\.\d,\S+)$", text, re.M):       # the lines the guide prints
         assert shown in lines
     assert get("table").compile_all([]) == lines[0] + "\n"
+
+
+def test_what_a_backend_built_along_could_not_write_is_a_warning_of_the_build(monkeypatch, tmp_path):
+    class Partial(backend.Backend):
+        name, extension = "partial", ".part"
+
+        def __init__(self, layermap=None, **_):
+            self.problems = []
+
+        def compile_all(self, rules):
+            self.problems = ["NW.1 is not in the partial deck: no form for it"]
+            return ""
+
+    monkeypatch.setitem(backend._REGISTRY, "partial", Partial)
+    *_, notes = process.build(DEMO, str(tmp_path), extra=["partial"])
+    assert "NW.1 is not in the partial deck: no form for it" in notes

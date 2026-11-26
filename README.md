@@ -121,7 +121,9 @@ listed, never counted as passing.
 A backend may use another (`get("svg")` for a rule's figure, `get("docs")` for its
 sentence). A backend may also *run* the deck it writes on a layout: `build`, `check` and
 `selftest` take `--backend NAME` and go through that one for both. KLayout is the one
-shipped here that does, and the default; the C++ core will be another. This is how
+shipped here that does, and the default; the C++ core will be another, and
+[`fastdrc-gdscheck/`](fastdrc-gdscheck) is one for [gdscheck](https://github.com/aesc-silicon/gdscheck),
+a package of its own (`pip install fastdrc-gdscheck`, then `--backend gdscheck`). This is how
 another checking tool is put under the same drawn rules, and `fastdrc selftest --backend
 NAME` then shows, rule by rule, whether that tool reads them as drawn.
 
@@ -158,6 +160,7 @@ drawn-rule corpus read from `docs/gf180mcu/`, which is not part of this reposito
 python/fastdrc/    the Python package: the rule compiler, its backends, the editor
 examples/demo/     a complete deck for an invented process, with every kind of rule
 fastdrc-gf180mcu/  the package fastdrc-gf180mcu: the design rules of the open GF180MCU process, drawn from its manual
+fastdrc-gdscheck/  the package fastdrc-gdscheck: a backend plugin that writes the rules for gdscheck and runs it
 docs/              the tutorial (from-a-manual.md), the reference (drawing-model.md), the commands (commands.md),
                    plugins (plugins.md), what is new (own-and-known.md)
 docs/img/          the docs' figures, drawn from rule files by tools/doc_figures.py
@@ -165,8 +168,9 @@ tools/             validation of the compiler against a reference deck
 tests/             pytest
 ```
 
-Two packages are built from this repository: `fastdrc` (the tool) and
-`fastdrc-gf180mcu` (the deck, which needs the tool). A deck package holds the deck
+Three packages are built from this repository: `fastdrc` (the tool),
+`fastdrc-gf180mcu` (the deck, which needs the tool) and `fastdrc-gdscheck` (a backend
+plugin, which needs the tool). A deck package holds the deck
 folder and names it in the entry-point group `fastdrc.decks`;
 [docs/from-a-manual.md](docs/from-a-manual.md) shows the two lines it takes.
 
@@ -192,7 +196,7 @@ deck_path, *_ = process.build(folder, out)
 Requires Python 3.11+; pure Python, no compiler.
 
 ```bash
-pip install -e . -e ./fastdrc-gf180mcu pytest     # the tool and the GF180MCU deck
+pip install -e . -e ./fastdrc-gf180mcu -e ./fastdrc-gdscheck pytest     # the tool, the GF180MCU deck, the gdscheck backend
 pytest
 ```
 

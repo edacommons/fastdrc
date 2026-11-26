@@ -87,7 +87,7 @@ What a backend may define:
 | `name`, `extension`, `about` | as above |
 | `compile(rule)` | one rule → text. The only method that must be written |
 | `compile_all(rules)` | several rules → one text; override it for a heading or a preamble written once. The rules arrive as `Rule`s or as rule files' contents, so wrap them as the example does |
-| `files(rules, stem)` | `{file name: text}`, for a backend that writes more than one file (`svg` writes a picture per rule) |
+| `files(rules, stem)` | `{file name: text}`, for a backend that writes more than one file (`svg` writes a picture per rule); a name may lie in a folder (`mydeck.mytool/rules.yml`), which is made |
 | `headed(text, about)` | the text with lines about the set of rules put at its head, in the target's comment form |
 | `__init__(self, layermap=None, title=None, ...)` | optional. A backend is offered the deck's layer numbers and its name; it receives those it names as parameters and no others |
 
@@ -150,7 +150,18 @@ reads a rule wrongly is shown rule by rule. (The layout of the test cases is its
 written by a KLayout script, so KLayout is needed for `selftest` whichever backend
 reads it.)
 
+A backend need not write every rule. One it leaves out of its file it names in its
+`problems` (a list of sentences, printed by `build`), and does not name in what `run`
+returns; `selftest` then counts that rule as not in the deck — not tested, which is
+not the same as wrong. A violation with no place (a share of the whole chip) is given
+as `None` in place of a box.
+
 Raise `fastdrc.backend.RunError` when the tool cannot be run or fails.
+
+A backend of this kind in full is [`fastdrc-gdscheck/`](../fastdrc-gdscheck): a package
+of its own (`pip install fastdrc-gdscheck`) that writes the rules as a PDK for
+[gdscheck](https://github.com/aesc-silicon/gdscheck), runs it, and leaves out, by name,
+the rules gdscheck has no form for.
 
 ## A deck
 

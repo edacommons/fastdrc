@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling >=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fastdrc-gdscheck"
+version = "0.0.1"
+description = "A FastDRC backend for gdscheck: drawn design rules written as a gdscheck PDK"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["fastdrc>=0.0.3"]   # 0.0.3: a backend may write a folder; a rule it leaves out is counted as such
+license = "Apache-2.0"
+keywords = ["EDA", "DRC", "design-rule-check", "gdscheck", "FastDRC"]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
+]
+
+[project.urls]
+Homepage = "https://github.com/edacommons/FastDRC/tree/main/fastdrc-gdscheck"
+FastDRC = "https://github.com/edacommons/FastDRC"
+Issues = "https://github.com/edacommons/FastDRC/issues"
+
+# what makes `--backend gdscheck` and `--with gdscheck` work
+[project.entry-points."fastdrc.backends"]
+gdscheck = "fastdrc_gdscheck:GdsCheck"
+
+[tool.hatch.build.targets.wheel]
+packages = ["fastdrc_gdscheck"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/fastdrc_gdscheck", "/README.md", "/LICENSE"]

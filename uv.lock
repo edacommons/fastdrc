@@ -5,6 +5,7 @@ requires-python = ">=3.11"
 [manifest]
 members = [
     "fastdrc",
+    "fastdrc-gdscheck",
     "fastdrc-gf180mcu",
 ]
 
@@ -19,11 +20,12 @@ wheels = [
 
 [[package]]
 name = "fastdrc"
-version = "0.0.2"
+version = "0.0.3"
 source = { editable = "." }
 
 [package.dev-dependencies]
 dev = [
+    { name = "fastdrc-gdscheck" },
     { name = "fastdrc-gf180mcu" },
     { name = "pytest" },
     { name = "rawast" },
@@ -33,10 +35,22 @@ dev = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "fastdrc-gdscheck", editable = "fastdrc-gdscheck" },
     { name = "fastdrc-gf180mcu", editable = "fastdrc-gf180mcu" },
     { name = "pytest", specifier = ">=8" },
     { name = "rawast", specifier = ">=0.1.1" },
 ]
+
+[[package]]
+name = "fastdrc-gdscheck"
+version = "0.0.1"
+source = { editable = "fastdrc-gdscheck" }
+dependencies = [
+    { name = "fastdrc" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "fastdrc", editable = "." }]
 
 [[package]]
 name = "fastdrc-gf180mcu"
