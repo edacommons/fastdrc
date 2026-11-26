@@ -39,7 +39,7 @@ from fastdrc.backend import Backend, RunError, get
 from fastdrc.ir import Deck, ParseError
 from fastdrc.rule import Rule
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 FILE = "#### file: "
 
@@ -1041,7 +1041,7 @@ class GdsCheck(Backend):
     """The rules as a gdscheck PDK; it also runs gdscheck on a layout."""
     name = "gdscheck"
     extension = ".gdscheck"
-    about = "a PDK (pdk.yml, a deck, a suite) for gdscheck; runs it on a GDS layout"
+    about = "a PDK (pdk.yml, a deck, a suite) for gdscheck"
     runs = True
 
     def __init__(self, layermap=None, title=None):

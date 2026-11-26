@@ -43,7 +43,7 @@ dev = [
 
 [[package]]
 name = "fastdrc-gdscheck"
-version = "0.0.1"
+version = "0.0.2"
 source = { editable = "fastdrc-gdscheck" }
 dependencies = [
     { name = "fastdrc" },
